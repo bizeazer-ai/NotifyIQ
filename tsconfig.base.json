@@ -1,0 +1,16 @@
+{
+    "compilerOptions": {
+        "target": "es2023",
+        "lib": ["ES2023", "DOM"],
+        "module": "nodenext",
+        "moduleResolution": "nodenext",
+        "skipLibCheck": true,
+        "allowArbitraryExtensions": true,
+        "noEmit": true,
+        "jsx": "react-jsx",
+        "paths": {
+        "@notifyiq/*":["./apps/*", "./packages/*"],
+        },
+        "types":["node"]
+    }
+}
