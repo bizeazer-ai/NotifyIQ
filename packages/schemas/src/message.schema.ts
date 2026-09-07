@@ -1,0 +1,49 @@
+import { z } from 'zod';
+
+export const SendMessageSchema = z.object({
+  to: z.string().optional(),
+  phone: z.string().optional(),
+  recipientId: z.string().optional(),
+  body: z.string().min(1),
+});
+
+export type SendMessagePayload = z.infer<typeof SendMessageSchema>;
+
+export interface ConversationContract {
+  _id: string;
+  contactName: string;
+  phone: string;
+  sentiment: 'positive' | 'neutral' | 'negative' | 'urgent';
+  lastMessageAt: string;
+  lastMessageText: string;
+}
+
+export interface MessageContract {
+  _id: string;
+  waMessageId: string;
+  direction: 'inbound' | 'outbound';
+  type: 'text' | 'audio' | 'image';
+  status: 'sent' | 'delivered' | 'read' | 'failed';
+  body: string | null;
+  mediaUrl?: string | null;
+  transcript?: string | null;
+  aiSuggestions?: string[];
+  createdAt: string;
+  conversationId?: string;
+}
+
+export const CampaignLaunchSchema = z.object({
+  templateName: z.string().min(1),
+  contactIds: z.array(z.string()),
+  languageCode: z.string().default('en'),
+  scheduledAt: z.string().optional(),
+});
+
+export type CampaignLaunchPayload = z.infer<typeof CampaignLaunchSchema>;
+
+export interface CampaignStatsContract {
+  totalSent: number;
+  delivered: number;
+  read: number;
+  failed: number;
+}

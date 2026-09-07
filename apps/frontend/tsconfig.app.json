@@ -20,7 +20,15 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "erasableSyntaxOnly": true,
-    "noFallthroughCasesInSwitch": true
+    "noFallthroughCasesInSwitch": true,
+
+    /* Path Aliases */
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@notifyiq/schemas": ["../../packages/schemas/src/index.ts"]
+    },
+    "ignoreDeprecations": "6.0"
   },
   "include": ["src"]
 }

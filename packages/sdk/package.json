@@ -1,0 +1,33 @@
+{
+  "name": "@notifyiq/sdk",
+  "version": "1.0.0",
+  "description": "TypeScript SDK wrapper for the NotifyIQ API, supporting partner SaaS integrations.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "module": "./dist/index.js",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "private": true,
+  "scripts": {
+    "dev": "tsc --watch",
+    "build": "tsc"
+  },
+  "keywords": [
+    "notifyiq",
+    "whatsapp",
+    "sdk"
+  ],
+  "author": "BizEazer Tech Team",
+  "license": "ISC",
+  "packageManager": "pnpm@10.33.0",
+  "dependencies": {},
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  }
+}
