@@ -1,5 +1,5 @@
 import { Controller, Get, Post, Delete, Body, Param, UseGuards, Req } from '@nestjs/common';
-import { MetaService, ConnectWabaDto, WabaProfileDto, CreateTemplateDto } from './meta.service.js';
+import { MetaService, ConnectWabaDto, WabaProfileDto, CreateTemplateDto, RegisterPhoneNumberDto } from './meta.service.js';
 import { AuthGuard, WorkspaceGuard } from '../common/guards/index.js';
 import type { AuthenticatedRequest } from '../common/guards/index.js';
 
@@ -64,6 +64,32 @@ export class MetaController {
     return {
       message: 'WABA phone numbers retrieved successfully',
       data: phoneNumbers,
+    };
+  }
+
+  @Post('phone-numbers')
+  @UseGuards(AuthGuard, WorkspaceGuard)
+  async registerPhoneNumber(
+    @Req() req: AuthenticatedRequest,
+    @Body() body: RegisterPhoneNumberDto,
+  ) {
+    const workspaceId = req.workspaceId as string;
+    const userId = req.user?.userId;
+    const result = await this.metaService.registerPhoneNumber(workspaceId, body, userId);
+    return {
+      message: 'New WhatsApp phone number registered successfully on Meta API',
+      data: result,
+    };
+  }
+
+  @Get('api-logs')
+  @UseGuards(AuthGuard, WorkspaceGuard)
+  async getApiLogs(@Req() req: AuthenticatedRequest) {
+    const workspaceId = req.workspaceId as string;
+    const logs = await this.metaService.getMetaApiLogs(workspaceId);
+    return {
+      message: 'Meta Graph API response logs retrieved successfully',
+      data: logs,
     };
   }
 

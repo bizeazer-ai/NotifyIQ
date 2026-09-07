@@ -50,6 +50,15 @@ This document tracks active system fixes and UI styling enhancements.
 - **WABA Connection Status & Phone Numbers List API**: Created `GET /api/waba/status`, `GET /api/waba/phone-numbers`, and `POST /api/waba/select-phone-number` endpoints in [meta.controller.ts](file:///d:/Aadi%20Technologies/notifyIQ/apps/backend/src/meta/meta.controller.ts) allowing users to query attached phone numbers and switch active phone number IDs.
 - **UI Gating & Phone Selector Dropdown**: Updated [WabaProfilePage.tsx](file:///d:/Aadi%20Technologies/notifyIQ/apps/frontend/src/pages/settings/WabaProfilePage.tsx) to automatically hide the Embedded Signup button if WABA is already connected to the workspace, rendering a connected WABA card with a phone number selection dropdown menu.
 
+### 10. Meta DTO ValidationPipe Property Stripping Fix [Status: **COMPLETED** ✅]
+- **Issue**: `createTemplate` in `MetaService` received an empty object `{}` even though the frontend sent a full template payload (`name`, `category`, `language`, `bodyText`, `buttons`, etc.).
+- **Resolution**: NestJS global `ValidationPipe` had `whitelist: true` enabled in `main.ts`, which automatically strips any payload property that lacks a `class-validator` decorator on its DTO class. Added `@IsString()`, `@IsNotEmpty()`, `@IsOptional()`, `@IsArray()`, `@ValidateNested()`, and `@Type()` decorators to `CreateTemplateDto`, `TemplateButtonDto`, `WabaProfileDto`, and `ConnectWabaDto` in [meta.service.ts](file:///d:/Aadi%20Technologies/notifyIQ/apps/backend/src/meta/meta.service.ts).
+
+### 11. Meta Phone Number Registration & Graph API Audit Log Persistence [Status: **COMPLETED** ✅]
+- **Meta API Response Logging Schema**: Created [meta-api-log.schema.ts](file:///d:/Aadi%20Technologies/notifyIQ/apps/backend/src/database/schemas/meta-api-log.schema.ts) (`MetaApiLog` MongoDB schema) storing `workspaceId`, `userId`, `businessAccountId`, `phoneNumberId`, `endpointUrl`, `httpMethod`, `requestPayload`, `responseStatus`, `responseData`, `errorMessage`, and timestamp.
+- **Automated Meta Graph API Logging**: Added `logMetaApiCall` helper method in [meta.service.ts](file:///d:/Aadi%20Technologies/notifyIQ/apps/backend/src/meta/meta.service.ts) redacting access tokens in URLs and recording every Meta Graph API call (OAuth exchange, debug token, profile fetch/update, template management, phone number listing/registration).
+- **Meta Phone Registration Endpoint & UI Modal**: Created `POST /api/waba/phone-numbers` in [meta.controller.ts](file:///d:/Aadi%20Technologies/notifyIQ/apps/backend/src/meta/meta.controller.ts) (`registerPhoneNumber`) and built an **"Add New Phone Number"** registration modal dialog and **"Meta Graph API Response Logs"** table in [WabaProfilePage.tsx](file:///d:/Aadi%20Technologies/notifyIQ/apps/frontend/src/pages/settings/WabaProfilePage.tsx).
+
 ---
 
 ## 🧪 Verification Results

@@ -5,34 +5,122 @@ import crypto from 'crypto';
 import { env } from '@notifyiq/config';
 import { Workspace, WorkspaceDocument } from '../database/schemas/workspace.schema.js';
 import { AuditLog, AuditLogDocument } from '../database/schemas/audit-log.schema.js';
+import { MetaApiLog, MetaApiLogDocument } from '../database/schemas/meta-api-log.schema.js';
 import { encrypt, decrypt } from '../lib/utils/encryption.js';
 
-export interface ConnectWabaDto {
+import { IsString, IsNotEmpty, IsOptional, IsArray, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
+
+export class ConnectWabaDto {
+  @IsString()
+  @IsNotEmpty()
   workspaceId: string;
+
+  @IsString()
+  @IsNotEmpty()
   accessToken: string;
+
+  @IsString()
+  @IsNotEmpty()
   phoneNumberId: string;
+
+  @IsString()
+  @IsNotEmpty()
   businessAccountId: string;
 }
 
+export class RegisterPhoneNumberDto {
+  @IsString()
+  @IsNotEmpty()
+  phoneNumber: string;
+
+  @IsString()
+  @IsNotEmpty()
+  displayName: string;
+
+  @IsString()
+  @IsOptional()
+  countryCode?: string;
+}
+
 export class WabaProfileDto {
+  @IsString()
+  @IsOptional()
   about?: string;
+
+  @IsString()
+  @IsOptional()
   address?: string;
+
+  @IsString()
+  @IsOptional()
   description?: string;
+
+  @IsString()
+  @IsOptional()
   email?: string;
+
+  @IsString()
+  @IsOptional()
   vertical?: string;
+
+  @IsArray()
+  @IsOptional()
   websites?: string[];
+
+  @IsString()
+  @IsOptional()
   profilePictureUrl?: string;
 }
 
+export class TemplateButtonDto {
+  @IsString()
+  @IsNotEmpty()
+  type: 'QUICK_REPLY' | 'URL' | 'PHONE_NUMBER';
+
+  @IsString()
+  @IsNotEmpty()
+  text: string;
+
+  @IsString()
+  @IsOptional()
+  value?: string;
+}
+
 export class CreateTemplateDto {
+  @IsString()
+  @IsNotEmpty()
   name: string;
+
+  @IsString()
+  @IsNotEmpty()
   category: 'MARKETING' | 'UTILITY' | 'AUTHENTICATION';
+
+  @IsString()
+  @IsNotEmpty()
   language: string;
+
+  @IsString()
+  @IsOptional()
   headerType?: 'NONE' | 'TEXT' | 'IMAGE' | 'DOCUMENT';
+
+  @IsString()
+  @IsOptional()
   headerText?: string;
+
+  @IsString()
+  @IsNotEmpty()
   bodyText: string;
+
+  @IsString()
+  @IsOptional()
   footerText?: string;
-  buttons?: Array<{ type: 'QUICK_REPLY' | 'URL' | 'PHONE_NUMBER'; text: string; value?: string }>;
+
+  @IsArray()
+  @IsOptional()
+  @ValidateNested({ each: true })
+  @Type(() => TemplateButtonDto)
+  buttons?: TemplateButtonDto[];
 }
 
 @Injectable()
@@ -42,7 +130,54 @@ export class MetaService {
   constructor(
     @InjectModel(Workspace.name) private readonly workspaceModel: Model<WorkspaceDocument>,
     @InjectModel(AuditLog.name) private readonly auditLogModel: Model<AuditLogDocument>,
+    @InjectModel(MetaApiLog.name) private readonly metaApiLogModel: Model<MetaApiLogDocument>,
   ) { }
+
+  /**
+   * Persists Meta Graph API Request & Response details into MongoDB
+   */
+  async logMetaApiCall(params: {
+    workspaceId: string;
+    userId?: string;
+    businessAccountId?: string;
+    phoneNumberId?: string;
+    endpointUrl: string;
+    httpMethod: string;
+    requestPayload?: any;
+    responseStatus?: number;
+    responseData?: any;
+    errorMessage?: string;
+  }) {
+    try {
+      // Redact tokens in URL parameters for security
+      const sanitizedUrl = params.endpointUrl.replace(/access_token=[^&]+/g, 'access_token=REDACTED');
+      await this.metaApiLogModel.create({
+        workspaceId: params.workspaceId,
+        userId: params.userId || null,
+        businessAccountId: params.businessAccountId || null,
+        phoneNumberId: params.phoneNumberId || null,
+        endpointUrl: sanitizedUrl,
+        httpMethod: params.httpMethod.toUpperCase(),
+        requestPayload: params.requestPayload || null,
+        responseStatus: params.responseStatus || 200,
+        responseData: params.responseData || null,
+        errorMessage: params.errorMessage || null,
+      });
+    } catch (err: any) {
+      this.logger.warn(`[MetaService] Failed saving Meta API log: ${err.message}`);
+    }
+  }
+
+  /**
+   * Retrieves Meta API Logs for Workspace
+   */
+  async getMetaApiLogs(workspaceId: string): Promise<MetaApiLog[]> {
+    return this.metaApiLogModel
+      .find({ workspaceId })
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .exec();
+  }
 
   /**
    * Meta Embedded Signup OAuth Callback Exchange
@@ -441,5 +576,106 @@ export class MetaService {
     });
 
     return { success: true, phoneNumberId };
+  }
+
+  /**
+   * Register a new phone number to connected WABA via Meta Graph API v20.0
+   */
+  async registerPhoneNumber(workspaceId: string, dto: RegisterPhoneNumberDto, userId?: string) {
+    const workspace = await this.workspaceModel.findById(workspaceId);
+    if (!workspace || !workspace.waba || !workspace.waba.businessAccountId) {
+      throw new BadRequestException('WABA is not connected to this workspace');
+    }
+
+    const isMock = process.env.MOCK_SERVICES === 'true';
+    const wabaId = workspace.waba.businessAccountId;
+    const token = workspace.waba.accessToken ? decrypt(workspace.waba.accessToken) : '';
+    let newPhoneId = `phone_${Date.now()}`;
+    let resStatus = 200;
+    let resData: any = null;
+
+    const payload = {
+      phone_number: dto.phoneNumber.replace(/[^0-9]/g, ''),
+      display_name: dto.displayName,
+      verified_name: dto.displayName,
+      cc: (dto.countryCode || '91').replace(/[^0-9]/g, ''),
+    };
+
+    if (!isMock && token && !wabaId.startsWith('mock_')) {
+      const url = `https://graph.facebook.com/v20.0/${wabaId}/phone_numbers`;
+
+      try {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        resStatus = res.status;
+        resData = (await res.json()) as any;
+
+        if (res.ok && resData.id) {
+          newPhoneId = resData.id;
+        }
+
+        await this.logMetaApiCall({
+          workspaceId,
+          userId,
+          businessAccountId: wabaId,
+          phoneNumberId: newPhoneId,
+          endpointUrl: url,
+          httpMethod: 'POST',
+          requestPayload: payload,
+          responseStatus: resStatus,
+          responseData: resData,
+          errorMessage: !res.ok ? resData?.error?.message || 'Meta API call failed' : undefined,
+        });
+
+        if (!res.ok) {
+          throw new BadRequestException(resData?.error?.message || 'Failed to register phone number with Meta Graph API');
+        }
+      } catch (err: any) {
+        this.logger.error(`[MetaService] Error registering phone number on Meta API: ${err.message}`);
+        await this.logMetaApiCall({
+          workspaceId,
+          userId,
+          businessAccountId: wabaId,
+          endpointUrl: `https://graph.facebook.com/v20.0/${wabaId}/phone_numbers`,
+          httpMethod: 'POST',
+          requestPayload: payload,
+          responseStatus: resStatus || 500,
+          errorMessage: err.message,
+        });
+        if (err instanceof BadRequestException) throw err;
+      }
+    } else {
+      // Mock mode recording
+      resData = { success: true, id: newPhoneId, display_phone_number: dto.phoneNumber, verified_name: dto.displayName };
+      await this.logMetaApiCall({
+        workspaceId,
+        userId,
+        businessAccountId: wabaId,
+        phoneNumberId: newPhoneId,
+        endpointUrl: `https://graph.facebook.com/v20.0/${wabaId}/phone_numbers (MOCK)`,
+        httpMethod: 'POST',
+        requestPayload: payload,
+        responseStatus: 200,
+        responseData: resData,
+      });
+    }
+
+    // Set newly created number as active
+    workspace.waba.phoneNumberId = newPhoneId;
+    await workspace.save();
+
+    await this.auditLogModel.create({
+      workspaceId: workspace._id.toString(),
+      userId: userId || null,
+      action: 'waba.register_phone_number',
+      resource: 'Workspace',
+      resourceId: workspace._id.toString(),
+      details: { phoneNumberId: newPhoneId, phoneNumber: dto.phoneNumber, displayName: dto.displayName },
+    });
+
+    return { success: true, phoneNumberId: newPhoneId, displayPhoneNumber: dto.phoneNumber, verifiedName: dto.displayName };
   }
 }

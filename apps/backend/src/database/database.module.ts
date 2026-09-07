@@ -9,6 +9,7 @@ import { ApiKey, ApiKeySchema } from './schemas/api-key.schema.js';
 import { AuditLog, AuditLogSchema } from './schemas/audit-log.schema.js';
 import { Knowledge, KnowledgeSchema } from './schemas/knowledge.schema.js';
 import { Flow, FlowSchema } from './schemas/flow.schema.js';
+import { MetaApiLog, MetaApiLogSchema } from './schemas/meta-api-log.schema.js';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { Flow, FlowSchema } from './schemas/flow.schema.js';
       { name: AuditLog.name, schema: AuditLogSchema },
       { name: Knowledge.name, schema: KnowledgeSchema },
       { name: Flow.name, schema: FlowSchema },
+      { name: MetaApiLog.name, schema: MetaApiLogSchema },
     ]),
   ],
   exports: [MongooseModule],
