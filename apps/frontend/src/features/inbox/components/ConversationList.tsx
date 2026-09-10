@@ -1,7 +1,10 @@
 import { useState } from 'react';
 import { useAppSelector, useAppDispatch } from '../../../store/hooks';
-import { setActiveConversationId } from '../../../store/slices/inboxSlice';
+import { setActiveConversationId, fetchConversations } from '../../../store/slices/inboxSlice';
 import { useTranslation } from '../../../i18n';
+import { LoadingState } from '../../../components/ui/LoadingState';
+import { ErrorAlert } from '../../../components/ui/ErrorAlert';
+import { EmptyState } from '../../../components/ui/EmptyState';
 
 export default function ConversationList() {
   const dispatch = useAppDispatch();
@@ -10,6 +13,7 @@ export default function ConversationList() {
   const conversations = useAppSelector((state) => state.inbox.conversations);
   const activeConversationId = useAppSelector((state) => state.inbox.activeConversationId);
   const loading = useAppSelector((state) => state.inbox.loadingConversations);
+  const error = useAppSelector((state) => state.inbox.error);
 
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -33,13 +37,15 @@ export default function ConversationList() {
 
       <div className="conversations-list" style={{ flex: 1, overflowY: 'auto' }}>
         {loading && conversations.length === 0 ? (
-          <div style={{ padding: '24px', color: 'var(--text-muted)', fontSize: '13px', textAlign: 'center' }}>
-            Loading conversations...
-          </div>
+          <LoadingState message="Loading live WhatsApp conversations..." />
+        ) : error && conversations.length === 0 ? (
+          <ErrorAlert message={error} onRetry={() => dispatch(fetchConversations())} title="Inbox Error" />
         ) : filteredConversations.length === 0 ? (
-          <div style={{ padding: '24px', color: 'var(--text-muted)', fontSize: '13px', textAlign: 'center' }}>
-            No conversations found
-          </div>
+          <EmptyState
+            title="No Conversations"
+            description={searchTerm ? "No active chat threads match your search query." : "No incoming customer messages yet."}
+            icon="inbox"
+          />
         ) : (
           filteredConversations.map((conv) => (
             <div
@@ -66,3 +72,4 @@ export default function ConversationList() {
     </section>
   );
 }
+

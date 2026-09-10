@@ -7,6 +7,7 @@ import { RedisService } from '../../common/services/redis.service.js';
 import { QueueService, QueueName } from '../queue.service.js';
 import { SocketGateway } from '../../socket/socket.gateway.js';
 import { RagService } from '../../ai/rag.service.js';
+import { FlowExecutionEngine } from '../../flows/flow-execution.engine.js';
 import { Workspace, WorkspaceDocument } from '../../database/schemas/workspace.schema.js';
 import { Contact, ContactDocument } from '../../database/schemas/contact.schema.js';
 import { Conversation, ConversationDocument } from '../../database/schemas/conversation.schema.js';
@@ -22,11 +23,13 @@ export class WebhookWorker implements OnModuleInit, OnModuleDestroy {
     private readonly queueService: QueueService,
     private readonly socketGateway: SocketGateway,
     private readonly ragService: RagService,
+    private readonly flowExecutionEngine: FlowExecutionEngine,
     @InjectModel(Workspace.name) private readonly workspaceModel: Model<WorkspaceDocument>,
     @InjectModel(Contact.name) private readonly contactModel: Model<ContactDocument>,
     @InjectModel(Conversation.name) private readonly conversationModel: Model<ConversationDocument>,
     @InjectModel(Message.name) private readonly messageModel: Model<MessageDocument>,
   ) {}
+
 
   onModuleInit() {
     const connection = this.redisService.getClient();
@@ -142,12 +145,31 @@ export class WebhookWorker implements OnModuleInit, OnModuleDestroy {
                     );
                   }
 
-                  // C. Auto-Reply Bot Engine (if enabled)
-                  if (workspace.autoReplySettings?.enabled && messageBody) {
-                    this.evaluateAndExecuteAutoReply(workspace, conversation, contact, messageBody).catch((err) =>
-                      console.error('[WebhookWorker] Auto-reply evaluation failed:', err.message)
-                    );
+                  // C. Evaluate Active Automation Flow Engine (with Auto-Reply Fallback)
+                  if (messageBody) {
+                    this.flowExecutionEngine
+                      .executeFlowForInboundMessage(
+                        workspace._id.toString(),
+                        conversation,
+                        contact,
+                        messageBody,
+                        conversation.sentiment || 'neutral',
+                      )
+                      .then((flowResult) => {
+                        if (flowResult.executed) {
+                          console.log(
+                            `[WebhookWorker] Active Flow "${flowResult.flowName}" (${flowResult.flowId}) executed. Actions:`,
+                            flowResult.actionsTaken,
+                          );
+                        } else if (workspace.autoReplySettings?.enabled) {
+                          this.evaluateAndExecuteAutoReply(workspace, conversation, contact, messageBody).catch((err) =>
+                            console.error('[WebhookWorker] Auto-reply evaluation failed:', err.message),
+                          );
+                        }
+                      })
+                      .catch((err) => console.error('[WebhookWorker] Flow execution error:', err.message));
                   }
+
                 }
               }
             }

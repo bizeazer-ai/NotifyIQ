@@ -1,6 +1,9 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { apiClient } from '../../lib/api/apiClient';
 import { Icon } from '../../components/ui/Icon';
+import { LoadingState } from '../../components/ui/LoadingState';
+import { ErrorAlert } from '../../components/ui/ErrorAlert';
+import { EmptyState } from '../../components/ui/EmptyState';
 
 interface MessageTemplate {
   id?: string;
@@ -18,6 +21,7 @@ export default function TemplateBuilderPage() {
   const [templates, setTemplates] = useState<MessageTemplate[]>([]);
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Form State
   const [name, setName] = useState('');
@@ -35,32 +39,15 @@ export default function TemplateBuilderPage() {
 
   const loadTemplates = async () => {
     setLoading(true);
+    setError(null);
     try {
       const res = await apiClient.get<{ data: MessageTemplate[] }>('/api/waba/templates');
       if (res.data) {
         setTemplates(res.data);
       }
-    } catch {
-      setTemplates([
-        {
-          id: 'tpl_1',
-          name: 'gst_filing_reminder',
-          category: 'UTILITY',
-          language: 'en',
-          status: 'APPROVED',
-          bodyText: 'Dear {{1}}, your monthly GST filing deadline is approaching on {{2}}. Please submit invoice documents.',
-          buttons: [{ type: 'URL', text: 'Pay GST Now', url: 'https://bizeazer.in/pay' }],
-        },
-        {
-          id: 'tpl_2',
-          name: 'welcome_onboard_message',
-          category: 'MARKETING',
-          language: 'en',
-          status: 'APPROVED',
-          bodyText: 'Welcome {{1}} to BizEazer SaaS platform! Reply HELP for automated assistant.',
-          buttons: [{ type: 'QUICK_REPLY', text: 'Speak to Support' }],
-        },
-      ]);
+    } catch (err: any) {
+      setError(err?.message || 'Failed to fetch WABA templates from Meta server.');
+      setTemplates([]);
     } finally {
       setLoading(false);
     }
@@ -279,9 +266,15 @@ export default function TemplateBuilderPage() {
           </h3>
 
           {loading ? (
-            <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Loading templates from Meta API...</p>
+            <LoadingState message="Fetching registered WABA templates..." />
+          ) : error ? (
+            <ErrorAlert message={error} onRetry={loadTemplates} title="Meta WABA Templates Error" />
           ) : templates.length === 0 ? (
-            <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>No WhatsApp templates created yet.</p>
+            <EmptyState
+              title="No WABA Templates Found"
+              description="Create your first interactive WhatsApp message template to submit for Meta Cloud approval."
+              icon="document"
+            />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {templates.map((tpl) => (
@@ -352,3 +345,4 @@ export default function TemplateBuilderPage() {
     </div>
   );
 }
+

@@ -8,17 +8,8 @@ import { ApiKeyGuard } from '../common/guards/api-key.guard.js';
 import { Workspace, WorkspaceDocument } from '../database/schemas/workspace.schema.js';
 import { User, UserDocument } from '../database/schemas/user.schema.js';
 import { AuditLog, AuditLogDocument } from '../database/schemas/audit-log.schema.js';
+import { ProvisionWorkspaceDto, ActionWorkspaceDto } from './dto/index.js';
 
-class ProvisionWorkspaceDto {
-  workspaceName: string;
-  adminEmail: string;
-  plan?: string;
-  parentAgencyId?: string;
-}
-
-class ActionWorkspaceDto {
-  workspaceId: string;
-}
 
 @Controller('api/partner/whmcs')
 @UseGuards(ApiKeyGuard)

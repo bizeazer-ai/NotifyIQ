@@ -1,6 +1,9 @@
 import { useEffect, useState, type FormEvent, type ChangeEvent } from 'react';
 import { apiClient } from '../../lib/api/apiClient';
 import { Icon } from '../../components/ui/Icon';
+import { LoadingState } from '../../components/ui/LoadingState';
+import { ErrorAlert } from '../../components/ui/ErrorAlert';
+import { EmptyState } from '../../components/ui/EmptyState';
 
 interface KnowledgeDoc {
   _id: string;
@@ -21,6 +24,7 @@ interface QueryResult {
 export default function KnowledgeBasePage() {
   const [documents, setDocuments] = useState<KnowledgeDoc[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'upload' | 'playground'>('upload');
 
   // Direct Text Upload State
@@ -40,34 +44,15 @@ export default function KnowledgeBasePage() {
 
   const loadDocuments = async () => {
     setLoading(true);
+    setError(null);
     try {
-      // Mock / fallback list if list API endpoint is pending
       const res = await apiClient.get<{ data: KnowledgeDoc[] }>('/api/ai/knowledge');
       if (res.data) {
         setDocuments(res.data);
       }
-    } catch {
-      // Apply realistic default document items
-      setDocuments([
-        {
-          _id: 'kb_1',
-          docId: 'doc_pricing_spec',
-          title: 'NotifyIQ_Pricing_and_SLA_Guide.pdf',
-          fileType: 'pdf',
-          content: 'NotifyIQ WhatsApp API platform pricing rules: Wholesale rate is $0.002 per outbound message for SaaS agency partners. Monthly invoices include 18% GST for India workspaces.',
-          chunkIndex: 0,
-          createdAt: new Date().toISOString(),
-        },
-        {
-          _id: 'kb_2',
-          docId: 'doc_cname_config',
-          title: 'Whitelabel_CNAME_Setup.yaml',
-          fileType: 'yaml',
-          content: 'domain: support.bizeazer.in\ncname_target: proxy.notifyiq.app\nssl_enabled: true\nprovider: Utho Cloud Proxy',
-          chunkIndex: 0,
-          createdAt: new Date(Date.now() - 86400000).toISOString(),
-        },
-      ]);
+    } catch (err: any) {
+      setError(err?.message || 'Failed to fetch knowledge base documents from backend.');
+      setDocuments([]);
     } finally {
       setLoading(false);
     }
@@ -115,7 +100,6 @@ export default function KnowledgeBasePage() {
     setStatusMessage(`Parsing, chunking, and embedding "${selectedFile.name}"...`);
 
     try {
-      // Simulate multi-format parser pipeline
       const reader = new FileReader();
       reader.onload = async () => {
         const textContent = (reader.result as string) || '';
@@ -153,15 +137,8 @@ export default function KnowledgeBasePage() {
       if (res.data) {
         setQueryResult(res.data);
       }
-    } catch {
-      // Mock realistic RAG grounded output if sandbox backend is offline
-      setTimeout(() => {
-        setQueryResult({
-          answer: `Based on your documentation, our wholesale rate is $0.002 per message for agency partners. Invoices include 18% GST for India tenants and SSL is handled via Utho proxy.`,
-          sources: ['NotifyIQ_Pricing_and_SLA_Guide.pdf', 'Whitelabel_CNAME_Setup.yaml'],
-          confidenceScore: 0.94,
-        });
-      }, 800);
+    } catch (err: any) {
+      alert(`RAG Search query error: ${err.message}`);
     } finally {
       setQuerying(false);
     }
@@ -295,9 +272,15 @@ export default function KnowledgeBasePage() {
             </h3>
 
             {loading ? (
-              <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Loading indexed knowledge base documents...</p>
+              <LoadingState message="Loading indexed knowledge base documents..." />
+            ) : error ? (
+              <ErrorAlert message={error} onRetry={loadDocuments} title="Knowledge Base Error" />
             ) : documents.length === 0 ? (
-              <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>No knowledge base documents indexed yet.</p>
+              <EmptyState
+                title="No Knowledge Documents"
+                description="Upload your first document (PDF, Word, TXT, CSV) or index raw text to train Gemini auto-reply AI."
+                icon="document"
+              />
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {documents.map((doc) => (
@@ -397,3 +380,4 @@ export default function KnowledgeBasePage() {
     </div>
   );
 }
+

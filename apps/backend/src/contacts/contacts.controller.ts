@@ -1,8 +1,10 @@
 import { Controller, Get, Post, Delete, Body, Param, Query, UseGuards, Req, Res } from '@nestjs/common';
 import type { Response } from 'express';
-import { ContactsService, CreateContactDto } from './contacts.service.js';
+import { ContactsService } from './contacts.service.js';
+import { CreateContactDto } from './dto/index.js';
 import { AuthGuard, WorkspaceGuard } from '../common/guards/index.js';
 import type { AuthenticatedRequest } from '../common/guards/index.js';
+
 
 @Controller('api/contacts')
 export class ContactsController {

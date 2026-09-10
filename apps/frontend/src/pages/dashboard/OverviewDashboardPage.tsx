@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { apiClient } from '../../lib/api/apiClient';
 import { Icon } from '../../components/ui/Icon';
+import { LoadingState } from '../../components/ui/LoadingState';
+import { ErrorAlert } from '../../components/ui/ErrorAlert';
+import { EmptyState } from '../../components/ui/EmptyState';
 
 interface DashboardMetrics {
   totalMessages: number;
@@ -18,33 +21,21 @@ interface DashboardMetrics {
 export default function OverviewDashboardPage() {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const loadMetrics = async () => {
     setLoading(true);
+    setError(null);
     try {
       const res = await apiClient.get<{ data: DashboardMetrics }>('/api/analytics/overview');
-      if (res.data) setMetrics(res.data);
-    } catch {
-      setMetrics({
-        totalMessages: 48920,
-        outboundMessages: 32400,
-        deliveredMessages: 32210,
-        deliveryRatePercent: 99.4,
-        totalConversations: 1420,
-        urgentConversations: 38,
-        totalContacts: 850,
-        botContainmentRatePercent: 94.2,
-        totalAccruedCost: 64.8,
-        dailyMetrics: [
-          { day: 'Mon', inbound: 120, outbound: 340 },
-          { day: 'Tue', inbound: 180, outbound: 450 },
-          { day: 'Wed', inbound: 210, outbound: 520 },
-          { day: 'Thu', inbound: 190, outbound: 480 },
-          { day: 'Fri', inbound: 240, outbound: 610 },
-          { day: 'Sat', inbound: 150, outbound: 390 },
-          { day: 'Sun', inbound: 110, outbound: 280 },
-        ],
-      });
+      if (res.data) {
+        setMetrics(res.data);
+      } else {
+        setMetrics(null);
+      }
+    } catch (err: any) {
+      setError(err?.message || 'Failed to fetch executive dashboard analytics from backend.');
+      setMetrics(null);
     } finally {
       setLoading(false);
     }
@@ -86,29 +77,39 @@ export default function OverviewDashboardPage() {
       </header>
 
       {loading ? (
-        <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Calculating workspace analytics...</div>
-      ) : metrics ? (
+        <LoadingState message="Calculating workspace analytics..." />
+      ) : error ? (
+        <ErrorAlert message={error} onRetry={loadMetrics} title="Dashboard Analytics Error" />
+      ) : !metrics ? (
+        <EmptyState
+          title="No Analytics Data Available"
+          description="Start sending messages or launch campaigns to view workspace analytics and delivery rates."
+          icon="sparkles"
+          actionLabel="Refresh Overview"
+          onAction={loadMetrics}
+        />
+      ) : (
         <div>
           {/* Key Metric Cards */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px', marginBottom: '32px' }}>
             <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', padding: '20px', borderRadius: '12px' }}>
               <div style={{ color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Total WhatsApp Messages</div>
-              <div style={{ fontSize: '28px', fontWeight: 'bold', marginTop: '8px', color: 'var(--text-primary)' }}>{metrics.totalMessages.toLocaleString()}</div>
+              <div style={{ fontSize: '28px', fontWeight: 'bold', marginTop: '8px', color: 'var(--text-primary)' }}>{metrics.totalMessages?.toLocaleString() ?? 0}</div>
             </div>
 
             <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', padding: '20px', borderRadius: '12px' }}>
               <div style={{ color: 'var(--sentiment-positive)', fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Delivery SLA Rate</div>
-              <div style={{ fontSize: '28px', fontWeight: 'bold', marginTop: '8px', color: 'var(--sentiment-positive)' }}>{metrics.deliveryRatePercent}%</div>
+              <div style={{ fontSize: '28px', fontWeight: 'bold', marginTop: '8px', color: 'var(--sentiment-positive)' }}>{metrics.deliveryRatePercent ?? 0}%</div>
             </div>
 
             <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', padding: '20px', borderRadius: '12px' }}>
               <div style={{ color: 'var(--accent-light)', fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Gemini Bot Containment</div>
-              <div style={{ fontSize: '28px', fontWeight: 'bold', marginTop: '8px', color: 'var(--accent-light)' }}>{metrics.botContainmentRatePercent}%</div>
+              <div style={{ fontSize: '28px', fontWeight: 'bold', marginTop: '8px', color: 'var(--accent-light)' }}>{metrics.botContainmentRatePercent ?? 0}%</div>
             </div>
 
             <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', padding: '20px', borderRadius: '12px' }}>
               <div style={{ color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Active Contacts</div>
-              <div style={{ fontSize: '28px', fontWeight: 'bold', marginTop: '8px', color: 'var(--text-primary)' }}>{metrics.totalContacts.toLocaleString()}</div>
+              <div style={{ fontSize: '28px', fontWeight: 'bold', marginTop: '8px', color: 'var(--text-primary)' }}>{metrics.totalContacts?.toLocaleString() ?? 0}</div>
             </div>
           </div>
 
@@ -120,7 +121,7 @@ export default function OverviewDashboardPage() {
             </h3>
 
             <div style={{ display: 'flex', alignItems: 'flex-end', gap: '24px', height: '200px', padding: '20px 0 0 0' }}>
-              {metrics.dailyMetrics.map((item) => {
+              {(metrics.dailyMetrics || []).map((item) => {
                 const maxVal = 700;
                 const outHeight = (item.outbound / maxVal) * 160;
                 const inHeight = (item.inbound / maxVal) * 160;
@@ -155,7 +156,8 @@ export default function OverviewDashboardPage() {
             </div>
           </div>
         </div>
-      ) : null}
+      )}
     </div>
   );
 }
+

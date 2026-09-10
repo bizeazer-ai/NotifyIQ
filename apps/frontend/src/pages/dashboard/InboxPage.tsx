@@ -136,7 +136,7 @@ export default function InboxPage() {
             <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--accent-light)', textTransform: 'uppercase', marginBottom: '6px' }}>
               Answer
             </div>
-            <div style={{ fontSize: '13px', lineHeight: 1.4, color: '#f8fafc' }}>
+            <div style={{ fontSize: '13px', lineHeight: 1.4,  }}>
               {ragAnswer}
             </div>
             {ragSources.length > 0 && (

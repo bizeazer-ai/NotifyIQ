@@ -27,3 +27,5 @@ export class Flow {
 export const FlowSchema = SchemaFactory.createForClass(Flow);
 
 FlowSchema.index({ workspaceId: 1 });
+FlowSchema.index({ workspaceId: 1, active: 1 });
+

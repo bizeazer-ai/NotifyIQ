@@ -1,7 +1,9 @@
 import { Controller, Get, Post, Delete, Body, Param, UseGuards, Req } from '@nestjs/common';
-import { MetaService, ConnectWabaDto, WabaProfileDto, CreateTemplateDto, RegisterPhoneNumberDto } from './meta.service.js';
+import { MetaService } from './meta.service.js';
+import { ConnectWabaDto, WabaProfileDto, CreateTemplateDto, RegisterPhoneNumberDto } from './dto/index.js';
 import { AuthGuard, WorkspaceGuard } from '../common/guards/index.js';
 import type { AuthenticatedRequest } from '../common/guards/index.js';
+
 
 @Controller('api/waba')
 export class MetaController {

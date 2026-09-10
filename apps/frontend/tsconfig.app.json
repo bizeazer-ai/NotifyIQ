@@ -28,7 +28,7 @@
       "@/*": ["./src/*"],
       "@notifyiq/schemas": ["../../packages/schemas/src/index.ts"]
     },
-    "ignoreDeprecations": "6.0"
+    // "ignoreDeprecations": "6.0"
   },
   "include": ["src"]
 }

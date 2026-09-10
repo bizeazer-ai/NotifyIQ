@@ -1,14 +1,8 @@
 import { Controller, Get, Put, Patch, Post, Body, Param, UseGuards, Req } from '@nestjs/common';
 import { WorkspacesService } from './workspaces.service.js';
+import { UpdateBrandingDto, UpdateAutoReplyDto, VerifyDomainDto } from './dto/index.js';
 import { AuthGuard, WorkspaceGuard } from '../common/guards/index.js';
 import type { AuthenticatedRequest } from '../common/guards/index.js';
-
-class UpdateBrandingDto {
-  logoUrl?: string;
-  brandColor?: string;
-  customCss?: string;
-  customDomain?: string;
-}
 
 @Controller('api/workspaces')
 export class WorkspacesController {
@@ -29,10 +23,10 @@ export class WorkspacesController {
   @UseGuards(AuthGuard, WorkspaceGuard)
   async updateAutoReply(
     @Req() req: AuthenticatedRequest,
-    @Body() body: any,
+    @Body() dto: UpdateAutoReplyDto,
   ) {
     const workspaceId = req.workspaceId as string;
-    const settings = await this.workspacesService.updateAutoReplySettings(workspaceId, body);
+    const settings = await this.workspacesService.updateAutoReplySettings(workspaceId, dto);
     return {
       message: 'Workspace auto-reply settings updated successfully',
       data: settings,
@@ -73,10 +67,10 @@ export class WorkspacesController {
   @UseGuards(AuthGuard, WorkspaceGuard)
   async verifyDomain(
     @Req() req: AuthenticatedRequest,
-    @Body('domain') domain: string,
+    @Body() dto: VerifyDomainDto,
   ) {
     const workspaceId = req.workspaceId as string;
-    const result = await this.workspacesService.verifyCustomDomainCname(workspaceId, domain);
+    const result = await this.workspacesService.verifyCustomDomainCname(workspaceId, dto.domain);
     return {
       message: 'Custom CNAME domain mapping validated successfully',
       data: result,

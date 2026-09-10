@@ -2,6 +2,7 @@ import { Controller, Get, Post, Body, Headers, Req, HttpCode, HttpStatus, Unauth
 import crypto from 'crypto';
 import { env } from '@notifyiq/config';
 import { BillingService } from './billing.service.js';
+import { CheckoutDto, RazorpayOrderDto } from './dto/index.js';
 import { AuthGuard, WorkspaceGuard } from '../common/guards/index.js';
 import type { AuthenticatedRequest } from '../common/guards/index.js';
 
@@ -18,9 +19,10 @@ export class BillingController {
   @UseGuards(AuthGuard, WorkspaceGuard)
   async createStripeCheckout(
     @Req() req: AuthenticatedRequest,
-    @Body('plan') plan: string = 'growth',
+    @Body() dto: CheckoutDto,
   ) {
     const workspaceId = req.workspaceId as string;
+    const plan = dto?.plan || 'growth';
     const session = await this.billingService.createStripeCheckoutSession(workspaceId, plan);
     return {
       message: 'Stripe Checkout Session initialized',
@@ -32,15 +34,17 @@ export class BillingController {
   @UseGuards(AuthGuard, WorkspaceGuard)
   async createRazorpayOrder(
     @Req() req: AuthenticatedRequest,
-    @Body('amount') amount: number = 3999,
+    @Body() dto: RazorpayOrderDto,
   ) {
     const workspaceId = req.workspaceId as string;
+    const amount = dto?.amount || 3999;
     const order = await this.billingService.createRazorpayOrder(workspaceId, amount);
     return {
       message: 'Razorpay Order created with 18% GST calculation',
       data: order,
     };
   }
+
 
   @Post('razorpay/webhook')
   @HttpCode(HttpStatus.OK)

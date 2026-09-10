@@ -1,50 +1,6 @@
 import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
-import { IsEmail, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { AuthService } from './auth.service.js';
-
-class RegisterDto {
-  @IsEmail()
-  @IsNotEmpty()
-  email: string;
-
-  @IsString()
-  @IsOptional()
-  name?: string;
-
-  @IsString()
-  @IsOptional()
-  fullName?: string;
-
-  @IsString()
-  @IsOptional()
-  password?: string;
-
-  @IsString()
-  @IsOptional()
-  passwordLegacy?: string;
-
-  @IsString()
-  @IsNotEmpty()
-  workspaceName: string;
-
-  @IsString()
-  @IsOptional()
-  referralSource?: string;
-}
-
-class LoginDto {
-  @IsEmail()
-  @IsNotEmpty()
-  email: string;
-
-  @IsString()
-  @IsOptional()
-  password?: string;
-
-  @IsString()
-  @IsOptional()
-  passwordLegacy?: string;
-}
+import { RegisterDto, LoginDto } from './dto/index.js';
 
 @Controller('api/auth')
 export class AuthController {

@@ -143,6 +143,10 @@ export default function DashboardLayout() {
               <span>Meta WABA Profile</span>
             </li>
           </Link>
+          <li className="menu-item logout-item" onClick={handleLogout} style={{ color: 'var(--sentiment-urgent)', marginTop: '8px', cursor: 'pointer', borderTop: '1px solid var(--border-color)', paddingTop: '10px' }}>
+            <Icon name="logout" style={{ color: 'var(--sentiment-urgent)' }} />
+            <span style={{ fontWeight: 'bold' }}>Sign Out</span>
+          </li>
         </ul>
 
         {/* User profile details & Logout */}
@@ -164,8 +168,8 @@ export default function DashboardLayout() {
               width: '100%',
               padding: '8px', 
               borderRadius: '8px', 
-              border: '1px solid rgba(239, 68, 68, 0.2)', 
-              background: 'rgba(239, 68, 68, 0.05)', 
+              border: '1px solid rgba(239, 68, 68, 0.3)', 
+              background: 'rgba(239, 68, 68, 0.1)', 
               color: 'var(--sentiment-urgent)', 
               fontSize: '12px',
               fontWeight: '700',
@@ -177,10 +181,11 @@ export default function DashboardLayout() {
               transition: 'all 0.2s ease'
             }}
           >
-            <Icon name="trash" size={12} />
+            <Icon name="logout" size={14} />
             <span>Sign Out</span>
           </button>
         </div>
+
       </aside>
 
       {/* Nested Outlet Page views */}

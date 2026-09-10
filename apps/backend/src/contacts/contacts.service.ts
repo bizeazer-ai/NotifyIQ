@@ -3,13 +3,8 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Contact, ContactDocument } from '../database/schemas/contact.schema.js';
 import { AuditLog, AuditLogDocument } from '../database/schemas/audit-log.schema.js';
+import { CreateContactDto } from './dto/index.js';
 
-export class CreateContactDto {
-  name: string;
-  phone: string;
-  tags?: string[];
-  consentGiven?: boolean;
-}
 
 @Injectable()
 export class ContactsService {

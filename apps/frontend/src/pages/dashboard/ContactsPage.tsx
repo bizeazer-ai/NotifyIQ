@@ -2,6 +2,9 @@ import { useEffect, useState, type FormEvent, type ChangeEvent } from 'react';
 import type { ContactContract as Contact } from '@notifyiq/schemas';
 import { apiClient } from '../../lib/api/apiClient';
 import { Icon } from '../../components/ui/Icon';
+import { LoadingState } from '../../components/ui/LoadingState';
+import { ErrorAlert } from '../../components/ui/ErrorAlert';
+import { EmptyState } from '../../components/ui/EmptyState';
 
 export default function ContactsPage() {
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -30,28 +33,9 @@ export default function ContactsPage() {
       if (response.data) {
         setContacts(response.data);
       }
-    } catch {
-      // Fallback sandbox defaults
-      setContacts([
-        {
-          _id: 'ct_1',
-          name: 'Nikhil Mishra',
-          phone: '+919876543210',
-          tags: ['VIP', 'Customer'],
-          consentGiven: true,
-          optedOut: false,
-          createdAt: new Date().toISOString(),
-        },
-        {
-          _id: 'ct_2',
-          name: 'Aadi Tech Lead',
-          phone: '+919123456789',
-          tags: ['Lead'],
-          consentGiven: true,
-          optedOut: false,
-          createdAt: new Date(Date.now() - 86400000).toISOString(),
-        },
-      ]);
+    } catch (err: any) {
+      setError(err?.message || 'Failed to fetch contact directory from backend.');
+      setContacts([]);
     } finally {
       setLoading(false);
     }
@@ -230,13 +214,17 @@ export default function ContactsPage() {
       </div>
 
       {loading ? (
-        <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Reading database records...</div>
+        <LoadingState message="Fetching contacts directory..." />
       ) : error ? (
-        <div style={{ padding: '40px', textAlign: 'center', color: 'var(--sentiment-urgent)', fontWeight: 'bold' }}>Error: {error}</div>
+        <ErrorAlert message={error} onRetry={loadContacts} title="Contacts Directory Error" />
       ) : filteredContacts.length === 0 ? (
-        <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', border: '1px dashed var(--border-color)', borderRadius: '12px' }}>
-          No contact records matching filter queries found.
-        </div>
+        <EmptyState
+          title="No Contacts Found"
+          description={searchQuery ? "No contact records match your current search query or active filter." : "Your contact directory is currently empty. Add individual contacts or import via CSV."}
+          icon="users"
+          actionLabel="+ Add First Contact"
+          onAction={() => setShowAddModal(true)}
+        />
       ) : (
         <div style={{ overflowX: 'auto', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '12px' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '14px' }}>

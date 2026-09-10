@@ -1,6 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { apiClient } from '../../lib/api/apiClient';
 import { Icon } from '../../components/ui/Icon';
+import { LoadingState } from '../../components/ui/LoadingState';
+import { ErrorAlert } from '../../components/ui/ErrorAlert';
 
 interface AutoReplySettings {
   enabled: boolean;
@@ -42,15 +44,21 @@ export default function SettingsPage() {
     outOfHoursMessage: 'Thank you for reaching out! Our support team is currently offline. We will respond during business hours.',
   });
 
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
 
   const loadAutoReplySettings = async () => {
+    setLoading(true);
+    setError(null);
     try {
       const res = await apiClient.get<{ data: AutoReplySettings }>('/api/workspaces/auto-reply');
       if (res.data) setAutoReply(res.data);
-    } catch {
-      // Use initial state
+    } catch (err: any) {
+      setError(err?.message || 'Failed to fetch workspace auto-reply settings.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -137,7 +145,11 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {activeTab === 'autoReply' ? (
+      {loading ? (
+        <LoadingState message="Loading workspace AI & auto-reply settings..." />
+      ) : error ? (
+        <ErrorAlert message={error} onRetry={loadAutoReplySettings} title="Settings Error" />
+      ) : activeTab === 'autoReply' ? (
         <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '28px', maxWidth: '800px' }}>
           <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Icon name="brain" style={{ color: 'var(--accent)' }} />

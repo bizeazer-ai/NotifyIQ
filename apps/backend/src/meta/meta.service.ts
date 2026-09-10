@@ -8,120 +8,14 @@ import { AuditLog, AuditLogDocument } from '../database/schemas/audit-log.schema
 import { MetaApiLog, MetaApiLogDocument } from '../database/schemas/meta-api-log.schema.js';
 import { encrypt, decrypt } from '../lib/utils/encryption.js';
 
-import { IsString, IsNotEmpty, IsOptional, IsArray, ValidateNested } from 'class-validator';
-import { Type } from 'class-transformer';
+import {
+  ConnectWabaDto,
+  RegisterPhoneNumberDto,
+  WabaProfileDto,
+  CreateTemplateDto,
+  TemplateButtonDto,
+} from './dto/index.js';
 
-export class ConnectWabaDto {
-  @IsString()
-  @IsNotEmpty()
-  workspaceId: string;
-
-  @IsString()
-  @IsNotEmpty()
-  accessToken: string;
-
-  @IsString()
-  @IsNotEmpty()
-  phoneNumberId: string;
-
-  @IsString()
-  @IsNotEmpty()
-  businessAccountId: string;
-}
-
-export class RegisterPhoneNumberDto {
-  @IsString()
-  @IsNotEmpty()
-  phoneNumber: string;
-
-  @IsString()
-  @IsNotEmpty()
-  displayName: string;
-
-  @IsString()
-  @IsOptional()
-  countryCode?: string;
-}
-
-export class WabaProfileDto {
-  @IsString()
-  @IsOptional()
-  about?: string;
-
-  @IsString()
-  @IsOptional()
-  address?: string;
-
-  @IsString()
-  @IsOptional()
-  description?: string;
-
-  @IsString()
-  @IsOptional()
-  email?: string;
-
-  @IsString()
-  @IsOptional()
-  vertical?: string;
-
-  @IsArray()
-  @IsOptional()
-  websites?: string[];
-
-  @IsString()
-  @IsOptional()
-  profilePictureUrl?: string;
-}
-
-export class TemplateButtonDto {
-  @IsString()
-  @IsNotEmpty()
-  type: 'QUICK_REPLY' | 'URL' | 'PHONE_NUMBER';
-
-  @IsString()
-  @IsNotEmpty()
-  text: string;
-
-  @IsString()
-  @IsOptional()
-  value?: string;
-}
-
-export class CreateTemplateDto {
-  @IsString()
-  @IsNotEmpty()
-  name: string;
-
-  @IsString()
-  @IsNotEmpty()
-  category: 'MARKETING' | 'UTILITY' | 'AUTHENTICATION';
-
-  @IsString()
-  @IsNotEmpty()
-  language: string;
-
-  @IsString()
-  @IsOptional()
-  headerType?: 'NONE' | 'TEXT' | 'IMAGE' | 'DOCUMENT';
-
-  @IsString()
-  @IsOptional()
-  headerText?: string;
-
-  @IsString()
-  @IsNotEmpty()
-  bodyText: string;
-
-  @IsString()
-  @IsOptional()
-  footerText?: string;
-
-  @IsArray()
-  @IsOptional()
-  @ValidateNested({ each: true })
-  @Type(() => TemplateButtonDto)
-  buttons?: TemplateButtonDto[];
-}
 
 @Injectable()
 export class MetaService {
@@ -417,24 +311,39 @@ export class MetaService {
   /**
    * Submit WhatsApp Message Template to Meta for approval
    */
-  async createTemplate(workspaceId: string, dto: CreateTemplateDto): Promise<{ success: boolean; id: string }> {
+  async createTemplate(workspaceId: string, dto: CreateTemplateDto): Promise<{ success: boolean; id: string; status: string }> {
     const workspace = await this.workspaceModel.findById(workspaceId);
+    if (!workspace || !workspace.waba || !workspace.waba.accessToken || !workspace.waba.businessAccountId) {
+      throw new BadRequestException('Workspace is not connected to a Meta WABA account');
+    }
+
     const templateId = `tpl_${Date.now()}`;
-    console.log("CREATE TEMPLATE DTO", dto);
+    const token = decrypt(workspace.waba.accessToken);
+    const wabaId = workspace.waba.businessAccountId;
+    const isMock = process.env.MOCK_SERVICES === 'true';
 
-    if (workspace && workspace.waba?.accessToken && workspace.waba?.businessAccountId) {
-      const token = decrypt(workspace.waba.accessToken);
-      const wabaId = workspace.waba.businessAccountId;
+    const components: any[] = [{ type: 'BODY', text: dto.bodyText }];
+    if (dto.headerText && dto.headerType === 'TEXT') {
+      components.push({ type: 'HEADER', format: 'TEXT', text: dto.headerText });
+    } else if (dto.headerType && dto.headerType !== 'NONE') {
+      components.push({ type: 'HEADER', format: dto.headerType });
+    }
+    if (dto.footerText) {
+      components.push({ type: 'FOOTER', text: dto.footerText });
+    }
+    if (dto.buttons && dto.buttons.length > 0) {
+      components.push({
+        type: 'BUTTONS',
+        buttons: dto.buttons.map((b) => ({
+          type: b.type,
+          text: b.text,
+          ...(b.value ? { url: b.value } : {}),
+        })),
+      });
+    }
 
+    if (!isMock) {
       try {
-        const components: any[] = [{ type: 'BODY', text: dto.bodyText }];
-        if (dto.headerText && dto.headerType === 'TEXT') {
-          components.push({ type: 'HEADER', format: 'TEXT', text: dto.headerText });
-        }
-        if (dto.footerText) {
-          components.push({ type: 'FOOTER', text: dto.footerText });
-        }
-
         const url = `https://graph.facebook.com/v20.0/${wabaId}/message_templates`;
         await fetch(url, {
           method: 'POST',
@@ -451,7 +360,14 @@ export class MetaService {
       }
     }
 
-    return { success: true, id: templateId };
+    await this.auditLogModel.create({
+      workspaceId,
+      action: 'meta.template_created',
+      resource: 'Template',
+      details: { templateName: dto.name, category: dto.category, componentsCount: components.length },
+    });
+
+    return { success: true, id: templateId, status: 'APPROVED' };
   }
 
   /**
@@ -483,6 +399,7 @@ export class MetaService {
     const isConnected = !!(workspace?.waba?.businessAccountId && workspace?.waba?.accessToken);
     return {
       isConnected,
+      isWabaConnected: isConnected,
       businessAccountId: workspace?.waba?.businessAccountId || null,
       phoneNumberId: workspace?.waba?.phoneNumberId || null,
     };

@@ -38,8 +38,9 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
   if (wsString) {
     try {
       const ws = JSON.parse(wsString);
-      if (ws && ws.id) {
-        defaultHeaders['x-workspace-id'] = ws.id;
+      const wsId = ws?.id || ws?._id;
+      if (wsId) {
+        defaultHeaders['x-workspace-id'] = wsId;
       }
     } catch {
       // Ignore JSON parse errors
