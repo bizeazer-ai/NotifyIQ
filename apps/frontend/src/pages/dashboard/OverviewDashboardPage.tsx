@@ -46,34 +46,21 @@ export default function OverviewDashboardPage() {
   }, []);
 
   return (
-    <div style={{ flex: 1, padding: '32px', boxSizing: 'border-box', overflowY: 'auto', backgroundColor: 'var(--bg-primary)' }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px' }}>
-        <div>
-          <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 'bold' }}>Executive Overview Dashboard</h1>
-          <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: 'var(--text-secondary)' }}>
+    <div className="page-container">
+      <header className="page-header">
+        <div className="page-header-left">
+          <h1 className="page-title">Executive Overview Dashboard</h1>
+          <p className="page-subtitle">
             Real-time analytics for WhatsApp dispatches, Meta delivery SLA %, AI bot containment, and active client threads.
           </p>
         </div>
 
-        <button
-          onClick={loadMetrics}
-          style={{
-            background: 'var(--bg-tertiary)',
-            border: '1px solid var(--border-color)',
-            color: 'var(--text-primary)',
-            padding: '10px 16px',
-            borderRadius: '10px',
-            fontSize: '13px',
-            fontWeight: 'bold',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-          }}
-        >
-          <Icon name="globe" size={14} />
-          <span>Refresh Data</span>
-        </button>
+        <div className="page-actions">
+          <button className="btn btn-secondary" onClick={loadMetrics}>
+            <Icon name="refresh" size={14} />
+            <span>Refresh Data</span>
+          </button>
+        </div>
       </header>
 
       {loading ? (
@@ -89,69 +76,119 @@ export default function OverviewDashboardPage() {
           onAction={loadMetrics}
         />
       ) : (
-        <div>
+        <div style={{ animation: 'slideUp 0.4s ease' }}>
           {/* Key Metric Cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px', marginBottom: '32px' }}>
-            <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', padding: '20px', borderRadius: '12px' }}>
-              <div style={{ color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Total WhatsApp Messages</div>
-              <div style={{ fontSize: '28px', fontWeight: 'bold', marginTop: '8px', color: 'var(--text-primary)' }}>{metrics.totalMessages?.toLocaleString() ?? 0}</div>
+          <div className="stat-grid">
+            <div className="stat-card stat-blue card-hover">
+              <div className="stat-card-label">Total WhatsApp Messages</div>
+              <div className="stat-card-value">{metrics.totalMessages?.toLocaleString() ?? 0}</div>
             </div>
 
-            <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', padding: '20px', borderRadius: '12px' }}>
-              <div style={{ color: 'var(--sentiment-positive)', fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Delivery SLA Rate</div>
-              <div style={{ fontSize: '28px', fontWeight: 'bold', marginTop: '8px', color: 'var(--sentiment-positive)' }}>{metrics.deliveryRatePercent ?? 0}%</div>
+            <div className="stat-card stat-green card-hover">
+              <div className="stat-card-label">Delivery SLA Rate</div>
+              <div className="stat-card-value">{metrics.deliveryRatePercent ?? 0}%</div>
             </div>
 
-            <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', padding: '20px', borderRadius: '12px' }}>
-              <div style={{ color: 'var(--accent-light)', fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Gemini Bot Containment</div>
-              <div style={{ fontSize: '28px', fontWeight: 'bold', marginTop: '8px', color: 'var(--accent-light)' }}>{metrics.botContainmentRatePercent ?? 0}%</div>
+            <div className="stat-card stat-purple card-hover">
+              <div className="stat-card-label">Gemini Bot Containment</div>
+              <div className="stat-card-value">{metrics.botContainmentRatePercent ?? 0}%</div>
             </div>
 
-            <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', padding: '20px', borderRadius: '12px' }}>
-              <div style={{ color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Active Contacts</div>
-              <div style={{ fontSize: '28px', fontWeight: 'bold', marginTop: '8px', color: 'var(--text-primary)' }}>{metrics.totalContacts?.toLocaleString() ?? 0}</div>
+            <div className="stat-card stat-cyan card-hover">
+              <div className="stat-card-label">Active Contacts</div>
+              <div className="stat-card-value">{metrics.totalContacts?.toLocaleString() ?? 0}</div>
             </div>
           </div>
 
           {/* Bar Chart Section */}
-          <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '28px', marginBottom: '32px' }}>
-            <h3 style={{ margin: '0 0 20px 0', fontSize: '16px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Icon name="chats" style={{ color: 'var(--accent)' }} />
+          <div className="section-card">
+            <h3 className="section-title">
+              <Icon name="chats" className="section-title-icon" style={{ color: 'var(--color-primary)' }} />
               <span>Weekly Message Volume Trends</span>
             </h3>
 
-            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '24px', height: '200px', padding: '20px 0 0 0' }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'flex-end',
+              gap: 'var(--space-6)',
+              height: '200px',
+              paddingTop: 'var(--space-5)',
+            }}>
               {(metrics.dailyMetrics || []).map((item) => {
                 const maxVal = 700;
                 const outHeight = (item.outbound / maxVal) * 160;
                 const inHeight = (item.inbound / maxVal) * 160;
 
                 return (
-                  <div key={item.day} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>
-                    <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-end', height: '160px' }}>
+                  <div key={item.day} style={{
+                    flex: 1,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    height: '100%',
+                    justifyContent: 'flex-end',
+                  }}>
+                    <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'flex-end', height: '160px' }}>
                       <div
                         title={`Inbound: ${item.inbound}`}
-                        style={{ width: '16px', height: `${inHeight}px`, backgroundColor: '#38bdf8', borderRadius: '4px 4px 0 0' }}
+                        style={{
+                          width: '18px',
+                          height: `${inHeight}px`,
+                          backgroundColor: 'var(--color-info)',
+                          borderRadius: 'var(--radius-xs) var(--radius-xs) 0 0',
+                          transition: 'height 0.6s ease',
+                        }}
                       />
                       <div
                         title={`Outbound: ${item.outbound}`}
-                        style={{ width: '16px', height: `${outHeight}px`, backgroundColor: 'var(--accent)', borderRadius: '4px 4px 0 0' }}
+                        style={{
+                          width: '18px',
+                          height: `${outHeight}px`,
+                          backgroundColor: 'var(--color-primary)',
+                          borderRadius: 'var(--radius-xs) var(--radius-xs) 0 0',
+                          transition: 'height 0.6s ease',
+                        }}
                       />
                     </div>
-                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '8px', fontWeight: 'bold' }}>{item.day}</span>
+                    <span style={{
+                      fontSize: 'var(--text-xs)',
+                      color: 'var(--color-foreground-secondary)',
+                      marginTop: 'var(--space-2)',
+                      fontWeight: 600,
+                    }}>
+                      {item.day}
+                    </span>
                   </div>
                 );
               })}
             </div>
 
-            <div style={{ display: 'flex', gap: '20px', marginTop: '20px', justifyContent: 'center', fontSize: '12px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ width: '10px', height: '10px', backgroundColor: '#38bdf8', borderRadius: '2px' }} />
-                <span style={{ color: 'var(--text-secondary)' }}>Inbound Customer Messages</span>
+            <div style={{
+              display: 'flex',
+              gap: 'var(--space-5)',
+              marginTop: 'var(--space-5)',
+              justifyContent: 'center',
+              fontSize: 'var(--text-xs)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                <span style={{
+                  width: '10px',
+                  height: '10px',
+                  backgroundColor: 'var(--color-info)',
+                  borderRadius: 'var(--radius-xs)',
+                  display: 'inline-block',
+                }} />
+                <span className="text-secondary">Inbound Customer Messages</span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ width: '10px', height: '10px', backgroundColor: 'var(--accent)', borderRadius: '2px' }} />
-                <span style={{ color: 'var(--text-secondary)' }}>Outbound AI / Broadcast Dispatches</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                <span style={{
+                  width: '10px',
+                  height: '10px',
+                  backgroundColor: 'var(--color-primary)',
+                  borderRadius: 'var(--radius-xs)',
+                  display: 'inline-block',
+                }} />
+                <span className="text-secondary">Outbound AI / Broadcast Dispatches</span>
               </div>
             </div>
           </div>
@@ -160,4 +197,3 @@ export default function OverviewDashboardPage() {
     </div>
   );
 }
-

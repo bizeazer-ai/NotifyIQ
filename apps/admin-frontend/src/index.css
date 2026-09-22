@@ -1,0 +1,106 @@
+/* ═══════════════════════════════════════════════════════
+   NotifyIQ Admin Portal — Design Tokens & Global CSS
+   Three-Layer Architecture: Primitive -> Semantic -> Component
+   ═══════════════════════════════════════════════════════ */
+
+:root {
+  /* ── Primitive Layer ──────────────────────────────── */
+  --color-slate-950: #020617;
+  --color-slate-900: #0F172A;
+  --color-slate-800: #1E293B;
+  --color-slate-700: #334155;
+  --color-slate-600: #475569;
+  --color-slate-500: #64748B;
+  --color-slate-400: #94A3B8;
+  --color-slate-300: #CBD5E1;
+  --color-slate-200: #E2E8F0;
+  --color-slate-100: #F1F5F9;
+  --color-slate-50:  #F8FAFC;
+
+  --color-blue-600: #2563EB;
+  --color-blue-700: #1D4ED8;
+  --color-blue-500: #3B82F6;
+  --color-blue-50:  #EFF6FF;
+
+  --color-orange-600: #EA580C;
+  --color-emerald-600: #059669;
+  --color-emerald-50:  #ECFDF5;
+  --color-amber-500: #F59E0B;
+  --color-amber-50:  #FFFBEB;
+  --color-red-600: #DC2626;
+  --color-red-50:  #FEF2F2;
+
+  /* ── Semantic Layer ────────────────────────────────── */
+  --admin-font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --admin-font-heading: 'Plus Jakarta Sans', var(--admin-font-sans);
+
+  --admin-bg: var(--color-slate-100);
+  --admin-content-bg: #F8FAFC;
+  
+  --admin-sidebar-bg: var(--color-slate-900);
+  --admin-sidebar-hover: var(--color-slate-800);
+  --admin-sidebar-text: var(--color-slate-300);
+  --admin-sidebar-active: var(--color-blue-600);
+  
+  --admin-topbar-bg: #FFFFFF;
+  --admin-topbar-border: var(--color-slate-200);
+
+  --admin-text-primary: var(--color-slate-900);
+  --admin-text-secondary: var(--color-slate-600);
+  --admin-text-muted: var(--color-slate-400);
+
+  /* ── Component Layer ──────────────────────────────── */
+  --admin-card-bg: #FFFFFF;
+  --admin-card-border: var(--color-slate-200);
+  --admin-card-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+  --admin-card-radius: 12px;
+
+  --admin-badge-radius: 9999px;
+  --admin-input-radius: 8px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--admin-font-sans);
+  background-color: var(--admin-bg);
+  color: var(--admin-text-primary);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--admin-font-heading);
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-slate-300);
+  border-radius: 3px;
+}
+
+/* Badge classes */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: var(--admin-badge-radius);
+}
+.badge-green { background: var(--color-emerald-50); color: var(--color-emerald-600); border: 1px solid #A7F3D0; }
+.badge-amber { background: var(--color-amber-50); color: var(--color-amber-500); border: 1px solid #FDE68A; }
+.badge-red   { background: var(--color-red-50); color: var(--color-red-600); border: 1px solid #FECACA; }
+.badge-blue  { background: var(--color-blue-50); color: var(--color-blue-600); border: 1px solid #BFDBFE; }

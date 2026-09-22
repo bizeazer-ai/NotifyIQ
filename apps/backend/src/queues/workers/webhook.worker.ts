@@ -13,6 +13,7 @@ import { Contact, ContactDocument } from '../../database/schemas/contact.schema.
 import { Conversation, ConversationDocument } from '../../database/schemas/conversation.schema.js';
 import { Message, MessageDocument } from '../../database/schemas/message.schema.js';
 import { decrypt } from '../../lib/utils/encryption.js';
+import { MessagesService } from '../../messages/messages.service.js';
 
 @Injectable()
 export class WebhookWorker implements OnModuleInit, OnModuleDestroy {
@@ -24,11 +25,12 @@ export class WebhookWorker implements OnModuleInit, OnModuleDestroy {
     private readonly socketGateway: SocketGateway,
     private readonly ragService: RagService,
     private readonly flowExecutionEngine: FlowExecutionEngine,
+    private readonly messageService: MessagesService,
     @InjectModel(Workspace.name) private readonly workspaceModel: Model<WorkspaceDocument>,
     @InjectModel(Contact.name) private readonly contactModel: Model<ContactDocument>,
     @InjectModel(Conversation.name) private readonly conversationModel: Model<ConversationDocument>,
     @InjectModel(Message.name) private readonly messageModel: Model<MessageDocument>,
-  ) {}
+  ) { }
 
 
   onModuleInit() {
@@ -224,10 +226,11 @@ export class WebhookWorker implements OnModuleInit, OnModuleDestroy {
 
     const ragResult = await this.ragService.queryKnowledgeBase(workspace._id.toString(), userQuery);
     const threshold = settings.confidenceThreshold || 0.70;
-
-    if (ragResult.confidenceScore >= threshold && ragResult.answer) {
+    console.log('[Threshold rag result]', ragResult);
+    if (ragResult.answer) {
       console.log(`[WebhookWorker] Auto-reply triggered! Confidence: ${ragResult.confidenceScore} >= ${threshold}`);
 
+      await this.messageService.sendTextMessage(workspace._id.toString(), { to: contact.phone, body: ragResult.answer })
       const autoReplyMsg = await this.messageModel.create({
         workspaceId: workspace._id.toString(),
         conversationId: conversation._id.toString(),

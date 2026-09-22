@@ -19,64 +19,50 @@ export function EmptyState({
 }: EmptyStateProps) {
   return (
     <div
+      className="card"
       style={{
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '40px 24px',
+        padding: 'var(--space-10) var(--space-6)',
         minHeight,
-        boxSizing: 'border-box',
         textAlign: 'center',
-        background: 'var(--bg-secondary)',
-        border: '1px solid var(--border-color)',
-        borderRadius: '12px',
-        width: '100%',
+        animation: 'fadeIn 0.4s ease',
       }}
     >
-      <div
-        style={{
-          width: '52px',
-          height: '52px',
-          borderRadius: '16px',
-          backgroundColor: 'var(--bg-tertiary)',
-          border: '1px solid var(--border-color)',
-          color: 'var(--text-secondary)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          marginBottom: '16px',
-        }}
-      >
-        <Icon name={icon} size={24} />
+      <div className="card-icon" style={{
+        width: '56px',
+        height: '56px',
+        borderRadius: 'var(--radius-xl)',
+        backgroundColor: 'var(--color-primary-muted)',
+        color: 'var(--color-primary)',
+        marginBottom: 'var(--space-4)',
+      }}>
+        <Icon name={icon} size={26} />
       </div>
 
-      <h3 style={{ margin: '0 0 6px 0', fontSize: '16px', fontWeight: 'bold', color: 'var(--text-primary)' }}>
+      <h3 style={{
+        margin: '0 0 var(--space-2) 0',
+        fontSize: 'var(--text-lg)',
+        fontWeight: 700,
+        color: 'var(--color-foreground)',
+      }}>
         {title}
       </h3>
 
-      <p style={{ margin: '0 0 20px 0', fontSize: '13px', color: 'var(--text-secondary)', maxWidth: '420px', lineHeight: 1.5 }}>
+      <p style={{
+        margin: '0 0 var(--space-5) 0',
+        fontSize: 'var(--text-sm)',
+        color: 'var(--color-foreground-secondary)',
+        maxWidth: '420px',
+        lineHeight: 'var(--leading-relaxed)',
+      }}>
         {description}
       </p>
 
       {actionLabel && onAction && (
-        <button
-          onClick={onAction}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '10px 18px',
-            borderRadius: '10px',
-            backgroundColor: 'var(--accent)',
-            color: 'var(--btn-text)',
-            border: 'none',
-            fontSize: '13px',
-            fontWeight: 'bold',
-            cursor: 'pointer',
-            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-          }}
-        >
+        <button className="btn btn-primary" onClick={onAction}>
           <Icon name="plus" size={14} />
           <span>{actionLabel}</span>
         </button>

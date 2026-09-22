@@ -17,6 +17,7 @@ import { WorkspacesModule } from './workspaces/workspaces.module.js';
 import { FlowsModule } from './flows/flows.module.js';
 import { ContactsModule } from './contacts/contacts.module.js';
 import { AnalyticsModule } from './analytics/analytics.module.js';
+import { AdminModule } from './admin/admin.module.js';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { AnalyticsModule } from './analytics/analytics.module.js';
     QueuesModule,
     SocketModule,
     AuthModule,
+    AdminModule,
     WebhookModule,
     MetaModule,
     MessagesModule,

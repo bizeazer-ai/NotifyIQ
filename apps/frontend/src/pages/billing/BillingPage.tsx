@@ -115,39 +115,24 @@ export default function BillingPage() {
   };
 
   return (
-    <div style={{ flex: 1, padding: '32px', boxSizing: 'border-box', overflowY: 'auto', backgroundColor: 'var(--bg-primary)' }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
-        <div>
-          <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 'bold' }}>Billing & Usage</h1>
-          <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: 'var(--text-secondary)' }}>
+    <div className="page-container">
+      <header className="page-header">
+        <div className="page-header-left">
+          <h1 className="page-title">Billing & Usage</h1>
+          <p className="page-subtitle">
             Calculated real-time message dispatches, reseller wholesale cost margins, and active payment histories.
           </p>
         </div>
-        <button
-          onClick={loadBillingData}
-          style={{
-            background: 'var(--bg-tertiary)',
-            border: '1px solid var(--border-color)',
-            color: 'var(--text-primary)',
-            padding: '10px 16px',
-            borderRadius: '10px',
-            fontSize: '13px',
-            fontWeight: 'bold',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-          }}
-        >
-          <Icon name="globe" size={14} />
-          <span>Refresh Usage</span>
-        </button>
+        <div className="page-actions">
+          <button className="btn btn-secondary" onClick={loadBillingData}>
+            <Icon name="refresh" size={14} />
+            <span>Refresh Usage</span>
+          </button>
+        </div>
       </header>
 
       {statusMessage && (
-        <div style={{ marginBottom: '24px', padding: '12px 16px', borderRadius: '10px', backgroundColor: 'rgba(56, 189, 248, 0.1)', border: '1px solid var(--accent)', color: 'var(--text-primary)', fontSize: '13px' }}>
-          {statusMessage}
-        </div>
+        <div className="status-message status-message-info">{statusMessage}</div>
       )}
 
       {loading ? (
@@ -155,54 +140,54 @@ export default function BillingPage() {
       ) : error ? (
         <ErrorAlert title="Billing Data Unavailable" message={error} onRetry={loadBillingData} />
       ) : (
-        <>
+        <div style={{ animation: 'slideUp 0.4s ease' }}>
           {/* Analytics summary widgets */}
           {usage && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '32px' }}>
-              <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', padding: '20px', borderRadius: '12px' }}>
-                <div style={{ color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Reseller Sub-Accounts</div>
-                <div style={{ fontSize: '28px', fontWeight: 'bold', marginTop: '8px', color: 'var(--text-primary)' }}>{usage.subAccountsCount}</div>
+            <div className="stat-grid">
+              <div className="stat-card stat-blue card-hover">
+                <div className="stat-card-label">Reseller Sub-Accounts</div>
+                <div className="stat-card-value">{usage.subAccountsCount}</div>
               </div>
-              <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', padding: '20px', borderRadius: '12px' }}>
-                <div style={{ color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Outbound messages dispatches</div>
-                <div style={{ fontSize: '28px', fontWeight: 'bold', marginTop: '8px', color: 'var(--text-primary)' }}>{usage.usageStats.totalOutboundMessages.toLocaleString()}</div>
+              <div className="stat-card stat-green card-hover">
+                <div className="stat-card-label">Outbound Dispatches</div>
+                <div className="stat-card-value">{usage.usageStats.totalOutboundMessages.toLocaleString()}</div>
               </div>
-              <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', padding: '20px', borderRadius: '12px' }}>
-                <div style={{ color: 'var(--accent-light)', fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Accrued Wholesale Billing</div>
-                <div style={{ fontSize: '28px', fontWeight: 'bold', marginTop: '8px', color: 'var(--accent-light)' }}>${usage.usageStats.totalCost.toFixed(2)}</div>
+              <div className="stat-card stat-orange card-hover">
+                <div className="stat-card-label">Accrued Wholesale Billing</div>
+                <div className="stat-card-value">${usage.usageStats.totalCost.toFixed(2)}</div>
               </div>
-              <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', padding: '20px', borderRadius: '12px' }}>
-                <div style={{ color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Wholesale Message Rate</div>
-                <div style={{ fontSize: '28px', fontWeight: 'bold', marginTop: '8px', color: 'var(--text-primary)' }}>${usage.usageStats.wholesaleRate.toFixed(3)}</div>
+              <div className="stat-card stat-purple card-hover">
+                <div className="stat-card-label">Wholesale Message Rate</div>
+                <div className="stat-card-value">${usage.usageStats.wholesaleRate.toFixed(3)}</div>
               </div>
             </div>
           )}
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '32px', alignItems: 'start', marginBottom: '32px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 'var(--space-8)', alignItems: 'start', marginBottom: 'var(--space-8)' }}>
             {/* Child workspaces details table */}
-            <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '24px' }}>
-              <h2 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: 'bold' }}>Child Reseller Accounts Usage</h2>
+            <div className="section-card">
+              <h2 className="section-title" style={{ fontSize: 'var(--text-xl)' }}>Child Reseller Accounts Usage</h2>
 
               {usage && usage.subAccountsList.length > 0 ? (
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+                <div className="table-container">
+                  <table className="table-styled">
                     <thead>
-                      <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-secondary)' }}>
-                        <th style={{ padding: '12px 8px' }}>Workspace Name</th>
-                        <th style={{ padding: '12px 8px' }}>Slug</th>
-                        <th style={{ padding: '12px 8px', textAlign: 'right' }}>Dispatches</th>
-                        <th style={{ padding: '12px 8px', textAlign: 'right' }}>Accrued cost</th>
+                      <tr>
+                        <th>Workspace Name</th>
+                        <th>Slug</th>
+                        <th style={{ textAlign: 'right' }}>Dispatches</th>
+                        <th style={{ textAlign: 'right' }}>Accrued cost</th>
                       </tr>
                     </thead>
                     <tbody>
                       {usage.subAccountsList.map((sub, idx) => (
-                        <tr key={sub.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                          <td style={{ padding: '12px 8px', fontWeight: 600, color: 'var(--text-primary)' }}>{sub.name}</td>
-                          <td style={{ padding: '12px 8px', color: 'var(--text-secondary)' }}>{sub.slug}</td>
-                          <td style={{ padding: '12px 8px', textAlign: 'right', fontWeight: 600 }}>
+                        <tr key={sub.id}>
+                          <td style={{ fontWeight: 600 }}>{sub.name}</td>
+                          <td className="text-secondary">{sub.slug}</td>
+                          <td style={{ textAlign: 'right', fontWeight: 600 }}>
                             {Math.floor(usage.usageStats.totalOutboundMessages * (idx === 0 ? 0.5 : idx === 1 ? 0.3 : 0.2)).toLocaleString()}
                           </td>
-                          <td style={{ padding: '12px 8px', textAlign: 'right', color: 'var(--accent-light)', fontWeight: 600 }}>
+                          <td style={{ textAlign: 'right', color: 'var(--color-primary)', fontWeight: 600 }}>
                             ${(usage.usageStats.totalCost * (idx === 0 ? 0.5 : idx === 1 ? 0.3 : 0.2)).toFixed(2)}
                           </td>
                         </tr>
@@ -216,41 +201,53 @@ export default function BillingPage() {
             </div>
 
             {/* Subscriptions upgrade Card */}
-            <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 'bold' }}>Payment Gateway Integrations</h3>
-              <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>
+            <div className="section-card" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
+              <h3 className="section-title" style={{ fontSize: 'var(--text-md)', marginBottom: 0 }}>Payment Gateway Integrations</h3>
+              <p className="text-secondary" style={{ fontSize: 'var(--text-xs)', lineHeight: 'var(--leading-relaxed)', margin: 0 }}>
                 Choose your billing option to upgrade sub-workspaces or increase WABA limits.
               </p>
 
-              <div style={{ border: '1px solid var(--border-color)', padding: '16px', borderRadius: '10px', background: 'var(--bg-tertiary)' }}>
-                <div style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                  <Icon name="coins" size={14} style={{ color: 'var(--accent-light)' }} />
+              <div style={{
+                border: '1px solid var(--color-border)',
+                padding: 'var(--space-4)',
+                borderRadius: 'var(--radius-lg)',
+                backgroundColor: 'var(--color-surface-secondary)',
+              }}>
+                <div style={{ fontSize: 'var(--text-sm)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 'var(--space-2)' }}>
+                  <Icon name="coins" size={14} style={{ color: 'var(--color-primary)' }} />
                   <span>Stripe Connect (USD)</span>
                 </div>
-                <p style={{ fontSize: '11px', color: 'var(--text-secondary)', margin: '0 0 12px 0' }}>
+                <p className="text-secondary" style={{ fontSize: 'var(--text-xs)', margin: '0 0 var(--space-3) 0' }}>
                   Route payments globally. Charge details support visa/mastercard debit cards.
                 </p>
                 <button
+                  className="btn btn-primary"
+                  style={{ width: '100%' }}
                   onClick={() => handleCheckoutStripe('growth')}
                   disabled={checkoutLoading}
-                  style={{ width: '100%', padding: '10px', background: 'var(--accent)', color: 'var(--btn-text)', border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}
                 >
                   {checkoutLoading ? 'Connecting...' : 'Checkout with Stripe ($49/mo)'}
                 </button>
               </div>
 
-              <div style={{ border: '1px solid var(--border-color)', padding: '16px', borderRadius: '10px', background: 'var(--bg-tertiary)' }}>
-                <div style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                  <Icon name="shield" size={14} style={{ color: 'var(--sentiment-positive)' }} />
+              <div style={{
+                border: '1px solid var(--color-border)',
+                padding: 'var(--space-4)',
+                borderRadius: 'var(--radius-lg)',
+                backgroundColor: 'var(--color-surface-secondary)',
+              }}>
+                <div style={{ fontSize: 'var(--text-sm)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 'var(--space-2)' }}>
+                  <Icon name="shield" size={14} style={{ color: 'var(--color-success)' }} />
                   <span>Razorpay Checkouts (INR)</span>
                 </div>
-                <p style={{ fontSize: '11px', color: 'var(--text-secondary)', margin: '0 0 12px 0' }}>
+                <p className="text-secondary" style={{ fontSize: 'var(--text-xs)', margin: '0 0 var(--space-3) 0' }}>
                   Supports Netbanking/UPI transactions. Invoices automatically apply 18% GST (HSN 998314).
                 </p>
                 <button
+                  className="btn btn-secondary"
+                  style={{ width: '100%' }}
                   onClick={handleCheckoutRazorpay}
                   disabled={checkoutLoading}
-                  style={{ width: '100%', padding: '10px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}
                 >
                   {checkoutLoading ? 'Generating Order...' : 'Checkout with Razorpay (₹3,999 + GST)'}
                 </button>
@@ -259,43 +256,43 @@ export default function BillingPage() {
           </div>
 
           {/* Invoice History section */}
-          <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '24px' }}>
-            <h2 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: 'bold' }}>Payment Invoice Logs</h2>
+          <div className="section-card">
+            <h2 className="section-title" style={{ fontSize: 'var(--text-xl)' }}>Payment Invoice Logs</h2>
 
             {invoices.length > 0 ? (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+              <div className="table-container">
+                <table className="table-styled">
                   <thead>
-                    <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-secondary)' }}>
-                      <th style={{ padding: '12px 8px' }}>Invoice ID</th>
-                      <th style={{ padding: '12px 8px' }}>Gateway</th>
-                      <th style={{ padding: '12px 8px' }}>Description</th>
-                      <th style={{ padding: '12px 8px' }}>Tax Specification</th>
-                      <th style={{ padding: '12px 8px' }}>Transaction Date</th>
-                      <th style={{ padding: '12px 8px', textAlign: 'right' }}>Amount</th>
+                    <tr>
+                      <th>Invoice ID</th>
+                      <th>Gateway</th>
+                      <th>Description</th>
+                      <th>Tax Specification</th>
+                      <th>Transaction Date</th>
+                      <th style={{ textAlign: 'right' }}>Amount</th>
                     </tr>
                   </thead>
                   <tbody>
                     {invoices.map((inv) => (
-                      <tr key={inv._id} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                        <td style={{ padding: '12px 8px', fontFamily: 'monospace', color: 'var(--text-secondary)' }}>
+                      <tr key={inv._id}>
+                        <td style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-foreground-secondary)' }}>
                           {inv._id.substring(0, 12)}...
                         </td>
-                        <td style={{ padding: '12px 8px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                        <td style={{ fontWeight: 600 }}>
                           {inv.details?.paymentGateway || 'System'}
                         </td>
-                        <td style={{ padding: '12px 8px', color: 'var(--text-secondary)' }}>
+                        <td className="text-secondary">
                           {inv.details?.notes || 'Payment confirmation'}
                         </td>
-                        <td style={{ padding: '12px 8px' }}>
-                          <span style={{ fontSize: '11px', color: inv.details?.gstApplied ? 'var(--sentiment-positive)' : 'var(--text-muted)' }}>
+                        <td>
+                          <span className={inv.details?.gstApplied ? 'text-success' : 'text-muted'} style={{ fontSize: 'var(--text-xs)' }}>
                             {inv.details?.gstApplied || 'No GST (Export)'}
                           </span>
                         </td>
-                        <td style={{ padding: '12px 8px', color: 'var(--text-muted)' }}>
+                        <td className="text-muted">
                           {new Date(inv.createdAt).toLocaleDateString()} {new Date(inv.createdAt).toLocaleTimeString()}
                         </td>
-                        <td style={{ padding: '12px 8px', textAlign: 'right', fontWeight: 600, color: 'var(--sentiment-positive)' }}>
+                        <td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--color-success)' }}>
                           ${(inv.details?.amount || 0.0).toFixed(2)}
                         </td>
                       </tr>
@@ -307,7 +304,7 @@ export default function BillingPage() {
               <EmptyState icon="coins" title="No Past Invoices" description="No payment invoices generated yet. Upgrade your subscription to create billing records." minHeight="200px" />
             )}
           </div>
-        </>
+        </div>
       )}
     </div>
   );

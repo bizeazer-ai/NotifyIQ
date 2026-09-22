@@ -8,6 +8,7 @@ import { Conversation, ConversationDocument } from '../database/schemas/conversa
 import { Message, MessageDocument } from '../database/schemas/message.schema.js';
 import { decrypt } from '../lib/utils/encryption.js';
 import { SocketGateway } from '../socket/socket.gateway.js';
+import { env } from '@notifyiq/config';
 
 export interface SendMessageDto {
   to: string; // Recipient phone number in E.164 format (e.g., "+919876543210")
@@ -22,7 +23,7 @@ export class MessagesService {
     @InjectModel(Conversation.name) private readonly conversationModel: Model<ConversationDocument>,
     @InjectModel(Message.name) private readonly messageModel: Model<MessageDocument>,
     private readonly socketGateway: SocketGateway,
-  ) {}
+  ) { }
 
   async sendTextMessage(workspaceId: string, dto: SendMessageDto): Promise<MessageDocument> {
     // 1. Fetch Workspace & Decrypt WABA Access Token
@@ -36,7 +37,8 @@ export class MessagesService {
       throw new BadRequestException('WABA configuration is incomplete. Please connect your WABA.');
     }
 
-    const decryptedToken = decrypt(waba.accessToken);
+    // const decryptedToken = decrypt(waba.accessToken);
+    const decryptedToken = env.META_ACCESS_TOKEN;
     const phoneNumberId = waba.phoneNumberId;
 
     // 2. Validate Contact Consent & Opt-Out Status (DPDP Compliance)
@@ -88,7 +90,7 @@ export class MessagesService {
       try {
         console.log(`[MessagesService] Sending outbound message to Meta Cloud API for phone: ${phone}`);
         const metaUrl = `https://graph.facebook.com/v20.0/${phoneNumberId}/messages`;
-        
+
         const response = await fetch(metaUrl, {
           method: 'POST',
           headers: {

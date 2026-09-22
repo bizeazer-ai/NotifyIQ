@@ -6,14 +6,17 @@ import { GeminiService } from './gemini.service.js';
 import { DocumentParserService } from './document-parser.service.js';
 import { ChunkingService } from './chunking.service.js';
 import { Knowledge, KnowledgeDocument } from '../database/schemas/knowledge.schema.js';
+import { WorkspacesService } from '../workspaces/workspaces.service.js';
+import { MessagesService } from '../messages/messages.service.js';
 
 @Injectable()
 export class RagService {
   private readonly logger = new Logger(RagService.name);
-
   constructor(
     @InjectModel(Knowledge.name) private readonly knowledgeModel: Model<KnowledgeDocument>,
     private readonly geminiService: GeminiService,
+    private readonly messageService: MessagesService,
+    private readonly workspaceService: WorkspacesService,
     private readonly documentParserService: DocumentParserService,
     private readonly chunkingService: ChunkingService,
   ) { }
@@ -98,7 +101,8 @@ export class RagService {
    */
   async queryKnowledgeBase(workspaceId: string, query: string): Promise<{ answer: string; sources: string[]; confidenceScore: number }> {
     this.logger.log(`[RagService] Querying knowledge base for: "${query}" in workspace: ${workspaceId}`);
-
+    const autoReplySettings = await this.workspaceService.getAutoReplySettings(workspaceId);
+    const lastMessages = await this.messageService.getConversations(workspaceId)
     const queryEmbedding = await this.geminiService.generateEmbedding(query);
     let contextDocs: Knowledge[] = [];
     let topConfidenceScore = 0.85;
@@ -129,8 +133,9 @@ export class RagService {
     }
 
     if (contextDocs.length === 0) {
+      const answer = await this.geminiService.generateCompletion(autoReplySettings.systemPrompt, query);
       return {
-        answer: "I couldn't find any relevant documents in the workspace knowledge base to answer your question.",
+        answer: answer || "I couldn't find any relevant documents in the workspace knowledge base to answer your question.",
         sources: [],
         confidenceScore: 0.0,
       };

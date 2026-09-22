@@ -96,43 +96,25 @@ export default function SettingsPage() {
   };
 
   return (
-    <div style={{ flex: 1, padding: '32px', boxSizing: 'border-box', overflowY: 'auto', backgroundColor: 'var(--bg-primary)' }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px' }}>
-        <div>
-          <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 'bold' }}>AI & Bot Agent Control Center</h1>
-          <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: 'var(--text-secondary)' }}>
+    <div className="page-container">
+      <header className="page-header">
+        <div className="page-header-left">
+          <h1 className="page-title">AI & Bot Agent Control Center</h1>
+          <p className="page-subtitle">
             Manage Gemini RAG auto-reply behavior, confidence thresholds, operating hours, and white-label branding.
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div className="tab-group">
           <button
             onClick={() => setActiveTab('autoReply')}
-            style={{
-              padding: '10px 18px',
-              borderRadius: '8px',
-              border: '1px solid var(--border-color)',
-              background: activeTab === 'autoReply' ? 'var(--accent)' : 'var(--bg-secondary)',
-              color: activeTab === 'autoReply' ? 'var(--btn-text)' : 'var(--text-primary)',
-              fontWeight: 'bold',
-              fontSize: '13px',
-              cursor: 'pointer',
-            }}
+            className={`tab-item ${activeTab === 'autoReply' ? 'active' : ''}`}
           >
             Auto-Reply Bot Agent
           </button>
           <button
             onClick={() => setActiveTab('branding')}
-            style={{
-              padding: '10px 18px',
-              borderRadius: '8px',
-              border: '1px solid var(--border-color)',
-              background: activeTab === 'branding' ? 'var(--accent)' : 'var(--bg-secondary)',
-              color: activeTab === 'branding' ? 'var(--btn-text)' : 'var(--text-primary)',
-              fontWeight: 'bold',
-              fontSize: '13px',
-              cursor: 'pointer',
-            }}
+            className={`tab-item ${activeTab === 'branding' ? 'active' : ''}`}
           >
             White-Label Branding
           </button>
@@ -140,9 +122,7 @@ export default function SettingsPage() {
       </header>
 
       {statusMessage && (
-        <div style={{ marginBottom: '20px', padding: '12px 16px', borderRadius: '10px', backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--accent)', color: 'var(--text-primary)', fontSize: '13px' }}>
-          {statusMessage}
-        </div>
+        <div className="status-message status-message-info">{statusMessage}</div>
       )}
 
       {loading ? (
@@ -150,48 +130,46 @@ export default function SettingsPage() {
       ) : error ? (
         <ErrorAlert message={error} onRetry={loadAutoReplySettings} title="Settings Error" />
       ) : activeTab === 'autoReply' ? (
-        <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '28px', maxWidth: '800px' }}>
-          <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Icon name="brain" style={{ color: 'var(--accent)' }} />
+        <div className="section-card" style={{ maxWidth: '800px' }}>
+          <h3 className="section-title">
+            <Icon name="brain" className="section-title-icon" style={{ color: 'var(--color-primary)' }} />
             <span>Gemini Auto-Reply Configuration</span>
           </h3>
 
-          <form onSubmit={handleSaveAutoReply} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          <form onSubmit={handleSaveAutoReply} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
             {/* Master Toggle */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', borderRadius: '8px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)' }}>
-              <div>
-                <div style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--text-primary)' }}>Enable Gemini Auto-Reply Agent</div>
-                <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Automatically respond to inbound WhatsApp messages using RAG Knowledge Base.</div>
+            <div className="form-toggle-row">
+              <div className="form-toggle-info">
+                <div className="form-toggle-title">Enable Gemini Auto-Reply Agent</div>
+                <div className="form-toggle-desc">Automatically respond to inbound WhatsApp messages using RAG Knowledge Base.</div>
               </div>
               <input
                 type="checkbox"
+                className="form-checkbox"
                 checked={autoReply.enabled}
                 onChange={(e) => setAutoReply({ ...autoReply, enabled: e.target.checked })}
-                style={{ width: '20px', height: '20px', accentColor: 'var(--accent)', cursor: 'pointer' }}
               />
             </div>
 
             {/* System Prompt */}
-            <div>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: '6px' }}>
-                Agent System Prompt & Behavior Instructions
-              </label>
+            <div className="form-group">
+              <label className="form-label-styled">Agent System Prompt & Behavior Instructions</label>
               <textarea
+                className="form-textarea"
                 rows={4}
                 value={autoReply.systemPrompt}
                 onChange={(e) => setAutoReply({ ...autoReply, systemPrompt: e.target.value })}
-                style={{ width: '100%', padding: '10px 14px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', borderRadius: '8px', fontSize: '13px', resize: 'vertical' }}
               />
-              <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginTop: '4px' }}>
+              <span className="form-hint">
                 Grounding instruction for gemini-3.5-flash-lite model when answering customer queries.
               </span>
             </div>
 
             {/* Confidence Threshold Slider */}
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <label style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--text-primary)' }}>Confidence Score Threshold</label>
-                <span style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--accent-light)' }}>
+            <div className="form-group">
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'var(--space-2)' }}>
+                <label className="form-label-styled">Confidence Score Threshold</label>
+                <span style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--color-primary)' }}>
                   {(autoReply.confidenceThreshold * 100).toFixed(0)}% Match Required
                 </span>
               </div>
@@ -202,34 +180,40 @@ export default function SettingsPage() {
                 step="0.05"
                 value={autoReply.confidenceThreshold}
                 onChange={(e) => setAutoReply({ ...autoReply, confidenceThreshold: parseFloat(e.target.value) })}
-                style={{ width: '100%', accentColor: 'var(--accent)', cursor: 'pointer' }}
+                style={{ width: '100%', accentColor: 'var(--color-primary)', cursor: 'pointer' }}
               />
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-xs)', color: 'var(--color-foreground-muted)', marginTop: 'var(--space-1)' }}>
                 <span>Relaxed (40% - More Answers)</span>
                 <span>Strict (95% - High Precision)</span>
               </div>
             </div>
 
             {/* Fallback to Human */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px', borderRadius: '8px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)' }}>
-              <div>
-                <div style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--text-primary)' }}>Fallback to Live Human Agent</div>
-                <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Escalate thread to Inbox and trigger socket alert if vector confidence falls below threshold.</div>
+            <div className="form-toggle-row">
+              <div className="form-toggle-info">
+                <div className="form-toggle-title">Fallback to Live Human Agent</div>
+                <div className="form-toggle-desc">Escalate thread to Inbox and trigger socket alert if vector confidence falls below threshold.</div>
               </div>
               <input
                 type="checkbox"
+                className="form-checkbox"
                 checked={autoReply.fallbackToHuman}
                 onChange={(e) => setAutoReply({ ...autoReply, fallbackToHuman: e.target.checked })}
-                style={{ width: '18px', height: '18px', accentColor: 'var(--accent)', cursor: 'pointer' }}
               />
             </div>
 
             {/* Operating Hours */}
-            <div style={{ border: '1px solid var(--border-color)', borderRadius: '10px', padding: '20px', background: 'var(--bg-tertiary)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-                <span style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--text-primary)' }}>Business Operating Hours Schedule</span>
+            <div style={{
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--radius-lg)',
+              padding: 'var(--space-5)',
+              backgroundColor: 'var(--color-surface-secondary)',
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-4)' }}>
+                <span style={{ fontSize: 'var(--text-base)', fontWeight: 600, color: 'var(--color-foreground)' }}>Business Operating Hours Schedule</span>
                 <input
                   type="checkbox"
+                  className="form-checkbox"
                   checked={autoReply.operatingHours.enabled}
                   onChange={(e) =>
                     setAutoReply({
@@ -237,16 +221,16 @@ export default function SettingsPage() {
                       operatingHours: { ...autoReply.operatingHours, enabled: e.target.checked },
                     })
                   }
-                  style={{ width: '18px', height: '18px', accentColor: 'var(--accent)', cursor: 'pointer' }}
                 />
               </div>
 
               {autoReply.operatingHours.enabled && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '4px' }}>Start Time</label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
+                  <div className="form-group">
+                    <label className="form-label-styled" style={{ fontSize: 'var(--text-xs)' }}>Start Time</label>
                     <input
                       type="time"
+                      className="form-input-styled"
                       value={autoReply.operatingHours.startTime}
                       onChange={(e) =>
                         setAutoReply({
@@ -254,14 +238,14 @@ export default function SettingsPage() {
                           operatingHours: { ...autoReply.operatingHours, startTime: e.target.value },
                         })
                       }
-                      style={{ width: '100%', padding: '8px', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', borderRadius: '6px', fontSize: '13px' }}
                     />
                   </div>
 
-                  <div>
-                    <label style={{ display: 'block', fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '4px' }}>End Time</label>
+                  <div className="form-group">
+                    <label className="form-label-styled" style={{ fontSize: 'var(--text-xs)' }}>End Time</label>
                     <input
                       type="time"
+                      className="form-input-styled"
                       value={autoReply.operatingHours.endTime}
                       onChange={(e) =>
                         setAutoReply({
@@ -269,7 +253,6 @@ export default function SettingsPage() {
                           operatingHours: { ...autoReply.operatingHours, endTime: e.target.value },
                         })
                       }
-                      style={{ width: '100%', padding: '8px', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', borderRadius: '6px', fontSize: '13px' }}
                     />
                   </div>
                 </div>
@@ -278,9 +261,9 @@ export default function SettingsPage() {
 
             <button
               type="submit"
+              className="btn btn-primary btn-lg"
               disabled={saving}
-              className="send-btn"
-              style={{ padding: '12px 24px', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold', alignSelf: 'flex-start' }}
+              style={{ alignSelf: 'flex-start' }}
             >
               {saving ? 'Deploying Settings...' : 'Save & Deploy Auto-Reply Agent'}
             </button>
@@ -288,16 +271,16 @@ export default function SettingsPage() {
         </div>
       ) : (
         /* White-Label Branding Tab */
-        <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '24px', maxWidth: '600px' }}>
-          <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Icon name="shield" style={{ color: 'var(--accent)' }} />
+        <div className="section-card" style={{ maxWidth: '600px' }}>
+          <h3 className="section-title">
+            <Icon name="shield" className="section-title-icon" style={{ color: 'var(--color-primary)' }} />
             <span>White-Label Branding Settings</span>
           </h3>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <div>
-              <label style={{ fontSize: '12px', fontWeight: 600, display: 'block', marginBottom: '8px' }}>Accent Color Theme</label>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
+            <div className="form-group">
+              <label className="form-label-styled">Accent Color Theme</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
                 <input
                   type="color"
                   value={brandingAccent}
@@ -306,33 +289,30 @@ export default function SettingsPage() {
                 />
                 <input
                   type="text"
+                  className="form-input-styled"
                   value={brandingAccent}
                   onChange={(e) => handleUpdateAccentColor(e.target.value)}
-                  style={{ flex: 1, padding: '10px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', borderRadius: '8px', fontSize: '13px', textTransform: 'uppercase', outline: 'none' }}
+                  style={{ textTransform: 'uppercase' }}
                 />
               </div>
             </div>
 
-            <div>
-              <label style={{ fontSize: '12px', fontWeight: 600, display: 'block', marginBottom: '8px' }}>Reseller Custom Domain CNAME</label>
-              <div style={{ display: 'flex', gap: '10px' }}>
+            <div className="form-group">
+              <label className="form-label-styled">Reseller Custom Domain CNAME</label>
+              <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
                 <input
                   type="text"
+                  className="form-input-styled"
                   value={customCname}
                   onChange={(e) => setCustomCname(e.target.value)}
-                  style={{ flex: 1, padding: '10px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', borderRadius: '8px', fontSize: '13px', outline: 'none' }}
                 />
-                <button
-                  type="button"
-                  onClick={handleVerifyCname}
-                  style={{ padding: '10px 16px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}
-                >
+                <button type="button" className="btn btn-secondary" onClick={handleVerifyCname}>
                   Verify DNS
                 </button>
               </div>
-              <div style={{ fontSize: '11px', color: 'var(--sentiment-positive)', marginTop: '4px' }}>
+              <span className="form-hint" style={{ color: 'var(--color-success)' }}>
                 ✓ CNAME verified pointing to cname.notifyiq.app
-              </div>
+              </span>
             </div>
           </div>
         </div>

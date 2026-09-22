@@ -27,6 +27,9 @@ export default function DashboardLayout() {
     return emailStr.substring(0, 2).toUpperCase();
   };
 
+  const isActive = (path: string) => location.pathname === path;
+  const isActiveAny = (...paths: string[]) => paths.some(p => location.pathname === p);
+
   return (
     <div className="inbox-container">
       {/* Sidebar Navigation */}
@@ -37,41 +40,21 @@ export default function DashboardLayout() {
         </div>
 
         <div className="workspace-badge">
-          <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{t('workspace')}</div>
-          <div style={{ fontWeight: '700', fontSize: '14px', marginTop: '2px', color: 'var(--text-primary)' }}>
+          <div className="ws-label">{t('workspace')}</div>
+          <div className="ws-name">
             {currentWorkspace?.name || 'Loading Workspace...'}
           </div>
-          <div className="status" style={{ color: isConnected ? 'var(--sentiment-positive)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px', fontSize: '12px', fontWeight: 600 }}>
-            <span 
-              className="dot" 
-              style={{ 
-                width: '8px', 
-                height: '8px', 
-                backgroundColor: isConnected ? 'var(--sentiment-positive)' : 'var(--text-muted)', 
-                borderRadius: '50%',
-                boxShadow: isConnected ? '0 0 10px var(--sentiment-positive)' : 'none'
-              }}
-            ></span>
+          <div className={`status ${isConnected ? 'connected' : 'disconnected'}`}>
+            <span className={`dot ${isConnected ? 'dot-connected' : 'dot-disconnected'}`} />
             {isConnected ? t('connected') : t('mockActive')}
           </div>
-          
+
           {/* Language Switcher */}
-          <div style={{ marginTop: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Icon name="globe" size={16} style={{ color: 'var(--text-muted)' }} />
+          <div className="ws-lang-select">
+            <Icon name="globe" size={14} style={{ color: 'var(--color-foreground-muted)' }} />
             <select
               value={lang}
               onChange={(e) => changeLanguage(e.target.value as LanguageCode)}
-              style={{
-                flex: 1,
-                background: 'var(--bg-tertiary)',
-                border: '1px solid var(--border-color)',
-                color: 'var(--text-primary)',
-                padding: '6px 10px',
-                borderRadius: '6px',
-                fontSize: '12px',
-                cursor: 'pointer',
-                outline: 'none',
-              }}
             >
               <option value="en">English</option>
               <option value="hi">हिन्दी (Hindi)</option>
@@ -84,108 +67,85 @@ export default function DashboardLayout() {
 
         <ul className="sidebar-menu">
           <Link to="/dashboard" style={{ textDecoration: 'none' }}>
-            <li className={`menu-item ${location.pathname === '/' || location.pathname === '/dashboard' ? 'active' : ''}`}>
+            <li className={`menu-item ${isActiveAny('/', '/dashboard') ? 'active' : ''}`}>
               <Icon name="globe" />
               <span>Dashboard</span>
             </li>
           </Link>
           <Link to="/inbox" style={{ textDecoration: 'none' }}>
-            <li className={`menu-item ${location.pathname === '/inbox' ? 'active' : ''}`}>
+            <li className={`menu-item ${isActive('/inbox') ? 'active' : ''}`}>
               <Icon name="chats" />
               <span>{t('inbox')}</span>
             </li>
           </Link>
           <Link to="/contacts" style={{ textDecoration: 'none' }}>
-            <li className={`menu-item ${location.pathname === '/contacts' ? 'active' : ''}`}>
-              <Icon name="shield" />
+            <li className={`menu-item ${isActive('/contacts') ? 'active' : ''}`}>
+              <Icon name="users" />
               <span>Contacts</span>
             </li>
           </Link>
           <Link to="/campaigns" style={{ textDecoration: 'none' }}>
-            <li className={`menu-item ${location.pathname === '/campaigns' ? 'active' : ''}`}>
+            <li className={`menu-item ${isActive('/campaigns') ? 'active' : ''}`}>
               <Icon name="plane" />
               <span>Campaigns</span>
             </li>
           </Link>
           <Link to="/campaigns/templates" style={{ textDecoration: 'none' }}>
-            <li className={`menu-item ${location.pathname === '/campaigns/templates' ? 'active' : ''}`}>
-              <Icon name="plane" />
+            <li className={`menu-item ${isActive('/campaigns/templates') ? 'active' : ''}`}>
+              <Icon name="document" />
               <span>WhatsApp Templates</span>
             </li>
           </Link>
           <Link to="/flows" style={{ textDecoration: 'none' }}>
-            <li className={`menu-item ${location.pathname === '/flows' ? 'active' : ''}`}>
+            <li className={`menu-item ${isActive('/flows') ? 'active' : ''}`}>
               <Icon name="fork" />
               <span>Flow Builder</span>
             </li>
           </Link>
           <Link to="/knowledge-base" style={{ textDecoration: 'none' }}>
-            <li className={`menu-item ${location.pathname === '/knowledge-base' ? 'active' : ''}`}>
+            <li className={`menu-item ${isActive('/knowledge-base') ? 'active' : ''}`}>
               <Icon name="brain" />
               <span>Knowledge Base RAG</span>
             </li>
           </Link>
           <Link to="/billing" style={{ textDecoration: 'none' }}>
-            <li className={`menu-item ${location.pathname === '/billing' ? 'active' : ''}`}>
+            <li className={`menu-item ${isActive('/billing') ? 'active' : ''}`}>
               <Icon name="coins" />
               <span>Billing & Usage</span>
             </li>
           </Link>
           <Link to="/settings" style={{ textDecoration: 'none' }}>
-            <li className={`menu-item ${location.pathname === '/settings' ? 'active' : ''}`}>
+            <li className={`menu-item ${isActive('/settings') ? 'active' : ''}`}>
               <Icon name="gear" />
               <span>{t('aiSettings')}</span>
             </li>
           </Link>
           <Link to="/settings/waba" style={{ textDecoration: 'none' }}>
-            <li className={`menu-item ${location.pathname === '/settings/waba' ? 'active' : ''}`}>
+            <li className={`menu-item ${isActive('/settings/waba') ? 'active' : ''}`}>
               <Icon name="shield" />
               <span>Meta WABA Profile</span>
             </li>
           </Link>
-          <li className="menu-item logout-item" onClick={handleLogout} style={{ color: 'var(--sentiment-urgent)', marginTop: '8px', cursor: 'pointer', borderTop: '1px solid var(--border-color)', paddingTop: '10px' }}>
-            <Icon name="logout" style={{ color: 'var(--sentiment-urgent)' }} />
-            <span style={{ fontWeight: 'bold' }}>Sign Out</span>
-          </li>
         </ul>
 
-        {/* User profile details & Logout */}
-        <div className="user-profile" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', width: '100%' }}>
+        {/* User profile & Logout */}
+        <div className="user-profile">
+          <div className="user-profile-row">
             <div className="avatar">{getInitials(user?.email)}</div>
             <div className="user-info" style={{ flex: 1 }}>
-              <div className="name" style={{ color: 'var(--text-primary)', fontSize: '13px', fontWeight: 'bold' }}>
+              <div className="name">
                 {user?.email ? user.email.split('@')[0] : 'User'}
               </div>
-              <div className="role" style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+              <div className="role">
                 {user?.role === 'admin' ? 'Workspace Admin' : 'Agent User'}
               </div>
             </div>
           </div>
-          <button 
-            onClick={handleLogout} 
-            style={{ 
-              width: '100%',
-              padding: '8px', 
-              borderRadius: '8px', 
-              border: '1px solid rgba(239, 68, 68, 0.3)', 
-              background: 'rgba(239, 68, 68, 0.1)', 
-              color: 'var(--sentiment-urgent)', 
-              fontSize: '12px',
-              fontWeight: '700',
-              cursor: 'pointer', 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center', 
-              gap: '6px',
-              transition: 'all 0.2s ease'
-            }}
-          >
+          <button className="logout-btn" onClick={handleLogout}>
             <Icon name="logout" size={14} />
             <span>Sign Out</span>
           </button>
         </div>
-
       </aside>
 
       {/* Nested Outlet Page views */}

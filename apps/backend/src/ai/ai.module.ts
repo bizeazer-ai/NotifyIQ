@@ -8,9 +8,11 @@ import { WhisperService } from './whisper.service.js';
 import { SuggestionsService } from './suggestions.service.js';
 import { RagService } from './rag.service.js';
 import { AiController } from './ai.controller.js';
+import { MessagesModule } from '../messages/messages.module.js';
+import { WorkspacesModule } from '../workspaces/workspaces.module.js';
 
 @Module({
-  imports: [DatabaseModule],
+  imports: [DatabaseModule, MessagesModule, WorkspacesModule],
   controllers: [AiController],
   providers: [
     GeminiService,

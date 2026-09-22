@@ -149,7 +149,7 @@ export default function RegisterPage() {
           </div>
 
           {referralSource && (
-            <div style={{ fontSize: '12px', color: 'var(--sentiment-positive)', fontWeight: 600, textAlign: 'left', marginTop: '-4px' }}>
+            <div style={{ fontSize: '12px', color: 'var(--color-success)', fontWeight: 600, textAlign: 'left', marginTop: '-4px' }}>
               ✓ Tracking referral source: {referralSource}
             </div>
           )}

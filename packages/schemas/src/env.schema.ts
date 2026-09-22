@@ -18,6 +18,7 @@ export const envSchema = z.object({
   META_APP_ID: z.string().optional(),
   META_APP_SECRET: z.string().optional(),
   META_WEBHOOK_VERIFY_TOKEN: z.string().optional(),
+  META_ACCESS_TOKEN: z.string().optional(),
   
   // Encryption keys for secure tokens
   ENCRYPTION_KEY: z.string().length(32, "ENCRYPTION_KEY must be exactly 32 characters long").default("12345678901234567890123456789012"),
@@ -40,4 +41,4 @@ export const envSchema = z.object({
   UTHO_BUCKET: z.string().optional(),
 });
 
-export type Env = z.infer<typeof envSchema>;
+export type Env = z.infer<typeof envSchema>;

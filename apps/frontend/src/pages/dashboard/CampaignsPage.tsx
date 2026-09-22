@@ -116,33 +116,20 @@ export default function CampaignsPage() {
   };
 
   return (
-    <div style={{ flex: 1, padding: '32px', boxSizing: 'border-box', overflowY: 'auto', backgroundColor: 'var(--bg-primary)' }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
-        <div>
-          <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 'bold' }}>Marketing Campaigns</h1>
-          <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: 'var(--text-secondary)' }}>
+    <div className="page-container">
+      <header className="page-header">
+        <div className="page-header-left">
+          <h1 className="page-title">Marketing Campaigns</h1>
+          <p className="page-subtitle">
             Schedule template notifications and monitor real-time read, delivery, and delivery failure metrics.
           </p>
         </div>
-        <button
-          onClick={loadData}
-          style={{
-            background: 'var(--bg-tertiary)',
-            border: '1px solid var(--border-color)',
-            color: 'var(--text-primary)',
-            padding: '10px 16px',
-            borderRadius: '10px',
-            fontSize: '13px',
-            fontWeight: 'bold',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-          }}
-        >
-          <Icon name="globe" size={14} />
-          <span>Refresh Metrics</span>
-        </button>
+        <div className="page-actions">
+          <button className="btn btn-secondary" onClick={loadData}>
+            <Icon name="refresh" size={14} />
+            <span>Refresh Metrics</span>
+          </button>
+        </div>
       </header>
 
       {loading ? (
@@ -150,74 +137,46 @@ export default function CampaignsPage() {
       ) : error ? (
         <ErrorAlert message={error} onRetry={loadData} title="Campaign Service Error" />
       ) : (
-        <>
+        <div style={{ animation: 'slideUp 0.4s ease' }}>
           {/* Analytics Summary widgets */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '32px' }}>
-            <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', padding: '20px', borderRadius: '12px' }}>
-              <div style={{ color: 'var(--text-secondary)', fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Total Transmitted</div>
-              <div style={{ fontSize: '28px', fontWeight: 'bold', marginTop: '8px', color: 'var(--text-primary)' }}>{stats.totalSent}</div>
+          <div className="stat-grid">
+            <div className="stat-card stat-blue card-hover">
+              <div className="stat-card-label">Total Transmitted</div>
+              <div className="stat-card-value">{stats.totalSent}</div>
             </div>
-            <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', padding: '20px', borderRadius: '12px' }}>
-              <div style={{ color: 'var(--sentiment-positive)', fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Delivered</div>
-              <div style={{ fontSize: '28px', fontWeight: 'bold', marginTop: '8px', color: 'var(--sentiment-positive)' }}>{stats.delivered}</div>
+            <div className="stat-card stat-green card-hover">
+              <div className="stat-card-label">Delivered</div>
+              <div className="stat-card-value">{stats.delivered}</div>
             </div>
-            <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', padding: '20px', borderRadius: '12px' }}>
-              <div style={{ color: 'var(--accent-light)', fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Read (Opened)</div>
-              <div style={{ fontSize: '28px', fontWeight: 'bold', marginTop: '8px', color: 'var(--accent-light)' }}>{stats.read}</div>
+            <div className="stat-card stat-cyan card-hover">
+              <div className="stat-card-label">Read (Opened)</div>
+              <div className="stat-card-value">{stats.read}</div>
             </div>
-            <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', padding: '20px', borderRadius: '12px' }}>
-              <div style={{ color: 'var(--sentiment-urgent)', fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Failed Dispatches</div>
-              <div style={{ fontSize: '28px', fontWeight: 'bold', marginTop: '8px', color: 'var(--sentiment-urgent)' }}>{stats.failed}</div>
+            <div className="stat-card stat-orange card-hover">
+              <div className="stat-card-label">Failed Dispatches</div>
+              <div className="stat-card-value">{stats.failed}</div>
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '32px', alignItems: 'start' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 'var(--space-8)', alignItems: 'start' }}>
             {/* Wizard Form */}
-            <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '24px' }}>
-              <h2 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: 'bold' }}>Launch Broadcast Campaign</h2>
+            <div className="section-card">
+              <h2 className="section-title" style={{ fontSize: 'var(--text-xl)' }}>Launch Broadcast Campaign</h2>
 
-              <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                  <div>
-                    <label style={{ fontSize: '12px', fontWeight: 600, display: 'block', marginBottom: '8px' }}>Meta WABA Template</label>
-                    <select
-                      value={templateName}
-                      onChange={(e) => setTemplateName(e.target.value)}
-                      style={{
-                        width: '100%',
-                        background: 'var(--bg-tertiary)',
-                        border: '1px solid var(--border-color)',
-                        color: 'var(--text-primary)',
-                        padding: '10px',
-                        borderRadius: '8px',
-                        fontSize: '13px',
-                        cursor: 'pointer',
-                        outline: 'none',
-                      }}
-                    >
+              <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
+                  <div className="form-group">
+                    <label className="form-label-styled">Meta WABA Template</label>
+                    <select className="form-select" value={templateName} onChange={(e) => setTemplateName(e.target.value)}>
                       <option value="gst_due_reminder">GST Due Payment Reminder (gst_due_reminder)</option>
                       <option value="billing_notification">Billing Invoice Payment Success (billing_notification)</option>
                       <option value="opt_in_confirmation">Consent Opt-in Confirmation (opt_in_confirmation)</option>
                     </select>
                   </div>
 
-                  <div>
-                    <label style={{ fontSize: '12px', fontWeight: 600, display: 'block', marginBottom: '8px' }}>Language</label>
-                    <select
-                      value={languageCode}
-                      onChange={(e) => setLanguageCode(e.target.value)}
-                      style={{
-                        width: '100%',
-                        background: 'var(--bg-tertiary)',
-                        border: '1px solid var(--border-color)',
-                        color: 'var(--text-primary)',
-                        padding: '10px',
-                        borderRadius: '8px',
-                        fontSize: '13px',
-                        cursor: 'pointer',
-                        outline: 'none',
-                      }}
-                    >
+                  <div className="form-group">
+                    <label className="form-label-styled">Language</label>
+                    <select className="form-select" value={languageCode} onChange={(e) => setLanguageCode(e.target.value)}>
                       <option value="en">English (en)</option>
                       <option value="hi">हिन्दी (hi)</option>
                       <option value="es">Español (es)</option>
@@ -227,60 +186,40 @@ export default function CampaignsPage() {
                 </div>
 
                 {/* Dispatch Schedule Timing */}
-                <div style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '16px' }}>
-                  <label style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--text-primary)', display: 'block', marginBottom: '10px' }}>Dispatch Schedule</label>
-                  <div style={{ display: 'flex', gap: '20px', marginBottom: dispatchType === 'scheduled' ? '14px' : '0' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer' }}>
-                      <input
-                        type="radio"
-                        name="dispatchType"
-                        checked={dispatchType === 'instant'}
-                        onChange={() => setDispatchType('instant')}
-                      />
+                <div style={{
+                  backgroundColor: 'var(--color-surface-secondary)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: 'var(--radius-lg)',
+                  padding: 'var(--space-4)',
+                }}>
+                  <label className="form-label-styled" style={{ display: 'block', marginBottom: 'var(--space-3)' }}>Dispatch Schedule</label>
+                  <div style={{ display: 'flex', gap: 'var(--space-5)', marginBottom: dispatchType === 'scheduled' ? 'var(--space-4)' : '0' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', fontSize: 'var(--text-sm)', cursor: 'pointer' }}>
+                      <input type="radio" name="dispatchType" checked={dispatchType === 'instant'} onChange={() => setDispatchType('instant')} />
                       <span>Send Immediately</span>
                     </label>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer' }}>
-                      <input
-                        type="radio"
-                        name="dispatchType"
-                        checked={dispatchType === 'scheduled'}
-                        onChange={() => setDispatchType('scheduled')}
-                      />
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', fontSize: 'var(--text-sm)', cursor: 'pointer' }}>
+                      <input type="radio" name="dispatchType" checked={dispatchType === 'scheduled'} onChange={() => setDispatchType('scheduled')} />
                       <span>Schedule for Future Date</span>
                     </label>
                   </div>
 
                   {dispatchType === 'scheduled' && (
-                    <div>
-                      <input
-                        type="datetime-local"
-                        value={scheduledAt}
-                        onChange={(e) => setScheduledAt(e.target.value)}
-                        style={{
-                          width: '100%',
-                          padding: '10px',
-                          background: 'var(--bg-secondary)',
-                          border: '1px solid var(--border-color)',
-                          color: 'var(--text-primary)',
-                          borderRadius: '8px',
-                          fontSize: '13px',
-                          outline: 'none',
-                        }}
-                        required
-                      />
-                    </div>
+                    <input
+                      type="datetime-local"
+                      className="form-input-styled"
+                      value={scheduledAt}
+                      onChange={(e) => setScheduledAt(e.target.value)}
+                      required
+                    />
                   )}
                 </div>
 
                 {/* Target Contacts Selection table */}
                 <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                    <label style={{ fontSize: '12px', fontWeight: 600 }}>Target Contacts ({selectedContactIds.length} selected)</label>
-                    <button
-                      type="button"
-                      onClick={handleSelectAll}
-                      style={{ background: 'none', border: 'none', color: 'var(--accent-light)', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}
-                    >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-3)' }}>
+                    <label className="form-label-styled">Target Contacts ({selectedContactIds.length} selected)</label>
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={handleSelectAll}>
                       {selectedContactIds.length === contacts.length ? 'Deselect All' : 'Select All Eligible'}
                     </button>
                   </div>
@@ -292,7 +231,13 @@ export default function CampaignsPage() {
                       icon="users"
                     />
                   ) : (
-                    <div style={{ maxHeight: '200px', overflowY: 'auto', border: '1px solid var(--border-color)', borderRadius: '8px', background: 'var(--bg-tertiary)' }}>
+                    <div style={{
+                      maxHeight: '200px',
+                      overflowY: 'auto',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: 'var(--radius-md)',
+                      backgroundColor: 'var(--color-surface-secondary)',
+                    }}>
                       {contacts.map((contact) => (
                         <div
                           key={contact._id}
@@ -300,22 +245,23 @@ export default function CampaignsPage() {
                           style={{
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '12px',
-                            padding: '10px 14px',
-                            borderBottom: '1px solid var(--border-color)',
+                            gap: 'var(--space-3)',
+                            padding: 'var(--space-3) var(--space-4)',
+                            borderBottom: '1px solid var(--color-border)',
                             cursor: 'pointer',
-                            background: selectedContactIds.includes(contact._id) ? 'rgba(56, 189, 248, 0.05)' : 'transparent',
+                            backgroundColor: selectedContactIds.includes(contact._id) ? 'var(--color-primary-muted)' : 'transparent',
+                            transition: 'background-color var(--transition-fast)',
                           }}
                         >
                           <input
                             type="checkbox"
+                            className="form-checkbox"
                             checked={selectedContactIds.includes(contact._id)}
                             onChange={() => {}}
-                            style={{ cursor: 'pointer' }}
                           />
                           <div style={{ display: 'flex', flexDirection: 'column' }}>
-                            <span style={{ fontSize: '13px', fontWeight: 600 }}>{contact.name}</span>
-                            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{contact.phone}</span>
+                            <span style={{ fontSize: 'var(--text-sm)', fontWeight: 600 }}>{contact.name}</span>
+                            <span className="text-muted" style={{ fontSize: 'var(--text-xs)' }}>{contact.phone}</span>
                           </div>
                         </div>
                       ))}
@@ -325,8 +271,8 @@ export default function CampaignsPage() {
 
                 <button
                   type="submit"
-                  className="send-btn"
-                  style={{ padding: '12px', width: '100%', borderRadius: '10px', fontSize: '14px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                  className="btn btn-primary btn-lg"
+                  style={{ width: '100%', justifyContent: 'center' }}
                   disabled={selectedContactIds.length === 0}
                 >
                   <Icon name="plane" size={14} />
@@ -335,31 +281,30 @@ export default function CampaignsPage() {
               </form>
 
               {statusMessage && (
-                <div style={{ marginTop: '16px', fontSize: '13px', color: 'var(--accent-light)', fontWeight: 600, textAlign: 'center' }}>
+                <div className="status-message status-message-info" style={{ marginTop: 'var(--space-4)', marginBottom: 0 }}>
                   {statusMessage}
                 </div>
               )}
             </div>
 
             {/* Info panel */}
-            <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '24px' }}>
-              <h3 style={{ margin: '0 0 12px 0', fontSize: '15px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Icon name="fork" style={{ color: 'var(--accent-light)' }} />
+            <div className="section-card" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+              <h3 className="section-title" style={{ fontSize: 'var(--text-md)', marginBottom: 0 }}>
+                <Icon name="fork" className="section-title-icon" style={{ color: 'var(--color-primary)' }} />
                 <span>Rate-Limit Safe Queue</span>
               </h3>
-              <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>
+              <p className="text-secondary" style={{ fontSize: 'var(--text-xs)', lineHeight: 'var(--leading-relaxed)', margin: 0 }}>
                 NotifyIQ uses <strong>BullMQ Redis</strong> queues to rate limit campaign broadcasts, making sure we don't exceed the Meta developer API threshold of <strong>80 messages/second</strong> per active phone sender node.
               </p>
-              <hr style={{ border: 'none', borderTop: '1px solid var(--border-color)', margin: '16px 0' }} />
-              <h4 style={{ margin: '0 0 8px 0', fontSize: '13px', fontWeight: 'bold' }}>Eligible Contacts Only</h4>
-              <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>
+              <hr style={{ border: 'none', borderTop: '1px solid var(--color-border)', margin: 0 }} />
+              <h4 style={{ margin: 0, fontSize: 'var(--text-sm)', fontWeight: 700 }}>Eligible Contacts Only</h4>
+              <p className="text-secondary" style={{ fontSize: 'var(--text-xs)', lineHeight: 'var(--leading-relaxed)', margin: 0 }}>
                 In compliance with the <strong>DPDP Act Section 11</strong>, contacts who have explicitly opted out or requested deletion are automatically omitted from target broadcasts.
               </p>
             </div>
           </div>
-        </>
+        </div>
       )}
     </div>
   );
 }
-

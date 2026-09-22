@@ -30,6 +30,8 @@ export class Workspace {
       phoneNumberId: { type: String, default: null },
       businessAccountId: { type: String, default: null },
       webhookSecret: { type: String, default: null }, // AES-256-GCM format
+      qualityRating: { type: String, default: 'GREEN' },
+      messagingLimit: { type: String, default: '10K' },
     },
     default: null,
   })
@@ -38,6 +40,8 @@ export class Workspace {
     phoneNumberId?: string;
     businessAccountId?: string;
     webhookSecret?: string;
+    qualityRating?: string;
+    messagingLimit?: string;
   } | null;
 
   // White-label settings

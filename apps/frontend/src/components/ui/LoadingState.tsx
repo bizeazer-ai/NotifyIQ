@@ -16,35 +16,37 @@ export function LoadingState({
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '48px 24px',
+        padding: 'var(--space-12) var(--space-6)',
         minHeight,
-        boxSizing: 'border-box',
         width: '100%',
+        animation: 'fadeIn 0.3s ease',
       }}
     >
       <div
         style={{
-          width: '48px',
-          height: '48px',
+          width: '44px',
+          height: '44px',
           borderRadius: '50%',
-          border: '3px solid var(--border-color)',
-          borderTopColor: 'var(--accent)',
+          border: '3px solid var(--color-border)',
+          borderTopColor: 'var(--color-primary)',
           animation: 'spin 0.8s linear infinite',
-          marginBottom: '16px',
+          marginBottom: 'var(--space-5)',
         }}
       />
-      <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px' }}>
+      <div style={{
+        fontSize: 'var(--text-md)',
+        fontWeight: 600,
+        color: 'var(--color-foreground)',
+        marginBottom: 'var(--space-1)',
+      }}>
         {message}
       </div>
-      <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+      <div style={{
+        fontSize: 'var(--text-xs)',
+        color: 'var(--color-foreground-secondary)',
+      }}>
         {subtitle}
       </div>
-      <style>{`
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-      `}</style>
     </div>
   );
 }
