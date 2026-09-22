@@ -224,27 +224,21 @@ export class WebhookWorker implements OnModuleInit, OnModuleDestroy {
     const settings = workspace.autoReplySettings;
     if (!settings || !settings.enabled) return;
 
+    // Respect Human Takeover flag if present
+    if ((conversation as any).isHumanTakeover) {
+      console.log(`[WebhookWorker] Human takeover active for conversation ${conversation._id}. Skipping auto-reply.`);
+      return;
+    }
+
     const ragResult = await this.ragService.queryKnowledgeBase(workspace._id.toString(), userQuery);
     const threshold = settings.confidenceThreshold || 0.70;
     console.log('[Threshold rag result]', ragResult);
-    if (ragResult.answer) {
+
+    if (ragResult.answer && (ragResult.confidenceScore === undefined || ragResult.confidenceScore >= threshold)) {
       console.log(`[WebhookWorker] Auto-reply triggered! Confidence: ${ragResult.confidenceScore} >= ${threshold}`);
 
-      await this.messageService.sendTextMessage(workspace._id.toString(), { to: contact.phone, body: ragResult.answer })
-      const autoReplyMsg = await this.messageModel.create({
-        workspaceId: workspace._id.toString(),
-        conversationId: conversation._id.toString(),
-        waMessageId: `auto_${Date.now()}`,
-        direction: 'outbound',
-        type: 'text',
-        status: 'delivered',
-        body: ragResult.answer,
-      });
-
-      this.socketGateway.emitToWorkspace(workspace._id.toString(), 'message.sent', {
-        message: autoReplyMsg,
-        conversation,
-      });
+      // sendTextMessage creates the DB record with authentic waMessageId and emits socket message.sent
+      await this.messageService.sendTextMessage(workspace._id.toString(), { to: contact.phone, body: ragResult.answer });
     } else if (settings.fallbackToHuman) {
       console.warn(`[WebhookWorker] Auto-reply confidence ${ragResult.confidenceScore} < ${threshold}. Escalating to human agent.`);
 
@@ -252,7 +246,7 @@ export class WebhookWorker implements OnModuleInit, OnModuleDestroy {
         messageId: conversation._id.toString(),
         conversationId: conversation._id.toString(),
         sentiment: 'urgent',
-        body: `Low confidence AI match (${(ragResult.confidenceScore * 100).toFixed(0)}%). Live agent required for: "${userQuery}"`,
+        body: `Low confidence AI match (${((ragResult.confidenceScore || 0) * 100).toFixed(0)}%). Live agent required for: "${userQuery}"`,
         timestamp: new Date(),
       });
     }

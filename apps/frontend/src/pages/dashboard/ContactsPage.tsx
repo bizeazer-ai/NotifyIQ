@@ -18,6 +18,7 @@ export default function ContactsPage() {
   const [addName, setAddName] = useState('');
   const [addPhone, setAddPhone] = useState('');
   const [addTag, setAddTag] = useState('Customer');
+  const [addConsentGiven, setAddConsentGiven] = useState(false);
 
   // Import CSV Modal State
   const [showImportModal, setShowImportModal] = useState(false);
@@ -54,7 +55,7 @@ export default function ContactsPage() {
         name: addName,
         phone: addPhone,
         tags: [addTag],
-        consentGiven: true,
+        consentGiven: addConsentGiven,
       });
 
       setStatusMessage(`Contact "${addName}" created successfully!`);
@@ -84,7 +85,7 @@ export default function ContactsPage() {
       try {
         const textContent = (reader.result as string) || '';
         await apiClient.post('/api/contacts/import-csv', { csvContent: textContent });
-        setStatusMessage(`Bulk CSV contact list imported successfully!`);
+        setStatusMessage('Bulk CSV contact list imported successfully!');
         setShowImportModal(false);
         setCsvFile(null);
         loadContacts();
@@ -131,6 +132,13 @@ export default function ContactsPage() {
     }
   };
 
+  const getInitials = (nameStr?: string) => {
+    if (!nameStr) return 'CT';
+    const parts = nameStr.trim().split(' ');
+    if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    return nameStr.substring(0, 2).toUpperCase();
+  };
+
   const filteredContacts = contacts.filter((c) => {
     const matchesSearch =
       (c.name || 'WhatsApp User').toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -142,13 +150,16 @@ export default function ContactsPage() {
     return matchesSearch && matchesTag;
   });
 
+  const totalConsentCount = contacts.filter((c) => c.consentGiven).length;
+
   return (
     <div className="page-container">
+      {/* Header */}
       <header className="page-header">
         <div className="page-header-left">
           <h1 className="page-title">Contacts Directory</h1>
           <p className="page-subtitle">
-            DPDP Section 11 Compliance dashboard managing client consent, audience tags, and opt-out details.
+            DPDP Compliance dashboard managing client consent, audience tags, and opt-out details.
           </p>
         </div>
 
@@ -169,26 +180,67 @@ export default function ContactsPage() {
       </header>
 
       {statusMessage && (
-        <div className="status-message status-message-success">{statusMessage}</div>
+        <div className="status-message status-message-success">
+          <Icon name="check" size={14} />
+          <span>{statusMessage}</span>
+        </div>
       )}
 
-      {/* Filter & Tag Controls */}
-      <div style={{
-        marginBottom: 'var(--space-6)',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        gap: 'var(--space-4)',
-        flexWrap: 'wrap',
-      }}>
-        <input
-          type="text"
-          className="form-input-styled"
-          style={{ flex: 1, maxWidth: '360px' }}
-          placeholder="Filter by name or phone number..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
+      {/* Metric Summary Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--space-4)', marginBottom: 'var(--space-6)' }}>
+        <div className="card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div style={{ width: '40px', height: '40px', borderRadius: 'var(--radius-md)', backgroundColor: 'var(--color-primary-muted)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Icon name="users" size={20} />
+          </div>
+          <div>
+            <div style={{ fontSize: '11px', textTransform: 'uppercase', fontWeight: 700, color: 'var(--color-foreground-secondary)' }}>Total Directory</div>
+            <div style={{ fontSize: '22px', fontWeight: 800, color: 'var(--color-foreground)' }}>{contacts.length}</div>
+          </div>
+        </div>
+
+        <div className="card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div style={{ width: '40px', height: '40px', borderRadius: 'var(--radius-md)', backgroundColor: 'var(--color-success-muted)', color: 'var(--color-success)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Icon name="check" size={20} />
+          </div>
+          <div>
+            <div style={{ fontSize: '11px', textTransform: 'uppercase', fontWeight: 700, color: 'var(--color-foreground-secondary)' }}>Consent Verified</div>
+            <div style={{ fontSize: '22px', fontWeight: 800, color: 'var(--color-foreground)' }}>{totalConsentCount}</div>
+          </div>
+        </div>
+
+        <div className="card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div style={{ width: '40px', height: '40px', borderRadius: 'var(--radius-md)', backgroundColor: 'var(--color-info-muted)', color: 'var(--color-info)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Icon name="shield" size={20} />
+          </div>
+          <div>
+            <div style={{ fontSize: '11px', textTransform: 'uppercase', fontWeight: 700, color: 'var(--color-foreground-secondary)' }}>Compliance Status</div>
+            <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--color-success)', marginTop: '4px' }}>DPDP Compliant</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Search & Tag Filter Bar */}
+      <div
+        style={{
+          marginBottom: 'var(--space-6)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: 'var(--space-4)',
+          flexWrap: 'wrap',
+        }}
+      >
+        <div style={{ position: 'relative', flex: 1, maxWidth: '380px' }}>
+          <input
+            type="text"
+            className="form-input-styled"
+            style={{ width: '100%', paddingLeft: '34px' }}
+            placeholder="Filter by contact name or mobile number..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          <Icon name="search" size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-foreground-muted)' }} />
+        </div>
 
         <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
           {['ALL', 'Lead', 'Customer', 'VIP'].map((tag) => (
@@ -210,7 +262,7 @@ export default function ContactsPage() {
       ) : filteredContacts.length === 0 ? (
         <EmptyState
           title="No Contacts Found"
-          description={searchQuery ? "No contact records match your current search query or active filter." : "Your contact directory is currently empty. Add individual contacts or import via CSV."}
+          description={searchQuery ? 'No contact records match your current search query or active filter.' : 'Your contact directory is currently empty. Add individual contacts or import via CSV.'}
           icon="users"
           actionLabel="+ Add First Contact"
           onAction={() => setShowAddModal(true)}
@@ -221,7 +273,7 @@ export default function ContactsPage() {
             <table className="table-styled">
               <thead>
                 <tr>
-                  <th>Name</th>
+                  <th>Contact</th>
                   <th>WhatsApp Number</th>
                   <th>Audience Tag</th>
                   <th>Consent Status</th>
@@ -232,8 +284,29 @@ export default function ContactsPage() {
               <tbody>
                 {filteredContacts.map((contact) => (
                   <tr key={contact._id}>
-                    <td style={{ fontWeight: 600 }}>{contact.name}</td>
-                    <td className="text-secondary">{contact.phone}</td>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div
+                          style={{
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: '50%',
+                            backgroundColor: 'var(--color-primary-muted)',
+                            color: 'var(--color-primary)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontWeight: 700,
+                            fontSize: '11px',
+                            border: '1px solid var(--color-border)',
+                          }}
+                        >
+                          {getInitials(contact.name)}
+                        </div>
+                        <span style={{ fontWeight: 600, color: 'var(--color-foreground)' }}>{contact.name || 'WhatsApp User'}</span>
+                      </div>
+                    </td>
+                    <td className="text-secondary" style={{ fontFamily: 'var(--font-mono)', fontSize: '13px' }}>{contact.phone}</td>
                     <td>
                       <span className="badge badge-primary">
                         {(contact.tags && contact.tags[0]) || 'Customer'}
@@ -241,7 +314,8 @@ export default function ContactsPage() {
                     </td>
                     <td>
                       <span className={`badge ${contact.consentGiven ? 'badge-success' : 'badge-error'}`}>
-                        {contact.consentGiven ? 'Consent Given' : 'No Consent'}
+                        <Icon name={contact.consentGiven ? 'check' : 'close'} size={10} />
+                        {contact.consentGiven ? 'Consent Verified' : 'No Consent'}
                       </span>
                     </td>
                     <td className="text-muted">{new Date(contact.createdAt).toLocaleDateString()}</td>
@@ -266,7 +340,12 @@ export default function ContactsPage() {
       {showAddModal && (
         <div className="modal-overlay">
           <div className="modal-card">
-            <h3 className="modal-title">Add Single Contact</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-5)' }}>
+              <h3 className="modal-title" style={{ margin: 0 }}>Add Single Contact</h3>
+              <button className="btn btn-ghost btn-sm" onClick={() => setShowAddModal(false)}>
+                <Icon name="close" size={16} />
+              </button>
+            </div>
             <form onSubmit={handleCreateContact} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
               <div className="form-group">
                 <label className="form-label-styled">Full Name</label>
@@ -303,6 +382,18 @@ export default function ContactsPage() {
                 </select>
               </div>
 
+              <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
+                <input
+                  type="checkbox"
+                  id="addConsent"
+                  checked={addConsentGiven}
+                  onChange={(e) => setAddConsentGiven(e.target.checked)}
+                />
+                <label htmlFor="addConsent" style={{ fontSize: '13px', color: 'var(--color-foreground)', cursor: 'pointer', fontWeight: 600 }}>
+                  Recipient has explicitly opted-in / provided DPDP consent
+                </label>
+              </div>
+
               <div className="modal-actions">
                 <button type="button" className="btn btn-secondary" onClick={() => setShowAddModal(false)}>
                   Cancel
@@ -320,20 +411,27 @@ export default function ContactsPage() {
       {showImportModal && (
         <div className="modal-overlay">
           <div className="modal-card" style={{ maxWidth: '480px' }}>
-            <h3 className="modal-title">Bulk CSV Contact List Import</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-5)' }}>
+              <h3 className="modal-title" style={{ margin: 0 }}>Bulk CSV Contact Import</h3>
+              <button className="btn btn-ghost btn-sm" onClick={() => setShowImportModal(false)}>
+                <Icon name="close" size={16} />
+              </button>
+            </div>
             <p className="text-secondary" style={{ fontSize: 'var(--text-xs)', marginBottom: 'var(--space-4)', lineHeight: 'var(--leading-relaxed)' }}>
               Upload a <code>.csv</code> file containing columns: <code>Name</code>, <code>Phone</code>, <code>Tag</code>.
             </p>
 
             <form onSubmit={handleImportCsvSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-              <div style={{
-                border: '2px dashed var(--color-border)',
-                borderRadius: 'var(--radius-lg)',
-                padding: 'var(--space-6)',
-                textAlign: 'center',
-                backgroundColor: 'var(--color-surface-secondary)',
-                transition: 'border-color var(--transition-fast)',
-              }}>
+              <div
+                style={{
+                  border: '2px dashed var(--color-border)',
+                  borderRadius: 'var(--radius-lg)',
+                  padding: 'var(--space-6)',
+                  textAlign: 'center',
+                  backgroundColor: 'var(--color-surface-secondary)',
+                  transition: 'border-color var(--transition-fast)',
+                }}
+              >
                 <input
                   type="file"
                   id="contact-csv-input"
@@ -342,7 +440,7 @@ export default function ContactsPage() {
                   style={{ display: 'none' }}
                 />
                 <label htmlFor="contact-csv-input" style={{ cursor: 'pointer', display: 'block' }}>
-                  <Icon name="attachment" style={{ color: 'var(--color-primary)', marginBottom: 'var(--space-2)' }} />
+                  <Icon name="attachment" size={24} style={{ color: 'var(--color-primary)', marginBottom: 'var(--space-2)' }} />
                   <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-foreground)' }}>
                     {csvFile ? csvFile.name : 'Select CSV File'}
                   </div>

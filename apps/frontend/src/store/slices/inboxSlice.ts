@@ -158,6 +158,16 @@ const inboxSlice = createSlice({
             state.messagesByConversationId[convId].push(message);
           }
         }
+      })
+      .addCase(sendMessage.rejected, (state, action) => {
+        state.error = (action.payload as string) || 'Failed to dispatch message via Meta Cloud API';
+        const convId = state.activeConversationId;
+        if (convId && state.messagesByConversationId[convId]) {
+          const idx = state.messagesByConversationId[convId].findIndex((m) => m._id.startsWith('optimistic_'));
+          if (idx !== -1) {
+            state.messagesByConversationId[convId][idx].status = 'failed';
+          }
+        }
       });
   },
 });

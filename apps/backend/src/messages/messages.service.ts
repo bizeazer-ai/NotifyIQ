@@ -37,8 +37,15 @@ export class MessagesService {
       throw new BadRequestException('WABA configuration is incomplete. Please connect your WABA.');
     }
 
-    // const decryptedToken = decrypt(waba.accessToken);
-    const decryptedToken = env.META_ACCESS_TOKEN;
+    const isMock = process.env.MOCK_SERVICES === 'true';
+    let decryptedToken = env.META_ACCESS_TOKEN;
+    if (!isMock && waba.accessToken) {
+      try {
+        decryptedToken = decrypt(waba.accessToken);
+      } catch {
+        decryptedToken = env.META_ACCESS_TOKEN;
+      }
+    }
     const phoneNumberId = waba.phoneNumberId;
 
     // 2. Validate Contact Consent & Opt-Out Status (DPDP Compliance)
@@ -53,12 +60,12 @@ export class MessagesService {
         throw new ForbiddenException('Cannot send message. Recipient has requested data erasure.');
       }
     } else {
-      // In compliance with DPDP, we automatically scaffold the contact if they haven't explicitly opted out
+      // In compliance with DPDP, default consentGiven to false until explicit consent or inbound message
       contact = await this.contactModel.create({
         workspaceId,
         phone,
         name: 'WhatsApp User',
-        consentGiven: true, // Consent assumed for user-requested outbound trigger
+        consentGiven: false,
       });
     }
 
@@ -83,12 +90,12 @@ export class MessagesService {
     }
 
     let waMessageId = '';
-    const isMock = process.env.MOCK_SERVICES === 'true';
+    // const isMock = process.env.MOCK_SERVICES === 'true';
 
     // 4. Send Message to Meta Cloud API
     if (!isMock) {
       try {
-        console.log(`[MessagesService] Sending outbound message to Meta Cloud API for phone: ${phone}`);
+        console.log(`[MessagesService] Sending outbound message to Meta Cloud API for phone: ${phone} via PhoneID: ${phoneNumberId}`);
         const metaUrl = `https://graph.facebook.com/v20.0/${phoneNumberId}/messages`;
 
         const response = await fetch(metaUrl, {
@@ -111,14 +118,15 @@ export class MessagesService {
         const data = await response.json() as any;
 
         if (!response.ok || !data.messages?.[0]?.id) {
+          const errMsg = data.error?.message || `Meta Graph API error (Code: ${data.error?.code || response.status})`;
           console.error('[MessagesService] Meta Cloud API outbound transmission failed:', data);
-          throw new BadRequestException(data.error?.message || 'Failed to transmit message via Meta');
+          throw new BadRequestException(errMsg);
         }
 
         waMessageId = data.messages[0].id;
-      } catch (err) {
+      } catch (err: any) {
         console.error('[MessagesService] Outbound dispatch error:', err);
-        throw new InternalServerErrorException(err instanceof Error ? err.message : 'Meta dispatch failed');
+        throw new BadRequestException(err instanceof Error ? err.message : 'Meta dispatch failed');
       }
     } else {
       // Simulating successful outbound dispatch

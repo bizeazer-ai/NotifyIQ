@@ -18,7 +18,7 @@ export class AnalyticsService {
     const outboundMessages = await this.messageModel.countDocuments({ workspaceId, direction: 'outbound' });
     const deliveredMessages = await this.messageModel.countDocuments({ workspaceId, direction: 'outbound', status: { $in: ['delivered', 'read'] } });
 
-    const deliveryRate = outboundMessages > 0 ? (deliveredMessages / outboundMessages) * 100 : 99.4;
+    const deliveryRate = outboundMessages > 0 ? (deliveredMessages / outboundMessages) * 100 : 0;
 
     const totalConversations = await this.conversationModel.countDocuments({ workspaceId });
     const urgentConversations = await this.conversationModel.countDocuments({ workspaceId, sentiment: 'urgent' });
@@ -26,10 +26,61 @@ export class AnalyticsService {
 
     // AI Containment Rate (percentage of conversations resolved without human escalation)
     const escalatedCount = urgentConversations;
-    const botContainmentRate = totalConversations > 0 ? Math.max(0, 100 - (escalatedCount / totalConversations) * 100) : 94.2;
+    const botContainmentRate = totalConversations > 0 ? Math.max(0, 100 - (escalatedCount / totalConversations) * 100) : 0;
 
     const wholesaleRate = 0.002;
     const totalAccruedCost = outboundMessages * wholesaleRate;
+
+    // Calculate actual 7-day daily message telemetry
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+    sevenDaysAgo.setHours(0, 0, 0, 0);
+
+    const dailyAggregate = await this.messageModel.aggregate([
+      {
+        $match: {
+          workspaceId,
+          createdAt: { $gte: sevenDaysAgo },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            dayOfWeek: { $dayOfWeek: '$createdAt' },
+            direction: '$direction',
+          },
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const daysMap = new Map<string, { inbound: number; outbound: number }>();
+
+    for (let i = 0; i < 7; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() - (6 - i));
+      const name = dayNames[d.getDay()];
+      daysMap.set(name, { inbound: 0, outbound: 0 });
+    }
+
+    for (const item of dailyAggregate) {
+      const dayName = dayNames[(item._id.dayOfWeek - 1) % 7];
+      if (daysMap.has(dayName)) {
+        const entry = daysMap.get(dayName)!;
+        if (item._id.direction === 'inbound') {
+          entry.inbound += item.count;
+        } else {
+          entry.outbound += item.count;
+        }
+      }
+    }
+
+    const dailyMetrics = Array.from(daysMap.entries()).map(([day, counts]) => ({
+      day,
+      inbound: counts.inbound,
+      outbound: counts.outbound,
+    }));
 
     return {
       workspaceId,
@@ -42,15 +93,7 @@ export class AnalyticsService {
       totalContacts,
       botContainmentRatePercent: parseFloat(botContainmentRate.toFixed(1)),
       totalAccruedCost: parseFloat(totalAccruedCost.toFixed(2)),
-      dailyMetrics: [
-        { day: 'Mon', inbound: 120, outbound: 340 },
-        { day: 'Tue', inbound: 180, outbound: 450 },
-        { day: 'Wed', inbound: 210, outbound: 520 },
-        { day: 'Thu', inbound: 190, outbound: 480 },
-        { day: 'Fri', inbound: 240, outbound: 610 },
-        { day: 'Sat', inbound: 150, outbound: 390 },
-        { day: 'Sun', inbound: 110, outbound: 280 },
-      ],
+      dailyMetrics,
     };
   }
 }

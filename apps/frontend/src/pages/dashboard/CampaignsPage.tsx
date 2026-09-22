@@ -34,8 +34,9 @@ export default function CampaignsPage() {
   const [error, setError] = useState<string | null>(null);
 
   // Form states
-  const [templateName, setTemplateName] = useState('gst_due_reminder');
+  const [templateName, setTemplateName] = useState('');
   const [languageCode, setLanguageCode] = useState('en');
+  const [wabaTemplates, setWabaTemplates] = useState<any[]>([]);
   const [selectedContactIds, setSelectedContactIds] = useState<string[]>([]);
   const [dispatchType, setDispatchType] = useState<'instant' | 'scheduled'>('instant');
   const [scheduledAt, setScheduledAt] = useState('');
@@ -54,6 +55,14 @@ export default function CampaignsPage() {
       const statsRes = await apiClient.get<{ data: CampaignStats }>('/api/messages/campaigns/stats');
       if (statsRes.data) {
         setStats(statsRes.data);
+      }
+
+      const templatesRes = await apiClient.get<{ data: any[] }>('/api/waba/templates');
+      if (templatesRes.data) {
+        setWabaTemplates(templatesRes.data);
+        if (templatesRes.data.length > 0 && !templateName) {
+          setTemplateName(templatesRes.data[0].name);
+        }
       }
     } catch (err: any) {
       setError(err?.message || 'Failed to fetch campaign statistics or target contacts.');
@@ -119,7 +128,7 @@ export default function CampaignsPage() {
     <div className="page-container">
       <header className="page-header">
         <div className="page-header-left">
-          <h1 className="page-title">Marketing Campaigns</h1>
+          <h1 className="page-title">Broadcast Campaigns & Dispatch Telemetry</h1>
           <p className="page-subtitle">
             Schedule template notifications and monitor real-time read, delivery, and delivery failure metrics.
           </p>
@@ -137,7 +146,7 @@ export default function CampaignsPage() {
       ) : error ? (
         <ErrorAlert message={error} onRetry={loadData} title="Campaign Service Error" />
       ) : (
-        <div style={{ animation: 'slideUp 0.4s ease' }}>
+        <div style={{ animation: 'slideUp 0.35s ease' }}>
           {/* Analytics Summary widgets */}
           <div className="stat-grid">
             <div className="stat-card stat-blue card-hover">
@@ -145,7 +154,7 @@ export default function CampaignsPage() {
               <div className="stat-card-value">{stats.totalSent}</div>
             </div>
             <div className="stat-card stat-green card-hover">
-              <div className="stat-card-label">Delivered</div>
+              <div className="stat-card-label">Delivered SLA</div>
               <div className="stat-card-value">{stats.delivered}</div>
             </div>
             <div className="stat-card stat-cyan card-hover">
@@ -161,17 +170,28 @@ export default function CampaignsPage() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 'var(--space-8)', alignItems: 'start' }}>
             {/* Wizard Form */}
             <div className="section-card">
-              <h2 className="section-title" style={{ fontSize: 'var(--text-xl)' }}>Launch Broadcast Campaign</h2>
+              <h2 className="section-title" style={{ fontSize: 'var(--text-xl)' }}>
+                <Icon name="plane" className="section-title-icon" />
+                <span>Launch Broadcast Campaign</span>
+              </h2>
 
               <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
                   <div className="form-group">
                     <label className="form-label-styled">Meta WABA Template</label>
-                    <select className="form-select" value={templateName} onChange={(e) => setTemplateName(e.target.value)}>
-                      <option value="gst_due_reminder">GST Due Payment Reminder (gst_due_reminder)</option>
-                      <option value="billing_notification">Billing Invoice Payment Success (billing_notification)</option>
-                      <option value="opt_in_confirmation">Consent Opt-in Confirmation (opt_in_confirmation)</option>
+                    <select className="form-select" value={templateName} onChange={(e) => setTemplateName(e.target.value)} required>
+                      <option value="">-- Select WABA Template --</option>
+                      {wabaTemplates.map((tpl) => (
+                        <option key={tpl.id || tpl.name} value={tpl.name}>
+                          {tpl.name} ({tpl.status || 'APPROVED'})
+                        </option>
+                      ))}
                     </select>
+                    {wabaTemplates.length === 0 && (
+                      <div style={{ fontSize: '11px', color: 'var(--color-warning)', marginTop: '4px' }}>
+                        No registered Meta templates found. Please create one in WhatsApp Templates.
+                      </div>
+                    )}
                   </div>
 
                   <div className="form-group">
@@ -194,11 +214,11 @@ export default function CampaignsPage() {
                 }}>
                   <label className="form-label-styled" style={{ display: 'block', marginBottom: 'var(--space-3)' }}>Dispatch Schedule</label>
                   <div style={{ display: 'flex', gap: 'var(--space-5)', marginBottom: dispatchType === 'scheduled' ? 'var(--space-4)' : '0' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', fontSize: 'var(--text-sm)', cursor: 'pointer' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', fontSize: 'var(--text-sm)', cursor: 'pointer', fontWeight: 600 }}>
                       <input type="radio" name="dispatchType" checked={dispatchType === 'instant'} onChange={() => setDispatchType('instant')} />
                       <span>Send Immediately</span>
                     </label>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', fontSize: 'var(--text-sm)', cursor: 'pointer' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', fontSize: 'var(--text-sm)', cursor: 'pointer', fontWeight: 600 }}>
                       <input type="radio" name="dispatchType" checked={dispatchType === 'scheduled'} onChange={() => setDispatchType('scheduled')} />
                       <span>Schedule for Future Date</span>
                     </label>
@@ -232,11 +252,11 @@ export default function CampaignsPage() {
                     />
                   ) : (
                     <div style={{
-                      maxHeight: '200px',
+                      maxHeight: '220px',
                       overflowY: 'auto',
                       border: '1px solid var(--color-border)',
                       borderRadius: 'var(--radius-md)',
-                      backgroundColor: 'var(--color-surface-secondary)',
+                      backgroundColor: 'var(--color-surface)',
                     }}>
                       {contacts.map((contact) => (
                         <div
@@ -260,8 +280,8 @@ export default function CampaignsPage() {
                             onChange={() => {}}
                           />
                           <div style={{ display: 'flex', flexDirection: 'column' }}>
-                            <span style={{ fontSize: 'var(--text-sm)', fontWeight: 600 }}>{contact.name}</span>
-                            <span className="text-muted" style={{ fontSize: 'var(--text-xs)' }}>{contact.phone}</span>
+                            <span style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-foreground)' }}>{contact.name}</span>
+                            <span className="text-muted" style={{ fontSize: 'var(--text-xs)', fontFamily: 'var(--font-mono)' }}>{contact.phone}</span>
                           </div>
                         </div>
                       ))}
@@ -275,14 +295,15 @@ export default function CampaignsPage() {
                   style={{ width: '100%', justifyContent: 'center' }}
                   disabled={selectedContactIds.length === 0}
                 >
-                  <Icon name="plane" size={14} />
+                  <Icon name="plane" size={16} />
                   <span>{dispatchType === 'scheduled' ? 'Schedule Broadcast Dispatch' : 'Queue Immediate Campaign Broadcast'}</span>
                 </button>
               </form>
 
               {statusMessage && (
                 <div className="status-message status-message-info" style={{ marginTop: 'var(--space-4)', marginBottom: 0 }}>
-                  {statusMessage}
+                  <Icon name="check" size={14} />
+                  <span>{statusMessage}</span>
                 </div>
               )}
             </div>
@@ -290,14 +311,14 @@ export default function CampaignsPage() {
             {/* Info panel */}
             <div className="section-card" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
               <h3 className="section-title" style={{ fontSize: 'var(--text-md)', marginBottom: 0 }}>
-                <Icon name="fork" className="section-title-icon" style={{ color: 'var(--color-primary)' }} />
+                <Icon name="fork" className="section-title-icon" />
                 <span>Rate-Limit Safe Queue</span>
               </h3>
               <p className="text-secondary" style={{ fontSize: 'var(--text-xs)', lineHeight: 'var(--leading-relaxed)', margin: 0 }}>
                 NotifyIQ uses <strong>BullMQ Redis</strong> queues to rate limit campaign broadcasts, making sure we don't exceed the Meta developer API threshold of <strong>80 messages/second</strong> per active phone sender node.
               </p>
               <hr style={{ border: 'none', borderTop: '1px solid var(--color-border)', margin: 0 }} />
-              <h4 style={{ margin: 0, fontSize: 'var(--text-sm)', fontWeight: 700 }}>Eligible Contacts Only</h4>
+              <h4 style={{ margin: 0, fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--color-foreground)' }}>Eligible Contacts Only</h4>
               <p className="text-secondary" style={{ fontSize: 'var(--text-xs)', lineHeight: 'var(--leading-relaxed)', margin: 0 }}>
                 In compliance with the <strong>DPDP Act Section 11</strong>, contacts who have explicitly opted out or requested deletion are automatically omitted from target broadcasts.
               </p>

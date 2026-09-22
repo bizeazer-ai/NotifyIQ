@@ -397,7 +397,7 @@ body {
 
 
 /* ═══════════════════════════════════════════════════════════════
-   UTILITY CLASSES — Buttons
+   UTILITY CLASSES — Buttons (Zero Gradients, Solid Executive SaaS)
    ═══════════════════════════════════════════════════════════════ */
 
 .btn {
@@ -430,28 +430,30 @@ body {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-light));
+  background-color: var(--color-primary);
   color: var(--color-on-primary);
   border-color: var(--color-primary);
-  box-shadow: var(--shadow-xs);
+  box-shadow: var(--shadow-sm);
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: linear-gradient(135deg, var(--color-primary-hover), var(--color-primary));
-  box-shadow: var(--shadow-primary);
+  background-color: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
+  box-shadow: var(--shadow-md);
   transform: translateY(-1px);
 }
 
 .btn-accent {
-  background: linear-gradient(135deg, var(--color-accent), var(--color-accent-light));
+  background-color: var(--color-accent);
   color: var(--color-on-accent);
   border-color: var(--color-accent);
-  box-shadow: var(--shadow-xs);
+  box-shadow: var(--shadow-sm);
 }
 
 .btn-accent:hover:not(:disabled) {
-  background: linear-gradient(135deg, var(--color-accent-hover), var(--color-accent));
-  box-shadow: var(--shadow-accent);
+  background-color: var(--color-accent-hover);
+  border-color: var(--color-accent-hover);
+  box-shadow: var(--shadow-md);
   transform: translateY(-1px);
 }
 

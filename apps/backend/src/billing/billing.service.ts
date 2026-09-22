@@ -129,12 +129,23 @@ export class BillingService {
   async handleRazorpayWebhook(event: string, payload: any): Promise<void> {
     this.logger.log(`[BillingService] Processing Razorpay Webhook: ${event}`);
 
+    const eventId = payload.event_id || payload.payload?.payment?.entity?.id || `rzp_${Date.now()}`;
     const subscription = payload.subscription?.entity;
     const notes = subscription?.notes || payload.payment?.entity?.notes || {};
     const workspaceId = notes.workspaceId;
 
     if (!workspaceId) {
       this.logger.warn('[BillingService] Razorpay payload missing workspaceId note');
+      return;
+    }
+
+    // Idempotency check: prevent duplicate audit log & plan updates on webhook retries
+    const existingLog = await this.auditLogModel.findOne({
+      workspaceId,
+      'details.eventId': eventId,
+    });
+    if (existingLog) {
+      this.logger.log(`[BillingService] Razorpay event ${eventId} already processed. Skipping.`);
       return;
     }
 
@@ -156,6 +167,7 @@ export class BillingService {
           resource: 'Workspace',
           resourceId: workspace._id.toString(),
           details: {
+            eventId,
             paymentGateway: 'Razorpay',
             event,
             plan: 'growth',
@@ -178,6 +190,7 @@ export class BillingService {
           resource: 'Workspace',
           resourceId: workspace._id.toString(),
           details: {
+            eventId,
             paymentGateway: 'Razorpay',
             event,
             notes: 'Subscription payment failed or halted.',
@@ -190,11 +203,22 @@ export class BillingService {
   async handleStripeWebhook(event: string, payload: any): Promise<void> {
     this.logger.log(`[BillingService] Processing Stripe Webhook: ${event}`);
 
+    const eventId = payload.id || `stripe_${Date.now()}`;
     const dataObject = payload.data?.object;
     const metadata = dataObject?.metadata || {};
     const workspaceId = metadata.workspaceId;
 
     if (!workspaceId) return;
+
+    // Idempotency check: prevent duplicate audit log & plan updates on webhook retries
+    const existingLog = await this.auditLogModel.findOne({
+      workspaceId,
+      'details.eventId': eventId,
+    });
+    if (existingLog) {
+      this.logger.log(`[BillingService] Stripe event ${eventId} already processed. Skipping.`);
+      return;
+    }
 
     const workspace = await this.workspaceModel.findById(workspaceId);
     if (!workspace) return;
@@ -214,6 +238,7 @@ export class BillingService {
           resource: 'Workspace',
           resourceId: workspace._id.toString(),
           details: {
+            eventId,
             paymentGateway: 'Stripe',
             event,
             plan: workspace.plan,

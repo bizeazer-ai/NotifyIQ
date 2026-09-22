@@ -82,7 +82,7 @@ export default function InboxPage() {
   };
 
   return (
-    <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+    <div style={{ display: 'flex', flex: 1, overflow: 'hidden', height: '100%' }}>
       {/* 1. Conversations List Panel */}
       <ConversationList />
 
@@ -93,84 +93,86 @@ export default function InboxPage() {
       <div 
         style={{ 
           width: '320px', 
-          borderLeft: '1px solid var(--border-color)', 
-          backgroundColor: 'var(--bg-secondary)', 
+          borderLeft: '1px solid var(--color-border)', 
+          backgroundColor: 'var(--color-surface)', 
           padding: '24px', 
           display: 'flex', 
           flexDirection: 'column', 
           boxSizing: 'border-box',
-          overflowY: 'auto'
+          overflowY: 'auto',
+          flexShrink: 0,
         }}
       >
-        <h3 className="rag-heading" style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '0 0 8px 0', fontSize: '15px', fontWeight: 'bold' }}>
-          <Icon name="brain" style={{ color: 'var(--accent-light)' }} />
-          <span>RAG Knowledge Co-Pilot</span>
+        <h3 className="rag-heading" style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '0 0 8px 0', fontSize: '15px', fontWeight: 700, color: 'var(--color-foreground)' }}>
+          <Icon name="brain" style={{ color: 'var(--color-primary)' }} />
+          <span>RAG Knowledge Assistant</span>
         </h3>
-        <p style={{ fontSize: '11px', color: 'var(--text-secondary)', margin: '0 0 16px', lineHeight: 1.4 }}>
-          Query your indexed documentation files. Answers are strictly grounded in workspace knowledge tags.
+        <p style={{ fontSize: '11px', color: 'var(--color-foreground-secondary)', margin: '0 0 16px', lineHeight: 1.4 }}>
+          Query your indexed documentation files. Answers are strictly grounded in workspace knowledge.
         </p>
 
         {/* Query Input */}
         <form onSubmit={handleRagQuery} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <input
             type="text"
-            className="search-box"
-            style={{ width: '100%', margin: 0 }}
+            className="form-input-styled"
+            style={{ width: '100%', fontSize: '13px' }}
             placeholder="Ask knowledge base..."
             value={ragQueryText}
             onChange={(e) => setRagQueryText(e.target.value)}
           />
           <button 
             type="submit" 
-            className="send-btn" 
-            style={{ padding: '10px', width: '100%', borderRadius: '10px', fontSize: '13px', fontWeight: 'bold' }} 
+            className="btn btn-primary btn-sm" 
+            style={{ width: '100%', padding: '10px' }} 
             disabled={loadingRag}
           >
-            {loadingRag ? 'Querying...' : 'Ask Assistant'}
+            <Icon name="search" size={14} />
+            <span>{loadingRag ? 'Searching Vector Index...' : 'Ask Assistant'}</span>
           </button>
         </form>
 
         {/* Answer Display */}
         {ragAnswer && (
-          <div style={{ marginTop: '16px', padding: '14px', backgroundColor: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', borderRadius: '10px' }}>
-            <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--accent-light)', textTransform: 'uppercase', marginBottom: '6px' }}>
+          <div style={{ marginTop: '16px', padding: '14px', backgroundColor: 'var(--color-surface-secondary)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)' }}>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', marginBottom: '6px' }}>
               Answer
             </div>
-            <div style={{ fontSize: '13px', lineHeight: 1.4,  }}>
+            <div style={{ fontSize: '13px', lineHeight: 1.4, color: 'var(--color-foreground)' }}>
               {ragAnswer}
             </div>
             {ragSources.length > 0 && (
-              <div style={{ marginTop: '10px', fontSize: '11px', color: 'var(--text-muted)' }}>
+              <div style={{ marginTop: '10px', fontSize: '11px', color: 'var(--color-foreground-muted)' }}>
                 <strong>Sources:</strong> {ragSources.join(', ')}
               </div>
             )}
           </div>
         )}
 
-        <hr style={{ border: 'none', borderTop: '1px solid var(--border-color)', margin: '24px 0' }} />
+        <hr style={{ border: 'none', borderTop: '1px solid var(--color-border)', margin: '24px 0' }} />
 
         {/* Document Indexing Upload Form */}
-        <h4 style={{ margin: '0 0 8px 0', fontSize: '13px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <Icon name="download" size={14} style={{ transform: 'rotate(180deg)', color: 'var(--accent-light)' }} />
-          <span>Index Document</span>
+        <h4 style={{ margin: '0 0 8px 0', fontSize: '13px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-foreground)' }}>
+          <Icon name="download" size={14} style={{ transform: 'rotate(180deg)', color: 'var(--color-primary)' }} />
+          <span>Index New Document</span>
         </h4>
-        <p style={{ fontSize: '11px', color: 'var(--text-secondary)', margin: '0 0 16px', lineHeight: 1.4 }}>
+        <p style={{ fontSize: '11px', color: 'var(--color-foreground-secondary)', margin: '0 0 16px', lineHeight: 1.4 }}>
           Chunk and upload files directly into the MongoDB Vector Search index.
         </p>
 
         <form onSubmit={handleUploadDoc} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <input
             type="text"
-            className="search-box"
-            style={{ width: '100%', margin: 0 }}
+            className="form-input-styled"
+            style={{ width: '100%', fontSize: '13px' }}
             placeholder="Document Title"
             value={knowledgeTitle}
             onChange={(e) => setKnowledgeTitle(e.target.value)}
             required
           />
           <textarea
-            className="search-box"
-            style={{ width: '100%', margin: 0, height: '80px', fontFamily: 'inherit', resize: 'vertical' }}
+            className="form-textarea"
+            style={{ width: '100%', height: '80px', fontSize: '12px' }}
             placeholder="Document text content..."
             value={knowledgeContent}
             onChange={(e) => setKnowledgeContent(e.target.value)}
@@ -178,15 +180,16 @@ export default function InboxPage() {
           />
           <button 
             type="submit" 
-            className="send-btn" 
-            style={{ padding: '10px', width: '100%', borderRadius: '10px', fontSize: '13px', fontWeight: 'bold', background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}
+            className="btn btn-secondary btn-sm" 
+            style={{ width: '100%', padding: '10px' }}
           >
-            Upload Document
+            <Icon name="plus" size={14} />
+            <span>Upload Document</span>
           </button>
         </form>
 
         {uploadStatus && (
-          <div style={{ marginTop: '12px', fontSize: '12px', color: 'var(--accent-light)', fontWeight: 600, textAlign: 'center' }}>
+          <div style={{ marginTop: '12px', fontSize: '12px', color: 'var(--color-success)', fontWeight: 600, textAlign: 'center' }}>
             {uploadStatus}
           </div>
         )}

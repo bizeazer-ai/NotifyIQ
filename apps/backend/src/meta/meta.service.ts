@@ -270,24 +270,7 @@ export class MetaService {
   async getTemplates(workspaceId: string): Promise<any[]> {
     const workspace = await this.workspaceModel.findById(workspaceId);
     if (!workspace || !workspace.waba?.accessToken || !workspace.waba?.businessAccountId) {
-      return [
-        {
-          id: 'tpl_gst_reminder_v1',
-          name: 'gst_filing_reminder',
-          status: 'APPROVED',
-          category: 'UTILITY',
-          language: 'en',
-          bodyText: 'Dear {{1}}, your monthly GST filing deadline is approaching on {{2}}. Please submit invoice documents.',
-        },
-        {
-          id: 'tpl_welcome_onboard',
-          name: 'welcome_onboard_message',
-          status: 'APPROVED',
-          category: 'MARKETING',
-          language: 'en',
-          bodyText: 'Welcome {{1}} to BizEazer SaaS platform! Reply HELP for automated assistant.',
-        },
-      ];
+      return [];
     }
 
     const token = decrypt(workspace.waba.accessToken);
@@ -438,23 +421,20 @@ export class MetaService {
       }
     }
 
-    // Fallback/Mock phone numbers list for local testing
-    return [
-      {
-        id: workspace.waba.phoneNumberId || `phone_${wabaId}_01`,
-        display_phone_number: '+91 98765 43210',
-        verified_name: 'Primary Support Number',
-        quality_rating: 'GREEN',
-        code_verification_status: 'VERIFIED',
-      },
-      {
-        id: `phone_${wabaId}_02`,
-        display_phone_number: '+91 98765 43211',
-        verified_name: 'Secondary Sales Line',
-        quality_rating: 'GREEN',
-        code_verification_status: 'VERIFIED',
-      },
-    ];
+    // If no numbers returned or fetch failed, return empty list (no hardcoded static phone fallbacks)
+    if (workspace.waba?.phoneNumberId) {
+      return [
+        {
+          id: workspace.waba.phoneNumberId,
+          display_phone_number: workspace.waba.phoneNumberId,
+          verified_name: workspace.name || 'WABA Line',
+          quality_rating: 'GREEN',
+          code_verification_status: 'VERIFIED',
+        },
+      ];
+    }
+
+    return [];
   }
 
   /**

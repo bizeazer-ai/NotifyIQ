@@ -66,10 +66,10 @@ export default function TemplateBuilderPage() {
 
     const buttons = [];
     if (ctaText.trim() && ctaUrl.trim()) {
-      buttons.push({ type: 'URL', text: ctaText.trim(), url: ctaUrl.trim() });
+      buttons.push({ type: 'URL' as const, text: ctaText.trim(), url: ctaUrl.trim() });
     }
     if (quickReply1.trim()) {
-      buttons.push({ type: 'QUICK_REPLY', text: quickReply1.trim() });
+      buttons.push({ type: 'QUICK_REPLY' as const, text: quickReply1.trim() });
     }
 
     try {
@@ -84,7 +84,7 @@ export default function TemplateBuilderPage() {
         buttons: buttons.length > 0 ? buttons : undefined,
       });
 
-      setStatusMessage('Template submitted successfully with CTA buttons! Status: APPROVED.');
+      setStatusMessage('Template submitted successfully! Meta Status: APPROVED.');
       setName('');
       setHeaderText('');
       setBodyText('');
@@ -112,50 +112,53 @@ export default function TemplateBuilderPage() {
   };
 
   return (
-    <div style={{ flex: 1, padding: '32px', boxSizing: 'border-box', overflowY: 'auto', backgroundColor: 'var(--bg-primary)' }}>
-      <header style={{ marginBottom: '28px' }}>
-        <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 'bold' }}>WhatsApp Message Template Builder</h1>
-        <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: 'var(--text-secondary)' }}>
-          Create and submit approved interactive WhatsApp templates required for initiating communications outside the 24-hour window.
-        </p>
+    <div className="page-container">
+      {/* Header */}
+      <header className="page-header">
+        <div className="page-header-left">
+          <h1 className="page-title">WhatsApp Template Builder & Device Live Preview</h1>
+          <p className="page-subtitle">
+            Design, preview, and submit Meta-approved WhatsApp message templates with call-to-action buttons.
+          </p>
+        </div>
       </header>
 
       {statusMessage && (
-        <div style={{ marginBottom: '20px', padding: '12px 16px', borderRadius: '10px', backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--accent)', color: 'var(--text-primary)', fontSize: '13px' }}>
-          {statusMessage}
+        <div className="status-message status-message-info">
+          <Icon name="check" size={14} />
+          <span>{statusMessage}</span>
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px', alignItems: 'start' }}>
+      {/* Grid: Left Editor | Right WhatsApp Mobile Live Preview */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 'var(--space-8)', alignItems: 'start', marginBottom: 'var(--space-8)' }}>
         {/* Template Creation Form */}
-        <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '24px' }}>
-          <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Icon name="plane" style={{ color: 'var(--accent)' }} />
-            <span>New Template Specification</span>
+        <div className="section-card">
+          <h3 className="section-title">
+            <Icon name="document" className="section-title-icon" />
+            <span>Template Specification</span>
           </h3>
 
-          <form onSubmit={handleCreateTemplate} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: '6px' }}>
-                Template Name (lowercase & underscores)
-              </label>
+          <form onSubmit={handleCreateTemplate} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+            <div className="form-group">
+              <label className="form-label-styled">Template Name (lowercase & underscores)</label>
               <input
                 type="text"
+                className="form-input-styled"
                 placeholder="e.g. payment_reminder_v1"
                 value={name}
                 onChange={(e) => setName(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '_'))}
-                style={{ width: '100%', padding: '10px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', borderRadius: '8px', fontSize: '13px' }}
                 required
               />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: '6px' }}>Category</label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
+              <div className="form-group">
+                <label className="form-label-styled">Category</label>
                 <select
+                  className="form-select"
                   value={category}
                   onChange={(e) => setCategory(e.target.value as any)}
-                  style={{ width: '100%', padding: '10px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', borderRadius: '8px', fontSize: '13px', outline: 'none' }}
                 >
                   <option value="UTILITY">Utility</option>
                   <option value="MARKETING">Marketing</option>
@@ -163,12 +166,12 @@ export default function TemplateBuilderPage() {
                 </select>
               </div>
 
-              <div>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: '6px' }}>Language</label>
+              <div className="form-group">
+                <label className="form-label-styled">Language</label>
                 <select
+                  className="form-select"
                   value={language}
                   onChange={(e) => setLanguage(e.target.value)}
-                  style={{ width: '100%', padding: '10px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', borderRadius: '8px', fontSize: '13px', outline: 'none' }}
                 >
                   <option value="en">English (en)</option>
                   <option value="hi">Hindi (hi)</option>
@@ -177,172 +180,263 @@ export default function TemplateBuilderPage() {
               </div>
             </div>
 
-            <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: '6px' }}>
-                Header Text (Optional)
-              </label>
+            <div className="form-group">
+              <label className="form-label-styled">Header Text (Optional)</label>
               <input
                 type="text"
+                className="form-input-styled"
                 placeholder="e.g. Account Update"
                 value={headerText}
                 onChange={(e) => setHeaderText(e.target.value)}
-                style={{ width: '100%', padding: '10px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', borderRadius: '8px', fontSize: '13px' }}
               />
             </div>
 
-            <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: '6px' }}>
-                Body Message (Use variables like &#123;&#123;1&#125;&#125;, &#123;&#123;2&#125;&#125;)
+            <div className="form-group">
+              <label className="form-label-styled">
+                Body Text (Use variables like &#123;&#123;1&#125;&#125;, &#123;&#123;2&#125;&#125;)
               </label>
               <textarea
-                rows={3}
-                placeholder="Hello {{1}}, your invoice {{2}} is ready."
+                className="form-textarea"
+                rows={4}
+                placeholder="Hello {{1}}, your invoice {{2}} is ready for payment."
                 value={bodyText}
                 onChange={(e) => setBodyText(e.target.value)}
-                style={{ width: '100%', padding: '10px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', borderRadius: '8px', fontSize: '13px', resize: 'vertical' }}
                 required
               />
             </div>
 
             {/* Interactive Buttons Section */}
-            <div style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '16px' }}>
-              <label style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-primary)', display: 'block', marginBottom: '10px' }}>
-                Interactive Buttons (Call To Action / Quick Reply)
+            <div style={{ backgroundColor: 'var(--color-surface-secondary)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: 'var(--space-4)' }}>
+              <label className="form-label-styled" style={{ display: 'block', marginBottom: 'var(--space-3)' }}>
+                Interactive Buttons (Call To Action & Quick Reply)
               </label>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '10px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)', marginBottom: 'var(--space-3)' }}>
                 <input
                   type="text"
-                  placeholder="CTA Button Label (e.g. Visit Website)"
+                  className="form-input-styled"
+                  placeholder="CTA Label (e.g. Visit Portal)"
                   value={ctaText}
                   onChange={(e) => setCtaText(e.target.value)}
-                  style={{ width: '100%', padding: '8px', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', borderRadius: '6px', fontSize: '12px' }}
                 />
                 <input
                   type="url"
+                  className="form-input-styled"
                   placeholder="Target URL (https://...)"
                   value={ctaUrl}
                   onChange={(e) => setCtaUrl(e.target.value)}
-                  style={{ width: '100%', padding: '8px', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', borderRadius: '6px', fontSize: '12px' }}
                 />
               </div>
 
               <input
                 type="text"
-                placeholder="Quick Reply Label (e.g. Talk to Support Agent)"
+                className="form-input-styled"
+                placeholder="Quick Reply Label (e.g. Talk to Agent)"
                 value={quickReply1}
                 onChange={(e) => setQuickReply1(e.target.value)}
-                style={{ width: '100%', padding: '8px', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', borderRadius: '6px', fontSize: '12px' }}
               />
             </div>
 
-            <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: '6px' }}>
-                Footer Text (Optional)
-              </label>
+            <div className="form-group">
+              <label className="form-label-styled">Footer Text (Optional)</label>
               <input
                 type="text"
+                className="form-input-styled"
                 placeholder="e.g. Reply STOP to opt out"
                 value={footerText}
                 onChange={(e) => setFooterText(e.target.value)}
-                style={{ width: '100%', padding: '10px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', borderRadius: '8px', fontSize: '13px' }}
               />
             </div>
 
             <button
               type="submit"
               disabled={creating}
-              className="send-btn"
-              style={{ padding: '12px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold' }}
+              className="btn btn-primary"
+              style={{ width: '100%', marginTop: 'var(--space-2)' }}
             >
-              {creating ? 'Submitting to Meta...' : 'Submit Interactive Template for Meta Approval'}
+              <Icon name="plane" size={14} />
+              <span>{creating ? 'Submitting to Meta API...' : 'Submit Interactive Template to Meta'}</span>
             </button>
           </form>
         </div>
 
-        {/* Existing Templates Table */}
-        <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '24px' }}>
-          <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: 'bold' }}>
-            Registered Meta Templates ({templates.length})
+        {/* WhatsApp Real-time Mobile Device Preview Frame */}
+        <div className="section-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <h3 className="section-title" style={{ alignSelf: 'flex-start', marginBottom: 'var(--space-4)' }}>
+            <Icon name="phone" className="section-title-icon" />
+            <span>WhatsApp Device Live Preview</span>
           </h3>
 
-          {loading ? (
-            <LoadingState message="Fetching registered WABA templates..." />
-          ) : error ? (
-            <ErrorAlert message={error} onRetry={loadTemplates} title="Meta WABA Templates Error" />
-          ) : templates.length === 0 ? (
-            <EmptyState
-              title="No WABA Templates Found"
-              description="Create your first interactive WhatsApp message template to submit for Meta Cloud approval."
-              icon="document"
-            />
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {templates.map((tpl) => (
-                <div
-                  key={tpl.id || tpl.name}
-                  style={{ padding: '16px', borderRadius: '8px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)' }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <span style={{ fontWeight: 'bold', fontSize: '14px', color: 'var(--accent-light)' }}>
-                      {tpl.name}
-                    </span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <span
-                        style={{
-                          padding: '2px 8px',
-                          borderRadius: '12px',
-                          fontSize: '11px',
-                          fontWeight: 'bold',
-                          backgroundColor: tpl.status === 'APPROVED' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(234, 179, 8, 0.15)',
-                          color: tpl.status === 'APPROVED' ? 'var(--sentiment-positive)' : '#eab308',
-                        }}
-                      >
-                        {tpl.status}
-                      </span>
-                      <button
-                        onClick={() => handleDeleteTemplate(tpl.name)}
-                        style={{ background: 'none', border: 'none', color: 'var(--sentiment-urgent)', cursor: 'pointer', padding: '4px' }}
-                      >
-                        <Icon name="trash" size={14} />
-                      </button>
+          {/* Phone Frame Container */}
+          <div style={{
+            width: '280px',
+            backgroundColor: '#075E54', // Official WhatsApp Header green
+            borderRadius: '24px',
+            border: '8px solid #1E293B',
+            boxShadow: 'var(--shadow-xl)',
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
+          }}>
+            {/* Phone Top Notch */}
+            <div style={{ backgroundColor: '#1E293B', height: '16px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+              <div style={{ width: '50px', height: '4px', backgroundColor: '#475569', borderRadius: '2px' }} />
+            </div>
+
+            {/* WhatsApp App Header */}
+            <div style={{ padding: '8px 12px', color: '#FFFFFF', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ width: '28px', height: '28px', borderRadius: '50%', backgroundColor: '#FFFFFF', color: '#075E54', fontWeight: 800, fontSize: '11px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>IQ</div>
+              <div>
+                <div style={{ fontSize: '12px', fontWeight: 700, lineHeight: 1.1 }}>NotifyIQ Business</div>
+                <div style={{ fontSize: '9px', opacity: 0.8 }}>Official Business Account</div>
+              </div>
+            </div>
+
+            {/* Chat Area Background */}
+            <div style={{ backgroundColor: '#E5DDD5', padding: '12px', minHeight: '300px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+              {/* WhatsApp Message Bubble */}
+              <div style={{
+                backgroundColor: '#FFFFFF',
+                borderRadius: '8px 8px 8px 0px',
+                padding: '10px 12px',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.15)',
+                fontSize: '12px',
+                color: '#111827',
+                lineHeight: 1.4,
+              }}>
+                {headerText && (
+                  <div style={{ fontWeight: 700, fontSize: '12px', marginBottom: '4px', color: '#111827' }}>
+                    {headerText}
+                  </div>
+                )}
+                
+                <div style={{ fontSize: '12px', color: '#374151' }}>
+                  {bodyText ? bodyText.replace(/\{\{1\}\}/g, 'John Doe').replace(/\{\{2\}\}/g, 'INV-9042') : 'Your WhatsApp template message content will appear here...'}
+                </div>
+
+                {footerText && (
+                  <div style={{ fontSize: '10px', color: '#9CA3AF', marginTop: '6px' }}>
+                    {footerText}
+                  </div>
+                )}
+
+                <div style={{ fontSize: '9px', color: '#9CA3AF', textAlign: 'right', marginTop: '4px' }}>
+                  10:42 AM &#10004;&#10004;
+                </div>
+              </div>
+
+              {/* Action Buttons Render inside Preview */}
+              {(ctaText || quickReply1) && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '6px' }}>
+                  {ctaText && (
+                    <div style={{
+                      backgroundColor: '#FFFFFF',
+                      borderRadius: '6px',
+                      padding: '8px',
+                      textAlign: 'center',
+                      color: '#00a884',
+                      fontWeight: 700,
+                      fontSize: '11px',
+                      boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '4px',
+                    }}>
+                      <Icon name="external-link" size={12} style={{ color: '#00a884' }} />
+                      <span>{ctaText}</span>
                     </div>
-                  </div>
-
-                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '8px' }}>
-                    Category: {tpl.category} | Lang: {tpl.language}
-                  </div>
-
-                  <div style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.4, marginBottom: tpl.buttons && tpl.buttons.length > 0 ? '10px' : '0' }}>
-                    "{tpl.bodyText}"
-                  </div>
-
-                  {tpl.buttons && tpl.buttons.length > 0 && (
-                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                      {tpl.buttons.map((btn, bIdx) => (
-                        <span
-                          key={bIdx}
-                          style={{
-                            padding: '4px 10px',
-                            borderRadius: '12px',
-                            fontSize: '11px',
-                            fontWeight: 'bold',
-                            border: '1px solid var(--accent)',
-                            color: 'var(--accent-light)',
-                            background: 'rgba(56, 189, 248, 0.1)',
-                          }}
-                        >
-                          🔗 {btn.text}
-                        </span>
-                      ))}
+                  )}
+                  {quickReply1 && (
+                    <div style={{
+                      backgroundColor: '#FFFFFF',
+                      borderRadius: '6px',
+                      padding: '8px',
+                      textAlign: 'center',
+                      color: '#00a884',
+                      fontWeight: 700,
+                      fontSize: '11px',
+                      boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                      cursor: 'pointer',
+                    }}>
+                      {quickReply1}
                     </div>
                   )}
                 </div>
-              ))}
+              )}
             </div>
-          )}
+          </div>
         </div>
+      </div>
+
+      {/* Registered Templates Table */}
+      <div className="section-card">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-4)' }}>
+          <h3 className="section-title" style={{ margin: 0 }}>
+            Registered Meta WABA Templates ({templates.length})
+          </h3>
+          <button className="btn btn-secondary btn-sm" onClick={loadTemplates}>
+            <Icon name="refresh" size={14} />
+            <span>Sync Meta Status</span>
+          </button>
+        </div>
+
+        {loading ? (
+          <LoadingState message="Fetching registered WABA templates..." />
+        ) : error ? (
+          <ErrorAlert message={error} onRetry={loadTemplates} title="Meta WABA Templates Error" />
+        ) : templates.length === 0 ? (
+          <EmptyState
+            title="No WABA Templates Found"
+            description="Create your first interactive WhatsApp message template to submit for Meta Cloud approval."
+            icon="document"
+          />
+        ) : (
+          <div className="table-container">
+            <table className="table-styled">
+              <thead>
+                <tr>
+                  <th>Template Name</th>
+                  <th>Category</th>
+                  <th>Language</th>
+                  <th>Meta Review Status</th>
+                  <th>Body Preview</th>
+                  <th style={{ textAlign: 'right' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {templates.map((tpl) => (
+                  <tr key={tpl.id || tpl.name}>
+                    <td style={{ fontWeight: 700, color: 'var(--color-primary)' }}>{tpl.name}</td>
+                    <td>
+                      <span className="badge badge-neutral">{tpl.category}</span>
+                    </td>
+                    <td><code style={{ fontSize: '11px' }}>{tpl.language}</code></td>
+                    <td>
+                      <span className={`badge ${tpl.status === 'APPROVED' ? 'badge-success' : 'badge-warning'}`}>
+                        <Icon name={tpl.status === 'APPROVED' ? 'check' : 'clock'} size={10} />
+                        {tpl.status}
+                      </span>
+                    </td>
+                    <td style={{ maxWidth: '300px' }} className="truncate text-secondary">
+                      "{tpl.bodyText}"
+                    </td>
+                    <td style={{ textAlign: 'right' }}>
+                      <button
+                        className="btn btn-danger btn-sm"
+                        onClick={() => handleDeleteTemplate(tpl.name)}
+                      >
+                        <Icon name="trash" size={12} />
+                        <span>Delete</span>
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );
 }
-

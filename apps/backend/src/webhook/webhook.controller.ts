@@ -71,8 +71,9 @@ export class WebhookController {
         'process-meta-event',
         req.body,
       );
-    } catch (err) {
+    } catch (err: any) {
       console.error('[WebhookController] Failed to enqueue webhook job:', err);
+      throw new InternalServerErrorException('Failed to enqueue webhook processing job. Meta will retry.');
     }
 
     const duration = Date.now() - startTime;
