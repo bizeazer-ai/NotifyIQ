@@ -272,8 +272,8 @@ export class AdminWorkspacesService {
       slug: w.slug,
       phoneNumberId: w.waba?.phoneNumberId,
       businessAccountId: w.waba?.businessAccountId,
-      qualityRating: w.waba?.qualityRating || 'GREEN',
-      messagingLimit: w.waba?.messagingLimit || '10K',
+      qualityRating: w.waba?.qualityRating || 'UNVERIFIED',
+      messagingLimit: w.waba?.messagingLimit || 'UNSET',
       isConnected: !!w.waba?.accessToken,
     }));
   }

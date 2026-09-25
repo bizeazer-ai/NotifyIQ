@@ -64,7 +64,7 @@ export function EmbeddedSignupButton({ onSuccess }: EmbeddedSignupButtonProps) {
 
   const triggerCallback = async (code: string) => {
     try {
-      await apiClient.post('/api/waba/embedded-signup/callback', { code });
+      await apiClient.post('https://elaborate-tribune-geography.ngrok-free.dev/api/waba/embedded-signup/callback', { code });
       if (onSuccess) onSuccess();
     } catch (err: any) {
       setErrorMsg(err.message || 'Meta signup integration error');

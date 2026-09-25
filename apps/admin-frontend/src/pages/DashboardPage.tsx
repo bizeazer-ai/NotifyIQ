@@ -23,7 +23,7 @@ export const DashboardPage: React.FC = () => {
     setError('');
     try {
       const data = await adminFetch('/api/admin/dashboard/stats');
-      setStats(data.data);
+      setStats(data.data || data);
     } catch (err: any) {
       setError(err.message || 'Failed to fetch platform metrics');
     } finally {
@@ -203,26 +203,32 @@ export const DashboardPage: React.FC = () => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', borderRadius: '8px', backgroundColor: 'var(--color-slate-50)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <CheckCircle2 size={18} color="var(--color-emerald-600)" />
-                <span style={{ fontSize: '14px', fontWeight: 600 }}>MongoDB Atlas Cluster (ap-south-1)</span>
+                <CheckCircle2 size={18} color={stats?.systemHealth?.mongoConnected !== false ? 'var(--color-emerald-600)' : 'var(--color-red-600)'} />
+                <span style={{ fontSize: '14px', fontWeight: 600 }}>MongoDB Database Cluster</span>
               </div>
-              <span className="badge badge-green">OPERATIONAL</span>
+              <span className={`badge ${stats?.systemHealth?.mongoConnected !== false ? 'badge-green' : 'badge-red'}`}>
+                {stats?.systemHealth?.mongoConnected !== false ? 'OPERATIONAL' : 'DEGRADED'}
+              </span>
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', borderRadius: '8px', backgroundColor: 'var(--color-slate-50)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <CheckCircle2 size={18} color="var(--color-emerald-600)" />
-                <span style={{ fontSize: '14px', fontWeight: 600 }}>Utho Redis 7 (BullMQ Cluster)</span>
+                <CheckCircle2 size={18} color={stats?.systemHealth?.redisConnected !== false ? 'var(--color-emerald-600)' : 'var(--color-red-600)'} />
+                <span style={{ fontSize: '14px', fontWeight: 600 }}>Redis Queue Host (BullMQ Cluster)</span>
               </div>
-              <span className="badge badge-green">OPERATIONAL</span>
+              <span className={`badge ${stats?.systemHealth?.redisConnected !== false ? 'badge-green' : 'badge-red'}`}>
+                {stats?.systemHealth?.redisConnected !== false ? 'OPERATIONAL' : 'DEGRADED'}
+              </span>
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', borderRadius: '8px', backgroundColor: 'var(--color-slate-50)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <CheckCircle2 size={18} color="var(--color-emerald-600)" />
+                <CheckCircle2 size={18} color={stats?.systemHealth?.status === 'operational' ? 'var(--color-emerald-600)' : 'var(--color-amber-500)'} />
                 <span style={{ fontSize: '14px', fontWeight: 600 }}>Meta WhatsApp Business API Gateway</span>
               </div>
-              <span className="badge badge-green">CONNECTED</span>
+              <span className={`badge ${stats?.systemHealth?.status === 'operational' ? 'badge-green' : 'badge-amber'}`}>
+                {stats?.systemHealth?.status === 'operational' ? 'CONNECTED' : 'WARNING'}
+              </span>
             </div>
           </div>
         </div>

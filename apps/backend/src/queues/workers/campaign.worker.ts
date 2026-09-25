@@ -11,6 +11,7 @@ import { Conversation, ConversationDocument } from '../../database/schemas/conve
 import { Message, MessageDocument } from '../../database/schemas/message.schema.js';
 import { decrypt } from '../../lib/utils/encryption.js';
 import { SocketGateway } from '../../socket/socket.gateway.js';
+import { env } from '@notifyiq/config';
 
 interface CampaignJobData {
   campaignId: string;
@@ -31,7 +32,7 @@ export class CampaignWorker implements OnModuleInit, OnModuleDestroy {
     @InjectModel(Contact.name) private readonly contactModel: Model<ContactDocument>,
     @InjectModel(Conversation.name) private readonly conversationModel: Model<ConversationDocument>,
     @InjectModel(Message.name) private readonly messageModel: Model<MessageDocument>,
-  ) {}
+  ) { }
 
   onModuleInit() {
     const connection = this.redisService.getClient();
@@ -48,7 +49,8 @@ export class CampaignWorker implements OnModuleInit, OnModuleDestroy {
           throw new Error(`Workspace ${workspaceId} WABA credentials are missing`);
         }
 
-        const decryptedToken = decrypt(workspace.waba.accessToken);
+        // const decryptedToken = decrypt(workspace.waba.accessToken);
+        const decryptedToken = env.META_ACCESS_TOKEN;
         const phoneNumberId = workspace.waba.phoneNumberId;
         if (!phoneNumberId) {
           throw new Error(`Workspace ${workspaceId} WABA phone number ID is missing`);
@@ -61,7 +63,7 @@ export class CampaignWorker implements OnModuleInit, OnModuleDestroy {
         // 2. Loop through contact list sequentially to enforce rate-limiting
         for (const contactId of contactIds) {
           const contact = await this.contactModel.findById(contactId);
-          
+
           // Skip if contact opted out or deletion is pending (DPDP Compliance check)
           if (!contact || contact.optedOut || contact.deletionRequestedAt) {
             skipCount++;
@@ -185,7 +187,7 @@ export class CampaignWorker implements OnModuleInit, OnModuleDestroy {
     const lastRefillKey = `waba:rate_limit:refill:${phoneNumberId}`;
     const limit = 80;
     const intervalMs = 1000;
-    
+
     // LUA script to handle atomic Token Bucket evaluation
     const rateLimitScript = `
       local bucketKey = KEYS[1]
@@ -219,7 +221,7 @@ export class CampaignWorker implements OnModuleInit, OnModuleDestroy {
 
     while (allowed === 0) {
       const now = Date.now();
-      
+
       // Execute the Lua script atomically on Redis
       allowed = await redis.eval(
         rateLimitScript,

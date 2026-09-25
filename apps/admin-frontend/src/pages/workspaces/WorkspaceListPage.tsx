@@ -47,11 +47,14 @@ export const WorkspaceListPage: React.FC = () => {
         method: 'POST',
         body: JSON.stringify({ reasonCode: 'Support Investigation' }),
       });
-      alert(`Impersonation Token generated for ${name}! Redirecting...`);
+      const token = res.impersonationToken || res.data?.impersonationToken;
+      const targetWs = res.targetWorkspace || res.data?.targetWorkspace || { id, name };
+      if (!token) {
+        throw new Error('Impersonation token was not returned by API');
+      }
 
-      // Redirect to the tenant frontend (assuming it runs on port 3001)
-      const tenantUrl = import.meta.env.VITE_TENANT_APP_URL || `http://${window.location.hostname}:5173`;
-      const redirectUrl = `${tenantUrl}/auth/admin-impersonation?token=${res.data.impersonationToken}&redirect=/admin/dashboard`;
+      const tenantUrl = (import.meta.env.VITE_TENANT_APP_URL as string) || `http://${window.location.hostname}:5173`;
+      const redirectUrl = `${tenantUrl}/auth/admin-impersonation?token=${encodeURIComponent(token)}&workspace=${encodeURIComponent(JSON.stringify(targetWs))}`;
 
       window.location.href = redirectUrl;
     } catch (err: any) {

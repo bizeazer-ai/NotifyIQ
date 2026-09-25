@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Query, Headers, Req, Res, HttpCode, HttpStatus, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Query, Headers, Req, Res, HttpCode, HttpStatus, UnauthorizedException, BadRequestException, InternalServerErrorException } from '@nestjs/common';
 import type { Response } from 'express';
 import { env } from '@notifyiq/config';
 import { verifyMetaSignature } from '../lib/utils/metaSignature.js';

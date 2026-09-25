@@ -72,6 +72,29 @@ export default function WabaProfilePage() {
   const [newCountryCode, setNewCountryCode] = useState('91');
   const [registeringPhone, setRegisteringPhone] = useState(false);
 
+  // Disconnect Modal state
+  const [showDisconnectModal, setShowDisconnectModal] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(false);
+
+  const handleDisconnectWaba = async () => {
+    setDisconnecting(true);
+    setStatusMessage('Disconnecting Meta WABA Account...');
+    try {
+      await apiClient.post('/api/waba/disconnect');
+      setStatus({ isConnected: false, businessAccountId: null, phoneNumberId: null });
+      setPhoneNumbers([]);
+      setSelectedPhoneId('');
+      setShowDisconnectModal(false);
+      setStatusMessage('Meta WABA account disconnected successfully!');
+      setTimeout(() => setStatusMessage(''), 4000);
+    } catch (err: any) {
+      setStatusMessage(`Failed to disconnect WABA: ${err.message || 'Unknown error'}`);
+    } finally {
+      setDisconnecting(false);
+    }
+  };
+
+
   const loadData = async () => {
     setLoading(true);
     setError(null);
@@ -231,13 +254,23 @@ export default function WabaProfilePage() {
                     </p>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
                     <button className="btn btn-primary btn-sm" onClick={() => setShowAddModal(true)}>
                       <Icon name="plus" size={12} />
                       <span>Add New Phone Number</span>
                     </button>
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      style={{ color: 'var(--color-error, #ef4444)', borderColor: 'var(--color-error, #ef4444)' }}
+                      onClick={() => setShowDisconnectModal(true)}
+                    >
+                      <Icon name="close" size={12} />
+                      <span>Disconnect WABA</span>
+                    </button>
+
                     <span className="badge badge-success">✓ CONNECTED & VERIFIED</span>
                   </div>
+
                 </div>
 
                 <div style={{
@@ -359,6 +392,40 @@ export default function WabaProfilePage() {
               </div>
             </div>
           )}
+
+          {/* Modal Dialog for Disconnecting Meta WABA Account */}
+          {showDisconnectModal && (
+            <div className="modal-overlay">
+              <div className="modal-card" style={{ maxWidth: '440px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-4)' }}>
+                  <h3 className="modal-title" style={{ marginBottom: 0, color: 'var(--color-error, #ef4444)' }}>
+                    Disconnect Meta WABA Account?
+                  </h3>
+                  <button className="btn btn-ghost btn-sm" onClick={() => setShowDisconnectModal(false)}>✕</button>
+                </div>
+
+                <p className="text-secondary" style={{ fontSize: 'var(--text-sm)', marginBottom: 'var(--space-5)', lineHeight: '1.5' }}>
+                  Are you sure you want to disconnect your Meta WhatsApp Business Account? Incoming webhooks and outbound messaging will stop working for this workspace until you reconnect.
+                </p>
+
+                <div className="modal-actions">
+                  <button type="button" className="btn btn-secondary" onClick={() => setShowDisconnectModal(false)} disabled={disconnecting}>
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-danger"
+                    onClick={handleDisconnectWaba}
+                    disabled={disconnecting}
+                    style={{ backgroundColor: 'var(--color-error, #ef4444)', color: '#ffffff', border: 'none' }}
+                  >
+                    {disconnecting ? 'Disconnecting...' : 'Yes, Disconnect Account'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
 
           {/* WABA Business Profile Editor */}
           <div className="section-card" style={{ maxWidth: '800px', marginBottom: 'var(--space-8)' }}>

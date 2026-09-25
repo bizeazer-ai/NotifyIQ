@@ -81,23 +81,16 @@ export class FlowsService {
   async updateFlow(
     workspaceId: string,
     flowId: string,
-    dto: { name?: string; description?: string; nodes?: any[]; edges?: any[]; active?: boolean },
+    dto: { name?: string; description?: string; nodes?: any[]; edges?: any[]; active?: boolean; priority?: number },
   ): Promise<FlowDocument> {
     const flow = await this.getFlowById(workspaceId, flowId);
-
-    if (dto.active === true) {
-      // Enforce single active flow policy per workspace
-      await this.flowModel.updateMany(
-        { workspaceId, _id: { $ne: flowId } },
-        { $set: { active: false } },
-      );
-    }
 
     if (dto.name !== undefined) flow.name = dto.name;
     if (dto.description !== undefined) flow.description = dto.description;
     if (dto.nodes !== undefined) flow.nodes = dto.nodes;
     if (dto.edges !== undefined) flow.edges = dto.edges;
     if (dto.active !== undefined) flow.active = dto.active;
+    if (dto.priority !== undefined) flow.priority = dto.priority;
 
     await flow.save();
     return flow;
@@ -105,12 +98,6 @@ export class FlowsService {
 
   async toggleFlowActive(workspaceId: string, flowId: string, active: boolean): Promise<FlowDocument> {
     const flow = await this.getFlowById(workspaceId, flowId);
-    if (active) {
-      await this.flowModel.updateMany(
-        { workspaceId, _id: { $ne: flowId } },
-        { $set: { active: false } },
-      );
-    }
     flow.active = active;
     await flow.save();
     return flow;

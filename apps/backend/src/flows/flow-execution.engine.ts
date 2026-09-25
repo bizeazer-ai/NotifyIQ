@@ -7,6 +7,7 @@ import { Contact, ContactDocument } from '../database/schemas/contact.schema.js'
 import { Conversation, ConversationDocument } from '../database/schemas/conversation.schema.js';
 import { SocketGateway } from '../socket/socket.gateway.js';
 import { RagService } from '../ai/rag.service.js';
+import { MessagesService } from '../messages/messages.service.js';
 
 export interface FlowExecutionResult {
   executed: boolean;
@@ -29,7 +30,9 @@ export class FlowExecutionEngine {
     @InjectModel(Conversation.name) private readonly conversationModel: Model<ConversationDocument>,
     private readonly socketGateway: SocketGateway,
     private readonly ragService: RagService,
-  ) {}
+    private readonly messagesService: MessagesService,
+  ) { }
+
 
   /**
    * Evaluates and executes active flow graph for an inbound message
@@ -41,30 +44,63 @@ export class FlowExecutionEngine {
     messageBody: string,
     sentiment: string = 'neutral',
   ): Promise<FlowExecutionResult> {
-    const flow = await this.flowModel.findOne({ workspaceId, active: true });
-    if (!flow || !flow.nodes || flow.nodes.length === 0) {
+    const activeFlows = await this.flowModel
+      .find({ workspaceId, active: true })
+      .sort({ priority: -1, createdAt: -1 });
+
+    console.log("ActiveFlows: ", activeFlows);
+
+    if (!activeFlows || activeFlows.length === 0) {
       return { executed: false, reason: 'no_active_flow' };
     }
 
-    const triggerNodes = flow.nodes.filter((n: any) => n.type === 'trigger');
-    if (triggerNodes.length === 0) {
-      return { executed: false, reason: 'no_trigger_node' };
-    }
+    let targetFlow: FlowDocument | null = null;
+    let matchedTriggerNode: any = null;
 
-    // Determine matching trigger node
-    let matchedTrigger = triggerNodes.find((tn: any) => {
-      const config = tn.data || {};
-      if (config.triggerType === 'keyword' && Array.isArray(config.keywords) && config.keywords.length > 0) {
-        return config.keywords.some((kw: string) =>
-          messageBody.toLowerCase().includes(kw.trim().toLowerCase())
-        );
+    // 1. Pass 1: Look for explicit keyword / button match across active flows
+    for (const flowItem of activeFlows) {
+      console.log("flow items: ", flowItem);
+      if (!flowItem.nodes || flowItem.nodes.length === 0) continue;
+      const triggers = flowItem.nodes.filter((n: any) => n.type === 'trigger');
+
+      for (const tn of triggers) {
+        const config = tn.data || {};
+        console.log("config: ", config)
+        if (config.triggerType === 'keyword' && Array.isArray(config.keywords) && config.keywords.length > 0) {
+          const isKeywordMatched = config.keywords.some((kw: string) =>
+            messageBody.toLowerCase().includes(kw.trim().toLowerCase())
+          );
+          if (isKeywordMatched) {
+            targetFlow = flowItem;
+            matchedTriggerNode = tn;
+            break;
+          }
+        }
       }
-      return true; // Default matches any inbound message
-    });
-
-    if (!matchedTrigger) {
-      matchedTrigger = triggerNodes[0];
+      if (targetFlow) break;
     }
+
+    // 2. Pass 2: If no explicit keyword matched, find default catch-all active flow
+    if (!targetFlow) {
+      for (const flowItem of activeFlows) {
+        if (!flowItem.nodes || flowItem.nodes.length === 0) continue;
+        const defaultTrigger = flowItem.nodes.find(
+          (n: any) => n.type === 'trigger' && (n.data?.triggerType === 'any_message' || !n.data?.keywords?.length)
+        );
+        if (defaultTrigger) {
+          targetFlow = flowItem;
+          matchedTriggerNode = defaultTrigger;
+          break;
+        }
+      }
+    }
+
+    if (!targetFlow || !matchedTriggerNode) {
+      return { executed: false, reason: 'no_matching_trigger' };
+    }
+
+    const flow = targetFlow;
+    const matchedTrigger = matchedTriggerNode;
 
     const visitedNodes = new Set<string>();
     const executionLog: Array<{ nodeId: string; type: string; label: string; detail?: string }> = [];
@@ -123,23 +159,18 @@ export class FlowExecutionEngine {
         }
 
         case 'send_message': {
+          console.log("current node data: ", currentNode.data);
           const config = currentNode.data || {};
           const msgText = config.messageText || config.label || 'Thank you for contacting us!';
 
-          const createdMsg = await this.messageModel.create({
-            workspaceId,
-            conversationId: conversation._id.toString(),
-            waMessageId: `flow_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-            direction: 'outbound',
-            type: 'text',
-            status: 'delivered',
-            body: msgText,
-          });
-
-          this.socketGateway.emitToWorkspace(workspaceId, 'message.sent', {
-            message: createdMsg,
-            conversation,
-          });
+          try {
+            await this.messagesService.sendTextMessage(workspaceId, {
+              to: contact.phone,
+              body: msgText,
+            });
+          } catch (err: any) {
+            this.logger.error(`Failed to dispatch Meta WhatsApp message for flow node ${currentNode.id}: ${err.message}`);
+          }
 
           actionsTaken.push(`sent_message: ${msgText}`);
           executionLog.push({
@@ -168,20 +199,14 @@ export class FlowExecutionEngine {
             }
           }
 
-          const aiMsg = await this.messageModel.create({
-            workspaceId,
-            conversationId: conversation._id.toString(),
-            waMessageId: `flow_ai_${Date.now()}`,
-            direction: 'outbound',
-            type: 'text',
-            status: 'delivered',
-            body: answerText,
-          });
-
-          this.socketGateway.emitToWorkspace(workspaceId, 'message.sent', {
-            message: aiMsg,
-            conversation,
-          });
+          try {
+            await this.messagesService.sendTextMessage(workspaceId, {
+              to: contact.phone,
+              body: answerText,
+            });
+          } catch (err: any) {
+            this.logger.error(`Failed to dispatch Meta WhatsApp AI response for flow node ${currentNode.id}: ${err.message}`);
+          }
 
           actionsTaken.push(`ai_respond: ${answerText}`);
           executionLog.push({
@@ -194,6 +219,7 @@ export class FlowExecutionEngine {
           currentNodeId = this.getNextNodeId(flow, currentNode.id, null);
           break;
         }
+
 
         case 'action': {
           const config = currentNode.data || {};

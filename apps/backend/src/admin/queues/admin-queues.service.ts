@@ -103,17 +103,53 @@ export class AdminQueuesService {
 
   async retryFailed(queueName: string) {
     this.logger.log(`[AdminQueuesService] Retrying failed jobs for queue '${queueName}'`);
+    if (!this.queueCache.has(queueName)) {
+      const redisHost = (env as any).REDIS_HOST || 'localhost';
+      const redisPort = parseInt((env as any).REDIS_PORT || '6379', 10);
+      if (!this.redisConnection) {
+        this.redisConnection = new IORedis({
+          host: redisHost,
+          port: redisPort,
+          password: (env as any).REDIS_PASSWORD || undefined,
+          maxRetriesPerRequest: null,
+        });
+      }
+      this.queueCache.set(queueName, new Queue(queueName, { connection: this.redisConnection }));
+    }
+    const queue = this.queueCache.get(queueName)!;
+    const failedJobs = await queue.getFailed();
+    await Promise.all(failedJobs.map((job) => job.retry()));
+
     return {
       success: true,
-      message: `Retried failed jobs for queue '${queueName}'`,
+      retriedCount: failedJobs.length,
+      message: `Successfully retried ${failedJobs.length} failed jobs in queue '${queueName}'`,
     };
   }
 
   async cleanQueue(queueName: string) {
-    this.logger.log(`[AdminQueuesService] Cleaning queue '${queueName}'`);
+    this.logger.log(`[AdminQueuesService] Purging completed and failed jobs for queue '${queueName}'`);
+    if (!this.queueCache.has(queueName)) {
+      const redisHost = (env as any).REDIS_HOST || 'localhost';
+      const redisPort = parseInt((env as any).REDIS_PORT || '6379', 10);
+      if (!this.redisConnection) {
+        this.redisConnection = new IORedis({
+          host: redisHost,
+          port: redisPort,
+          password: (env as any).REDIS_PASSWORD || undefined,
+          maxRetriesPerRequest: null,
+        });
+      }
+      this.queueCache.set(queueName, new Queue(queueName, { connection: this.redisConnection }));
+    }
+    const queue = this.queueCache.get(queueName)!;
+    const cleanedCompleted = await queue.clean(0, 1000, 'completed');
+    const cleanedFailed = await queue.clean(0, 1000, 'failed');
+
     return {
       success: true,
-      message: `Cleaned completed/failed jobs for queue '${queueName}'`,
+      cleanedCount: cleanedCompleted.length + cleanedFailed.length,
+      message: `Purged ${cleanedCompleted.length} completed and ${cleanedFailed.length} failed jobs from queue '${queueName}'`,
     };
   }
 }

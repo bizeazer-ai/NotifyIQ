@@ -22,10 +22,13 @@ export class Flow {
 
   @Prop({ type: Boolean, default: false })
   active: boolean;
+
+  @Prop({ type: Number, default: 10 })
+  priority: number;
 }
 
 export const FlowSchema = SchemaFactory.createForClass(Flow);
 
 FlowSchema.index({ workspaceId: 1 });
-FlowSchema.index({ workspaceId: 1, active: 1 });
+FlowSchema.index({ workspaceId: 1, active: 1, priority: -1 });
 

@@ -12,7 +12,7 @@ export const AgencyTreePage: React.FC = () => {
     const fetchTree = async () => {
       try {
         const data = await adminFetch('/api/admin/workspaces/agency-tree');
-        setAgencies(data.data || []);
+        setAgencies(Array.isArray(data) ? data : data.data || []);
       } catch (err: any) {
         setError(err.message || 'Failed to load agency hierarchy');
       } finally {

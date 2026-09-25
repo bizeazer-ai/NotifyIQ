@@ -146,7 +146,7 @@ export class WebhookWorker implements OnModuleInit, OnModuleDestroy {
                       { messageId: createdMsg._id.toString(), mediaId: msg.audio?.id }
                     );
                   }
-
+                  console.log("Conversation sentiment", conversation.sentiment);
                   // C. Evaluate Active Automation Flow Engine (with Auto-Reply Fallback)
                   if (messageBody) {
                     this.flowExecutionEngine

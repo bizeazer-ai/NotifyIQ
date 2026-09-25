@@ -35,7 +35,6 @@ export const Admin2FAPage: React.FC = () => {
   const submittingRef = useRef(false);
 
   useEffect(() => {
-    debugger
     if (!challengeToken) {
       navigate('/login', { replace: true });
     }
@@ -67,15 +66,16 @@ export const Admin2FAPage: React.FC = () => {
           code: normalizedCode,
         }),
       });
+      const data = res.data || res;
 
       localStorage.setItem(
         ADMIN_TOKEN_KEY,
-        res.data.accessToken,
+        data.accessToken,
       );
 
       localStorage.setItem(
         ADMIN_USER_KEY,
-        JSON.stringify(res.data.admin),
+        JSON.stringify(data.admin),
       );
 
       navigate('/dashboard', {

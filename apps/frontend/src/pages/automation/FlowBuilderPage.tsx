@@ -113,7 +113,6 @@ export default function FlowBuilderPage() {
         setFlows((prev) =>
           prev.map((f) => {
             if (f._id === updatedFlow._id) return updatedFlow;
-            if (newActiveState) return { ...f, active: false }; // Enforce single active flow in local state
             return f;
           })
         );
@@ -210,6 +209,50 @@ export default function FlowBuilderPage() {
 
   const handleMouseUp = () => {
     setDraggingNodeId(null);
+  };
+
+  const handlePaletteDragStart = (e: React.DragEvent<HTMLDivElement>, type: string) => {
+    e.dataTransfer.setData('text/plain', type);
+    e.dataTransfer.effectAllowed = 'copy';
+  };
+
+  const handleCanvasDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  };
+
+  const handleCanvasDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    if (!activeFlow || !canvasRef.current) return;
+    const type = e.dataTransfer.getData('text/plain');
+    if (!type) return;
+
+    const rect = canvasRef.current.getBoundingClientRect();
+    const dropX = Math.max(10, Math.min(1400, e.clientX - rect.left - 80));
+    const dropY = Math.max(10, Math.min(900, e.clientY - rect.top - 30));
+
+    const newId = String(Date.now()).slice(-4);
+    const typeObj = NODE_TYPES.find((t) => t.type === type);
+    const newNode: FlowNode = {
+      id: newId,
+      type: type as any,
+      data: {
+        label: `${typeObj?.label || 'Node'} ${newId}`,
+        ...(type === 'trigger' ? { triggerType: 'keyword', keywords: ['hello', 'help'] } : {}),
+        ...(type === 'condition' ? { conditionType: 'sentiment', value: 'positive' } : {}),
+        ...(type === 'send_message' ? { messageText: 'Hello! How can we help you today?' } : {}),
+        ...(type === 'ai_respond' ? { useKnowledgeBase: true, systemPrompt: 'Be a polite support agent.' } : {}),
+        ...(type === 'action' ? { actionType: 'add_tag', tagName: 'lead' } : {}),
+        ...(type === 'human_handoff' ? { reason: 'Requires manual assistance' } : {}),
+      },
+      position: { x: dropX, y: dropY },
+    };
+
+    setActiveFlow({
+      ...activeFlow,
+      nodes: [...activeFlow.nodes, newNode],
+    });
+    setSelectedNodeId(newId);
   };
 
   const handleAddNode = (type: string) => {
@@ -622,13 +665,15 @@ export default function FlowBuilderPage() {
             {NODE_TYPES.map((nt) => (
               <div
                 key={nt.type}
+                draggable
+                onDragStart={(e) => handlePaletteDragStart(e, nt.type)}
                 onClick={() => handleAddNode(nt.type)}
                 style={{
                   padding: '10px 12px',
                   borderRadius: '8px',
                   backgroundColor: 'var(--bg-tertiary)',
                   border: '1px solid var(--border-color)',
-                  cursor: 'pointer',
+                  cursor: 'grab',
                   transition: 'all 0.15s ease',
                   display: 'flex',
                   flexDirection: 'column',
@@ -650,6 +695,8 @@ export default function FlowBuilderPage() {
           ref={canvasRef}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
+          onDragOver={handleCanvasDragOver}
+          onDrop={handleCanvasDrop}
           onClick={() => {
             setSelectedNodeId(null);
             setSelectedEdgeId(null);

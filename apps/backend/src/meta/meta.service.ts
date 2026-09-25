@@ -81,6 +81,7 @@ export class MetaService {
     let permanentToken = `mock_perm_token_${crypto.randomBytes(12).toString('hex')}`;
     let phoneNumberId = `mock_phone_id_${Date.now()}`;
     let businessAccountId = `mock_waba_id_${Date.now()}`;
+    console.log("[META SERVICE] handleEmbeddedSignupCallback", isMock, workspaceId, code, userId);
 
     if (!isMock && env.META_APP_ID && env.META_APP_SECRET) {
       try {
@@ -97,6 +98,8 @@ export class MetaService {
 
         permanentToken = data.access_token;
 
+        console.log("[RECEIVED PERMANENT TOKEN] ", permanentToken);
+
         // 2. Query attached WABA assets
         const debugUrl = `https://graph.facebook.com/v20.0/debug_token?input_token=${permanentToken}&access_token=${env.META_APP_ID}|${env.META_APP_SECRET}`;
         const debugRes = await fetch(debugUrl);
@@ -109,6 +112,8 @@ export class MetaService {
           }
         }
 
+        console.log("[BUSINESS ACCOUNT ID]", businessAccountId);
+
         // 3. Query phone numbers list attached to WABA and default to first available
         if (businessAccountId && !businessAccountId.startsWith('mock_')) {
           const phoneUrl = `https://graph.facebook.com/v20.0/${businessAccountId}/phone_numbers?access_token=${permanentToken}`;
@@ -120,6 +125,7 @@ export class MetaService {
           }
         }
       } catch (err: any) {
+        console.error(err);
         this.logger.error(`[MetaService] Embedded signup exchange failed: ${err.message}`);
       }
     }
@@ -189,6 +195,49 @@ export class MetaService {
   }
 
   /**
+   * Disconnects WABA account from workspace
+   */
+  async disconnectWaba(workspaceId: string, userId?: string): Promise<{ success: boolean }> {
+    const workspace = await this.workspaceModel.findById(workspaceId);
+    if (!workspace || !workspace.waba) {
+      return { success: true };
+    }
+
+    const phoneNumberId = workspace.waba.phoneNumberId;
+    const businessAccountId = workspace.waba.businessAccountId;
+    // const token = workspace.waba.accessToken ? decrypt(workspace.waba.accessToken) : '';
+    const token = env.META_ACCESS_TOKEN;
+    const isMock = process.env.MOCK_SERVICES === 'true';
+
+    if (!isMock && token && phoneNumberId) {
+      try {
+        const unsubscribeUrl = `https://graph.facebook.com/v20.0/${phoneNumberId}/subscribed_apps`;
+        await fetch(unsubscribeUrl, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      } catch (err: any) {
+        this.logger.warn(`[MetaService] Unsubscribe app on disconnect warning: ${err.message}`);
+      }
+    }
+
+    workspace.waba = null;
+    await workspace.save();
+
+    await this.auditLogModel.create({
+      workspaceId: workspace._id.toString(),
+      userId: userId || null,
+      action: 'waba.disconnect',
+      resource: 'Workspace',
+      resourceId: workspace._id.toString(),
+      details: { phoneNumberId, businessAccountId },
+    });
+
+    return { success: true };
+  }
+
+
+  /**
    * Fetch WABA Profile via Meta Graph API v20.0
    */
   async getWabaProfile(workspaceId: string): Promise<WabaProfileDto> {
@@ -204,7 +253,8 @@ export class MetaService {
       };
     }
 
-    const token = decrypt(workspace.waba.accessToken);
+    // const token = decrypt(workspace.waba.accessToken);
+    const token = env.META_ACCESS_TOKEN;
     const phoneId = workspace.waba.phoneNumberId;
 
     try {
@@ -247,7 +297,8 @@ export class MetaService {
       return { success: true };
     }
 
-    const token = decrypt(workspace.waba.accessToken);
+    // const token = decrypt(workspace.waba.accessToken);
+    const token = env.META_ACCESS_TOKEN;
     const phoneId = workspace.waba.phoneNumberId;
 
     try {
@@ -273,7 +324,8 @@ export class MetaService {
       return [];
     }
 
-    const token = decrypt(workspace.waba.accessToken);
+    // const token = decrypt(workspace.waba.accessToken);
+    const token = env.META_ACCESS_TOKEN;
     const wabaId = workspace.waba.businessAccountId;
 
     try {
@@ -301,7 +353,8 @@ export class MetaService {
     }
 
     const templateId = `tpl_${Date.now()}`;
-    const token = decrypt(workspace.waba.accessToken);
+    // const token = decrypt(workspace.waba.accessToken);
+    const token = env.META_ACCESS_TOKEN;
     const wabaId = workspace.waba.businessAccountId;
     const isMock = process.env.MOCK_SERVICES === 'true';
 
@@ -360,7 +413,8 @@ export class MetaService {
     const workspace = await this.workspaceModel.findById(workspaceId);
 
     if (workspace && workspace.waba?.accessToken && workspace.waba?.businessAccountId) {
-      const token = decrypt(workspace.waba.accessToken);
+      // const token = decrypt(workspace.waba.accessToken);
+      const token = env.META_ACCESS_TOKEN;
       const wabaId = workspace.waba.businessAccountId;
 
       try {
@@ -398,7 +452,8 @@ export class MetaService {
     }
 
     const isMock = process.env.MOCK_SERVICES === 'true';
-    const token = decrypt(workspace.waba.accessToken);
+    // const token = decrypt(workspace.waba.accessToken);
+    const token = env.META_ACCESS_TOKEN;
     const wabaId = workspace.waba.businessAccountId;
 
     if (!isMock && !wabaId.startsWith('mock_')) {

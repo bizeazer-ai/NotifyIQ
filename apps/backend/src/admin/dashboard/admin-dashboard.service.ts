@@ -76,10 +76,10 @@ export class AdminDashboardService {
         planBreakdown: planBreakdown.map((p) => ({ plan: p._id || 'standard', count: p.count })),
       },
       systemHealth: {
-        status: 'operational',
-        uptimePercentage: 99.98,
+        status: this.workspaceModel.db.readyState === 1 ? 'operational' : 'degraded',
+        uptimeSeconds: Math.floor(process.uptime()),
         redisConnected: true,
-        mongoConnected: true,
+        mongoConnected: this.workspaceModel.db.readyState === 1,
       },
     };
   }

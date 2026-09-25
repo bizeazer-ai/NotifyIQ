@@ -18,6 +18,8 @@ const WabaProfilePage = lazy(() => import('../pages/settings/WabaProfilePage'));
 const TemplateBuilderPage = lazy(() => import('../pages/campaigns/TemplateBuilderPage'));
 const NotFoundPage = lazy(() => import('../pages/errors/NotFoundPage'));
 
+const AdminImpersonationPage = lazy(() => import('../pages/auth/AdminImpersonationPage'));
+
 const PageLoader = () => (
   <div style={{ padding: '40px', color: 'var(--text-muted)', textAlign: 'center' }}>
     Loading Page...
@@ -39,6 +41,14 @@ export const router = createBrowserRouter([
     element: (
       <Suspense fallback={<PageLoader />}>
         <RegisterPage />
+      </Suspense>
+    ),
+  },
+  {
+    path: '/auth/admin-impersonation',
+    element: (
+      <Suspense fallback={<PageLoader />}>
+        <AdminImpersonationPage />
       </Suspense>
     ),
   },

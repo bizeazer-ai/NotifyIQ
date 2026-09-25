@@ -29,7 +29,6 @@ const navItems = [
 export const AdminSidebar: React.FC = () => {
   const navigate = useNavigate();
   const userJson = localStorage.getItem(ADMIN_USER_KEY);
-  debugger
   const adminUser = userJson !== "undefined" ? JSON.parse(userJson || "{}") : null;
 
   const handleLogout = async () => {

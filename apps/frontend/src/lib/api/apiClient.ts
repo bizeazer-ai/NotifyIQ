@@ -19,7 +19,7 @@ export class ApiError extends Error {
 async function request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
   const { params, headers, ...customOptions } = options;
 
-  let url = `${config.apiUrl}${endpoint}`;
+  let url = endpoint?.startsWith("https://") ? endpoint : `${config.apiUrl}${endpoint}`;
   if (params) {
     const searchParams = new URLSearchParams(params);
     url += `?${searchParams.toString()}`;

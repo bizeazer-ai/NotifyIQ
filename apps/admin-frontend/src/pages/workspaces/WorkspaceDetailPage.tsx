@@ -15,9 +15,9 @@ export const WorkspaceDetailPage: React.FC = () => {
     setError('');
     try {
       const res = await adminFetch(`/api/admin/workspaces/${id}`);
-      setData(res.data);
+      setData(res.data || res);
     } catch (err: any) {
-      setError(err.message || 'Failed to fetch workspace profile');
+      setError(err.message || 'Failed to load workspace profile');
     } finally {
       setLoading(false);
     }
@@ -34,7 +34,16 @@ export const WorkspaceDetailPage: React.FC = () => {
         method: 'POST',
         body: JSON.stringify({ reasonCode: '360 Support Investigation' }),
       });
-      alert(`Impersonation Session Started!\nToken: ${res.data.impersonationToken.substring(0, 30)}...`);
+      const token = res.impersonationToken || res.data?.impersonationToken;
+      const targetWs = res.targetWorkspace || res.data?.targetWorkspace || { id: data.workspace.id, name: data.workspace.name };
+      if (!token) {
+        throw new Error('Impersonation token was not returned by API');
+      }
+
+      const tenantUrl = (import.meta.env.VITE_TENANT_APP_URL as string) || `http://${window.location.hostname}:5173`;
+      const redirectUrl = `${tenantUrl}/auth/admin-impersonation?token=${encodeURIComponent(token)}&workspace=${encodeURIComponent(JSON.stringify(targetWs))}`;
+
+      window.location.href = redirectUrl;
     } catch (err: any) {
       alert(err.message || 'Impersonation failed');
     }

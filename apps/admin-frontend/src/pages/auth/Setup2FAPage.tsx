@@ -26,9 +26,10 @@ export const Setup2FAPage: React.FC = () => {
           method: 'POST',
           body: JSON.stringify({ challengeToken: state.challengeToken }),
         });
-        setQrCode(res.data.qrCode);
-        setSecret(res.data.secret);
-        setBackupCodes(res.data.backupCodes || []);
+        const data = res.data || res;
+        setQrCode(data.qrCode);
+        setSecret(data.secret);
+        setBackupCodes(data.backupCodes || []);
       } catch (err: any) {
         setError(err.message || 'Failed to initialize 2FA setup');
       } finally {

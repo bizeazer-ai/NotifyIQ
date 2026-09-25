@@ -23,15 +23,16 @@ export const AdminLoginPage: React.FC = () => {
         method: 'POST',
         body: JSON.stringify({ email, password }),
       });
+      const data = res.data || res;
 
-      if (res.data.requires2FASetup) {
-        navigate('/setup-2fa', { state: { challengeToken: res.data.challengeToken, email } });
+      if (data.requires2FASetup) {
+        navigate('/setup-2fa', { state: { challengeToken: data.challengeToken, email } });
         return;
       }
 
-      if (res.data.requires2FA) {
-        setChallengeToken(res.data.challengeToken);
-        navigate('/verify-2fa', { state: { challengeToken: res.data.challengeToken, email } })
+      if (data.requires2FA) {
+        setChallengeToken(data.challengeToken);
+        navigate('/verify-2fa', { state: { challengeToken: data.challengeToken, email } });
         setStep('2fa');
       }
     } catch (err: any) {
@@ -51,9 +52,10 @@ export const AdminLoginPage: React.FC = () => {
         method: 'POST',
         body: JSON.stringify({ challengeToken, code }),
       });
+      const data = res.data || res;
 
-      localStorage.setItem(ADMIN_TOKEN_KEY, res.data.accessToken);
-      localStorage.setItem(ADMIN_USER_KEY, JSON.stringify(res.data.admin));
+      localStorage.setItem(ADMIN_TOKEN_KEY, data.accessToken);
+      localStorage.setItem(ADMIN_USER_KEY, JSON.stringify(data.admin));
       navigate('/dashboard');
     } catch (err: any) {
       setError(err.message || '2FA verification failed');

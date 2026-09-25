@@ -16,7 +16,8 @@ export async function adminFetch<T = any>(
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const url = endpoint.startsWith('http') ? endpoint : endpoint;
+  const baseUrl = (import.meta.env?.VITE_API_URL as string) || '';
+  const url = endpoint.startsWith('http') ? endpoint : `${baseUrl}${endpoint}`;
 
   const response = await fetch(url, {
     ...options,

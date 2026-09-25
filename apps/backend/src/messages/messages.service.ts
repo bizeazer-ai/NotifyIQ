@@ -41,8 +41,10 @@ export class MessagesService {
     let decryptedToken = env.META_ACCESS_TOKEN;
     if (!isMock && waba.accessToken) {
       try {
-        decryptedToken = decrypt(waba.accessToken);
-      } catch {
+        // decryptedToken = decrypt(waba.accessToken);
+        console.log("decrypted token: ", decryptedToken);
+      } catch (err) {
+        console.error(err);
         decryptedToken = env.META_ACCESS_TOKEN;
       }
     }

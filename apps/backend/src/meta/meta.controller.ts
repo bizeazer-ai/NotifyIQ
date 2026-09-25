@@ -31,6 +31,20 @@ export class MetaController {
     };
   }
 
+  @Post('disconnect')
+  @UseGuards(AuthGuard, WorkspaceGuard)
+  async disconnectWaba(@Req() req: AuthenticatedRequest) {
+    const workspaceId = req.workspaceId as string;
+    const userId = req.user?.userId;
+
+    const result = await this.metaService.disconnectWaba(workspaceId, userId);
+    return {
+      message: 'WABA account disconnected successfully',
+      data: result,
+    };
+  }
+
+
   @Post('embedded-signup/callback')
   @UseGuards(AuthGuard, WorkspaceGuard)
   async handleEmbeddedSignupCallback(

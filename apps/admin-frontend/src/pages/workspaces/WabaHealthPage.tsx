@@ -12,7 +12,7 @@ export const WabaHealthPage: React.FC = () => {
     setError('');
     try {
       const data = await adminFetch('/api/admin/workspaces/waba-health');
-      setWabas(data.data || []);
+      setWabas(Array.isArray(data) ? data : data.data || []);
     } catch (err: any) {
       setError(err.message || 'Failed to load WABA health records');
     } finally {
