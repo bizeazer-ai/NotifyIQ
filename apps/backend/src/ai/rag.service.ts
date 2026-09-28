@@ -6,6 +6,7 @@ import { GeminiService } from './gemini.service.js';
 import { DocumentParserService } from './document-parser.service.js';
 import { ChunkingService } from './chunking.service.js';
 import { Knowledge, KnowledgeDocument } from '../database/schemas/knowledge.schema.js';
+import { Conversation, ConversationDocument } from '../database/schemas/conversation.schema.js';
 import { WorkspacesService } from '../workspaces/workspaces.service.js';
 import { MessagesService } from '../messages/messages.service.js';
 
@@ -14,12 +15,14 @@ export class RagService {
   private readonly logger = new Logger(RagService.name);
   constructor(
     @InjectModel(Knowledge.name) private readonly knowledgeModel: Model<KnowledgeDocument>,
+    @InjectModel(Conversation.name) private readonly conversationModel: Model<ConversationDocument>,
     private readonly geminiService: GeminiService,
     private readonly messageService: MessagesService,
     private readonly workspaceService: WorkspacesService,
     private readonly documentParserService: DocumentParserService,
     private readonly chunkingService: ChunkingService,
   ) { }
+
 
   /**
    * Parses, chunks, vectorizes, and indexes multi-format documents (.pdf, .docx, .yaml, .json, .csv, .txt)
@@ -99,10 +102,36 @@ export class RagService {
   /**
    * Queries knowledge base via MongoDB Atlas Vector Search with Cosine Similarity Fallback Engine
    */
-  async queryKnowledgeBase(workspaceId: string, query: string): Promise<{ answer: string; sources: string[]; confidenceScore: number }> {
+  async queryKnowledgeBase(
+    workspaceId: string,
+    query: string,
+    conversationId?: string,
+  ): Promise<{ answer: string; sources: string[]; confidenceScore: number }> {
     this.logger.log(`[RagService] Querying knowledge base for: "${query}" in workspace: ${workspaceId}`);
     const autoReplySettings = await this.workspaceService.getAutoReplySettings(workspaceId);
-    const lastMessages = await this.messageService.getConversations(workspaceId)
+
+    // Fetch user summary & recent chat history context if conversationId is provided
+    let historyContextText = '';
+    if (conversationId) {
+      try {
+        const conversation = await this.conversationModel.findById(conversationId);
+        const userSummary = conversation?.summary;
+        const recentMsgs = await this.messageService.getMessageHistory(workspaceId, conversationId);
+        const last10 = recentMsgs.slice(-10);
+
+        const summaryBlock = userSummary ? `User Summary & Intent Context:\n"${userSummary}"\n\n` : '';
+        const historyBlock = last10.length > 0
+          ? 'Recent Conversation History (Last 10 Messages):\n' +
+            last10.map((m) => `${m.direction === 'inbound' ? 'Customer' : 'Assistant'}: ${m.body}`).join('\n')
+          : '';
+
+        historyContextText = `${summaryBlock}${historyBlock}`.trim();
+      } catch (err: any) {
+        this.logger.warn(`[RagService] Could not fetch chat history/summary for conversation ${conversationId}: ${err.message}`);
+      }
+    }
+
+
     const queryEmbedding = await this.geminiService.generateEmbedding(query);
     let contextDocs: Knowledge[] = [];
     let topConfidenceScore = 0.85;
@@ -133,7 +162,8 @@ export class RagService {
     }
 
     if (contextDocs.length === 0) {
-      const answer = await this.geminiService.generateCompletion(autoReplySettings.systemPrompt, query);
+      const fullPrompt = `${historyContextText ? historyContextText + '\n\n' : ''}User Question: ${query}`;
+      const answer = await this.geminiService.generateCompletion(autoReplySettings.systemPrompt, fullPrompt);
       return {
         answer: answer || "I couldn't find any relevant documents in the workspace knowledge base to answer your question.",
         sources: [],
@@ -146,11 +176,11 @@ export class RagService {
 
     let answer = '';
     try {
-      const systemInstruction = `You are an AI support assistant. You must answer the user question using ONLY the provided knowledge context.
+      const systemInstruction = `You are an AI support assistant. You must answer the user question using ONLY the provided knowledge context and conversation history.
 If the context does not contain enough information to answer the question, state that you do not know.
 Do NOT make up facts or use external knowledge. Always remain professional, grounded, and concise.`;
 
-      const prompt = `Context information:\n${contextText}\n\nUser Question: ${query}`;
+      const prompt = `${historyContextText ? historyContextText + '\n\n' : ''}Knowledge Base Context:\n${contextText}\n\nUser Question / Latest Message:\n${query}`;
       answer = await this.geminiService.generateCompletion(prompt, systemInstruction);
     } catch (err: any) {
       this.logger.error(`[RagService] Gemini completion failed: ${err.message}`);
@@ -163,6 +193,7 @@ Do NOT make up facts or use external knowledge. Always remain professional, grou
       confidenceScore: topConfidenceScore,
     };
   }
+
 
   /**
    * Exact Mathematical Cosine Similarity Search Engine (Dot Product / Magnitude)

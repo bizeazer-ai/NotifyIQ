@@ -69,6 +69,82 @@ Return JSON format: {"sentiment": "positive"|"neutral"|"negative"|"urgent"}.`;
     return sentiment;
   }
 
+  /**
+   * Evaluates sentiment & generates user summary for a conversation taking into account chat history + current message
+   */
+  async analyzeConversationSentiment(
+    workspaceId: string,
+    conversationId: string,
+    currentMessageText: string,
+  ): Promise<'positive' | 'neutral' | 'negative' | 'urgent'> {
+    let sentiment: 'positive' | 'neutral' | 'negative' | 'urgent' = 'neutral';
+    let userSummary: string | null = null;
+
+    const conversation = await this.conversationModel.findById(conversationId);
+    const existingSummary = conversation?.summary || '';
+
+    try {
+      // 1. Fetch last 15 messages of conversation for chat history context
+      const recentMessages = await this.messageModel
+        .find({ conversationId })
+        .sort({ createdAt: -1 })
+        .limit(15)
+        .exec();
+
+      const historyFormatted = recentMessages
+        .reverse()
+        .map((m) => `${m.direction === 'inbound' ? 'Customer' : 'Assistant'}: ${m.body}`)
+        .join('\n');
+
+      const sanitizedCurrent = currentMessageText.replace(/<[^>]*>/g, '').substring(0, 1000);
+
+      const systemInstruction = `You are a customer conversation intelligence AI.
+Analyze the customer's chat history and current message.
+1) Generate a concise 2-3 sentence summary of the customer's overall intent, background, ongoing questions/issues ("userSummary").
+2) Classify their overall sentiment strictly into one of: positive, neutral, negative, urgent ("sentiment").
+Return JSON format: {"userSummary": "...", "sentiment": "positive"|"neutral"|"negative"|"urgent"}.`;
+
+      const prompt = `Existing User Summary:\n${existingSummary || 'None'}\n\nRecent Chat History:\n${historyFormatted || 'No prior history'}\n\nCurrent Customer Message:\n"${sanitizedCurrent}"`;
+
+      const res = await this.geminiService.generateJson<{ userSummary?: string; sentiment?: string }>(prompt, systemInstruction);
+
+      if (res?.sentiment && ['positive', 'neutral', 'negative', 'urgent'].includes(res.sentiment.toLowerCase())) {
+        sentiment = res.sentiment.toLowerCase() as any;
+      } else {
+        sentiment = this.fallbackKeywordSentiment(sanitizedCurrent);
+      }
+
+      if (res?.userSummary) {
+        userSummary = res.userSummary.trim();
+      }
+    } catch (err: any) {
+      this.logger.warn(`[SentimentService] History-based sentiment analysis failed, falling back: ${err.message}`);
+      sentiment = this.fallbackKeywordSentiment(currentMessageText);
+    }
+
+    // 2. Update Conversation record in database with new sentiment and user summary
+    if (conversation) {
+      conversation.sentiment = sentiment;
+      if (userSummary) {
+        conversation.summary = userSummary;
+      }
+      await conversation.save();
+
+      if (sentiment === 'negative' || sentiment === 'urgent') {
+        this.logger.warn(`[SentimentService] Escalation triggered! Sentiment: ${sentiment} for workspace: ${workspaceId}`);
+        this.socketGateway.emitToWorkspace(workspaceId, 'escalation.alert', {
+          conversationId,
+          sentiment,
+          body: currentMessageText,
+          timestamp: new Date(),
+        });
+      }
+    }
+
+    return sentiment;
+  }
+
+
   private fallbackKeywordSentiment(text: string): 'positive' | 'neutral' | 'negative' | 'urgent' {
     const cleanText = text.toLowerCase();
     if (/\b(urgent|now|emergency|help|asap|critical|immediate|soon|fire|broken)\b/.test(cleanText)) return 'urgent';
@@ -77,3 +153,4 @@ Return JSON format: {"sentiment": "positive"|"neutral"|"negative"|"urgent"}.`;
     return 'neutral';
   }
 }
+

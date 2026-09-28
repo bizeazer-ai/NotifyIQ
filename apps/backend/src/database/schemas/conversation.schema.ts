@@ -19,7 +19,11 @@ export class Conversation {
 
   @Prop({ required: true, enum: ['positive', 'neutral', 'negative', 'urgent'], default: 'neutral' })
   sentiment: string;
+
+  @Prop({ type: String, default: null })
+  summary: string | null;
 }
+
 
 export const ConversationSchema = SchemaFactory.createForClass(Conversation);
 

@@ -14,10 +14,20 @@ import { Conversation, ConversationDocument } from '../../database/schemas/conve
 import { Message, MessageDocument } from '../../database/schemas/message.schema.js';
 import { decrypt } from '../../lib/utils/encryption.js';
 import { MessagesService } from '../../messages/messages.service.js';
+import { SentimentService } from '../../ai/sentiment.service.js';
+
+interface MessageDebounceBuffer {
+  workspace: WorkspaceDocument;
+  conversation: ConversationDocument;
+  contact: ContactDocument;
+  messages: string[];
+  timer: NodeJS.Timeout;
+}
 
 @Injectable()
 export class WebhookWorker implements OnModuleInit, OnModuleDestroy {
   private worker: Worker;
+  private debounceBuffers: Map<string, MessageDebounceBuffer> = new Map();
 
   constructor(
     private readonly redisService: RedisService,
@@ -26,11 +36,13 @@ export class WebhookWorker implements OnModuleInit, OnModuleDestroy {
     private readonly ragService: RagService,
     private readonly flowExecutionEngine: FlowExecutionEngine,
     private readonly messageService: MessagesService,
+    private readonly sentimentService: SentimentService,
     @InjectModel(Workspace.name) private readonly workspaceModel: Model<WorkspaceDocument>,
     @InjectModel(Contact.name) private readonly contactModel: Model<ContactDocument>,
     @InjectModel(Conversation.name) private readonly conversationModel: Model<ConversationDocument>,
     @InjectModel(Message.name) private readonly messageModel: Model<MessageDocument>,
   ) { }
+
 
 
   onModuleInit() {
@@ -89,6 +101,8 @@ export class WebhookWorker implements OnModuleInit, OnModuleDestroy {
                   phoneNumberId,
                 });
 
+                
+
                 if (!conversation) {
                   conversation = await this.conversationModel.create({
                     workspaceId: workspace._id.toString(),
@@ -131,14 +145,6 @@ export class WebhookWorker implements OnModuleInit, OnModuleDestroy {
                     conversation,
                   });
 
-                  if (workspace.aiSettings?.sentimentAnalysisEnabled && msg.type === 'text' && messageBody) {
-                    await this.queueService.addJob(
-                      QueueName.SENTIMENT_ANALYSIS,
-                      'analyze-sentiment',
-                      { messageId: createdMsg._id.toString(), text: messageBody }
-                    );
-                  }
-
                   if (workspace.aiSettings?.voiceTranscriptionEnabled && msg.type === 'audio') {
                     await this.queueService.addJob(
                       QueueName.AUDIO_PROCESSOR,
@@ -146,30 +152,10 @@ export class WebhookWorker implements OnModuleInit, OnModuleDestroy {
                       { messageId: createdMsg._id.toString(), mediaId: msg.audio?.id }
                     );
                   }
-                  console.log("Conversation sentiment", conversation.sentiment);
-                  // C. Evaluate Active Automation Flow Engine (with Auto-Reply Fallback)
+
+                  // C. Evaluate Active Automation Flow Engine with Debouncing & History-Aware Sentiment Analysis
                   if (messageBody) {
-                    this.flowExecutionEngine
-                      .executeFlowForInboundMessage(
-                        workspace._id.toString(),
-                        conversation,
-                        contact,
-                        messageBody,
-                        conversation.sentiment || 'neutral',
-                      )
-                      .then((flowResult) => {
-                        if (flowResult.executed) {
-                          console.log(
-                            `[WebhookWorker] Active Flow "${flowResult.flowName}" (${flowResult.flowId}) executed. Actions:`,
-                            flowResult.actionsTaken,
-                          );
-                        } else if (workspace.autoReplySettings?.enabled) {
-                          this.evaluateAndExecuteAutoReply(workspace, conversation, contact, messageBody).catch((err) =>
-                            console.error('[WebhookWorker] Auto-reply evaluation failed:', err.message),
-                          );
-                        }
-                      })
-                      .catch((err) => console.error('[WebhookWorker] Flow execution error:', err.message));
+                    this.bufferAndExecuteFlowOrAutoReply(workspace, conversation, contact, messageBody);
                   }
 
                 }
@@ -215,6 +201,79 @@ export class WebhookWorker implements OnModuleInit, OnModuleDestroy {
     });
   }
 
+  /**
+   * Buffers rapid incoming WhatsApp messages per conversation and executes flow/sentiment analysis ONCE for aggregated text.
+   */
+  private bufferAndExecuteFlowOrAutoReply(
+    workspace: WorkspaceDocument,
+    conversation: ConversationDocument,
+    contact: ContactDocument,
+    messageBody: string,
+  ) {
+    const convId = conversation._id.toString();
+    const DEBOUNCE_MS = 2500; // 2.5s window to collect spam / rapid messages
+
+    let buffer = this.debounceBuffers.get(convId);
+    if (buffer) {
+      clearTimeout(buffer.timer);
+      buffer.messages.push(messageBody);
+    } else {
+      buffer = {
+        workspace,
+        conversation,
+        contact,
+        messages: [messageBody],
+        timer: setTimeout(() => {}, 0),
+      };
+      this.debounceBuffers.set(convId, buffer);
+    }
+
+    buffer.timer = setTimeout(async () => {
+      const currentBuffer = this.debounceBuffers.get(convId);
+      this.debounceBuffers.delete(convId);
+
+      if (!currentBuffer || currentBuffer.messages.length === 0) return;
+
+      const combinedBody = currentBuffer.messages.join('\n');
+      console.log(`[WebhookWorker] Aggregated ${currentBuffer.messages.length} messages for conversation ${convId}:\n"${combinedBody}"`);
+
+      try {
+        // 1. Analyze sentiment considering chat history + current combined message (only if enabled for workspace)
+        let sentiment: string = conversation.sentiment || 'neutral';
+        if (workspace.aiSettings?.sentimentAnalysisEnabled !== false) {
+          sentiment = await this.sentimentService.analyzeConversationSentiment(
+            workspace._id.toString(),
+            convId,
+            combinedBody,
+          );
+          console.log(`[WebhookWorker] Computed history-aware sentiment for ${convId}: ${sentiment}`);
+        }
+
+        // 2. Execute active Flow Engine
+
+        const flowResult = await this.flowExecutionEngine.executeFlowForInboundMessage(
+          workspace._id.toString(),
+          conversation,
+          contact,
+          combinedBody,
+          sentiment,
+        );
+
+        if (flowResult.executed) {
+          console.log(
+            `[WebhookWorker] Active Flow "${flowResult.flowName}" (${flowResult.flowId}) executed. Actions:`,
+            flowResult.actionsTaken,
+          );
+        } else if (workspace.autoReplySettings?.enabled) {
+          // 3. Fallback to AI Auto-Reply with Knowledge Base + Conversation History
+          await this.evaluateAndExecuteAutoReply(workspace, conversation, contact, combinedBody);
+        }
+      } catch (err: any) {
+        console.error(`[WebhookWorker] Error executing debounced flow engine:`, err.message);
+      }
+    }, DEBOUNCE_MS);
+  }
+
   private async evaluateAndExecuteAutoReply(
     workspace: WorkspaceDocument,
     conversation: ConversationDocument,
@@ -230,12 +289,18 @@ export class WebhookWorker implements OnModuleInit, OnModuleDestroy {
       return;
     }
 
-    const ragResult = await this.ragService.queryKnowledgeBase(workspace._id.toString(), userQuery);
+    // Pass conversation._id to queryKnowledgeBase for chat history context injection
+    const ragResult = await this.ragService.queryKnowledgeBase(
+      workspace._id.toString(),
+      userQuery,
+      conversation._id.toString(),
+    );
     const threshold = settings.confidenceThreshold || 0.70;
     console.log('[Threshold rag result]', ragResult);
 
     if (ragResult.answer && (ragResult.confidenceScore === undefined || ragResult.confidenceScore >= threshold)) {
       console.log(`[WebhookWorker] Auto-reply triggered! Confidence: ${ragResult.confidenceScore} >= ${threshold}`);
+
 
       // sendTextMessage creates the DB record with authentic waMessageId and emits socket message.sent
       await this.messageService.sendTextMessage(workspace._id.toString(), { to: contact.phone, body: ragResult.answer });
