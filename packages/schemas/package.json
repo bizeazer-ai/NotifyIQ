@@ -25,5 +25,9 @@
   "packageManager": "pnpm@10.33.0",
   "dependencies": {
     "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
   }
 }
+

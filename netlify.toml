@@ -1,0 +1,13 @@
+[build]
+  command = "pnpm --filter @notifyiq/schemas --filter @notifyiq/config --filter frontend build"
+  publish = "apps/frontend/dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+  NODE_ENV = "development"
+  PNPM_FLAGS = "--no-frozen-lockfile"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
