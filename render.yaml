@@ -4,7 +4,7 @@ services:
     name: notifyiq-backend
     env: node
     plan: free
-    buildCommand: pnpm install --frozen-lockfile && pnpm --filter backend build
+    buildCommand: pnpm install --frozen-lockfile && pnpm --filter @notifyiq/schemas --filter @notifyiq/config --filter backend build
     startCommand: pnpm --filter backend start:prod
     envVars:
       - key: NODE_ENV

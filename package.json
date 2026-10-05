@@ -37,7 +37,10 @@
       "@swc/core",
       "unrs-resolver",
       "esbuild",
-      "bcrypt"
+      "bcrypt",
+      "@google/genai",
+      "@scarf/scarf",
+      "protobufjs"
     ]
   }
 }
