@@ -8,14 +8,15 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   private isRedisConnected = false;
   private inMemoryCache = new Map<string, any>();
 
-  onModuleInit() {
+  async onModuleInit() {
     console.log('[Redis] Initializing Redis client...');
     this.client = new Redis(env.REDIS_URL, {
       lazyConnect: true, // Prevent constructor from immediately opening raw sockets
       maxRetriesPerRequest: null, // Required by BullMQ
       enableOfflineQueue: false, // Prevents queries from hanging offline
+      connectTimeout: 2000,
       retryStrategy: (times) => {
-        // Limit reconnect retries when Redis/Docker is offline to prevent log spam
+        // Limit reconnect retries when Redis is offline to prevent log spam
         if (times > 2) return null;
         return 500;
       },
@@ -30,23 +31,40 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       this.isRedisConnected = false;
     });
 
-    // Explicitly connect and catch offline refusal errors silently
-    this.client.connect().then(() => {
-      this.isRedisConnected = true;
-    }).catch(() => {
+    this.client.on('close', () => {
       this.isRedisConnected = false;
-      console.warn('[Redis] Local Redis/Docker service is offline. Operating seamlessly in fallback in-memory mode.');
     });
+
+    // Explicitly probe connection with a bounded timeout
+    try {
+      await Promise.race([
+        this.client.connect(),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Redis connection probe timed out (2000ms)')), 2000)
+        ),
+      ]);
+      this.isRedisConnected = true;
+      console.log('[Redis] Connection verified. Running in production Redis mode.');
+    } catch {
+      this.isRedisConnected = false;
+      console.warn(
+        '[Redis] External Redis service is offline or unavailable. Operating seamlessly in fallback in-memory mode for BullMQ queues and workers.'
+      );
+    }
+  }
+
+  public isAvailable(): boolean {
+    return this.isRedisConnected;
   }
 
   private wrapClient(client: Redis): Redis {
     const service = this;
-    
+
     return new Proxy(client, {
       get(target, prop, receiver) {
         // Intercept duplicate method to handle error event attachment on BullMQ clones
         if (prop === 'duplicate') {
-          return function (...args: any[]) {
+          return function (..._args: any[]) {
             const newClient = target.duplicate();
 
             newClient.on('error', () => {
@@ -73,14 +91,14 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
             return service.inMemoryCache.get(key) ?? null;
           };
         }
-        
+
         if (prop === 'set') {
           return async (key: string, value: any) => {
             service.inMemoryCache.set(key, value);
             return 'OK';
           };
         }
-        
+
         if (prop === 'del') {
           return async (key: string) => {
             const existed = service.inMemoryCache.has(key);
@@ -97,9 +115,9 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
               // Parse Lua rate-limiter variables passed as args
               const bucketKey = args[2];
               const lastRefillKey = args[3];
-              const limit = parseInt(args[4] || '80');
-              const interval = parseInt(args[5] || '1000');
-              const now = parseInt(args[6] || Date.now().toString());
+              const limit = parseInt(args[4] || '80', 10);
+              const interval = parseInt(args[5] || '1000', 10);
+              const now = parseInt(args[6] || Date.now().toString(), 10);
 
               let tokens = service.inMemoryCache.get(bucketKey) ?? limit;
               let lastRefill = service.inMemoryCache.get(lastRefillKey) ?? now;
@@ -129,13 +147,13 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
           return async (...args: any[]) => {
             try {
               return await value.apply(target, args);
-            } catch (err) {
+            } catch {
               return null;
             }
           };
         }
         return value;
-      }
+      },
     });
   }
 
@@ -147,7 +165,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     if (this.client) {
       try {
         await this.client.quit();
-      } catch (err) {
+      } catch {
         // ignore errors on quit if already disconnected
       }
       console.log('[Redis] Disconnected from Redis');

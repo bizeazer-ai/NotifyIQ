@@ -1,0 +1,29 @@
+services:
+  # Render Web Service for NestJS API, BullMQ Workers, Webhooks, & WebSockets
+  - type: web
+    name: notifyiq-backend
+    env: node
+    plan: free
+    buildCommand: pnpm install --frozen-lockfile && pnpm --filter backend build
+    startCommand: pnpm --filter backend start:prod
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DB_URI
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: META_APP_ID
+        sync: false
+      - key: META_APP_SECRET
+        sync: false
+      - key: META_WEBHOOK_VERIFY_TOKEN
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: CORS_ORIGIN
+        sync: false

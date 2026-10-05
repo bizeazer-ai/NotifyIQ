@@ -1,10 +1,9 @@
 import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { Worker, Job } from 'bullmq';
+import { QueueService, QueueName, UnifiedWorker } from '../queue.service.js';
 import crypto from 'crypto';
 import { RedisService } from '../../common/services/redis.service.js';
-import { QueueService, QueueName } from '../queue.service.js';
 import { SocketGateway } from '../../socket/socket.gateway.js';
 import { RagService } from '../../ai/rag.service.js';
 import { FlowExecutionEngine } from '../../flows/flow-execution.engine.js';
@@ -26,7 +25,7 @@ interface MessageDebounceBuffer {
 
 @Injectable()
 export class WebhookWorker implements OnModuleInit, OnModuleDestroy {
-  private worker: Worker;
+  private worker: UnifiedWorker;
   private debounceBuffers: Map<string, MessageDebounceBuffer> = new Map();
 
   constructor(
@@ -43,14 +42,10 @@ export class WebhookWorker implements OnModuleInit, OnModuleDestroy {
     @InjectModel(Message.name) private readonly messageModel: Model<MessageDocument>,
   ) { }
 
-
-
   onModuleInit() {
-    const connection = this.redisService.getClient();
-
-    this.worker = new Worker(
+    this.worker = this.queueService.createWorker(
       QueueName.WEBHOOK_PROCESSOR,
-      async (job: Job) => {
+      async (job: any) => {
         const payload = job.data;
         console.log(`[WebhookWorker] Processing raw webhook event: ${job.id}`);
 
@@ -189,7 +184,7 @@ export class WebhookWorker implements OnModuleInit, OnModuleDestroy {
 
         return { success: true };
       },
-      { connection, concurrency: 20 },
+      { concurrency: 20 },
     );
 
     this.worker.on('completed', (job) => {

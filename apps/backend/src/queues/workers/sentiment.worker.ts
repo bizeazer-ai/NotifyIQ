@@ -1,24 +1,20 @@
 import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
-import { Worker, Job } from 'bullmq';
-import { RedisService } from '../../common/services/redis.service.js';
-import { QueueName } from '../queue.service.js';
+import { QueueService, QueueName, UnifiedWorker } from '../queue.service.js';
 import { SentimentService } from '../../ai/sentiment.service.js';
 
 @Injectable()
 export class SentimentWorker implements OnModuleInit, OnModuleDestroy {
-  private worker: Worker;
+  private worker: UnifiedWorker;
 
   constructor(
-    private readonly redisService: RedisService,
+    private readonly queueService: QueueService,
     private readonly sentimentService: SentimentService,
   ) {}
 
   onModuleInit() {
-    const connection = this.redisService.getClient();
-
-    this.worker = new Worker(
+    this.worker = this.queueService.createWorker(
       QueueName.SENTIMENT_ANALYSIS,
-      async (job: Job) => {
+      async (job: any) => {
         const { messageId, text } = job.data;
         console.log(`[SentimentWorker] Processing sentiment analysis job: ${job.id}`);
 
@@ -31,17 +27,16 @@ export class SentimentWorker implements OnModuleInit, OnModuleDestroy {
         return { messageId, sentiment };
       },
       {
-        connection,
         concurrency: 10,
       },
     );
 
-    this.worker.on('completed', (job) => {
+    this.worker.on('completed', (job: any) => {
       console.log(`[SentimentWorker] Sentiment analysis completed for job: ${job.id}`);
     });
 
-    this.worker.on('failed', (job, err) => {
-      console.error(`[SentimentWorker] Sentiment analysis failed for job ${job?.id}:`, err.message);
+    this.worker.on('failed', (job: any, err: any) => {
+      console.error(`[SentimentWorker] Sentiment analysis failed for job ${job?.id}:`, err?.message || err);
     });
   }
 

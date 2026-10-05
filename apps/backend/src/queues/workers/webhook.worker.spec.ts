@@ -28,15 +28,26 @@ import { Workspace } from '../../database/schemas/workspace.schema.js';
 import { Contact } from '../../database/schemas/contact.schema.js';
 import { Conversation } from '../../database/schemas/conversation.schema.js';
 import { Message } from '../../database/schemas/message.schema.js';
+import { MessagesService } from '../../messages/messages.service.js';
+import { SentimentService } from '../../ai/sentiment.service.js';
 
 describe('WebhookWorker Auto-Reply Engine', () => {
   let worker: WebhookWorker;
 
   const mockRedisService = { getClient: jest.fn().mockReturnValue({}) };
-  const mockQueueService = { addJob: jest.fn().mockResolvedValue({}) };
+  const mockQueueService = {
+    addJob: jest.fn().mockResolvedValue({}),
+    createWorker: jest.fn().mockImplementation((name, processor) => ({
+      on: jest.fn(),
+      close: jest.fn().mockResolvedValue(true),
+      processor,
+    })),
+  };
   const mockSocketGateway = { emitToWorkspace: jest.fn() };
   const mockRagService = { queryKnowledgeBase: jest.fn() };
   const mockFlowExecutionEngine = { executeFlowForInboundMessage: jest.fn().mockResolvedValue({ executed: false }) };
+  const mockMessagesService = { sendTextMessage: jest.fn().mockResolvedValue({}) };
+  const mockSentimentService = { analyzeMessageSentiment: jest.fn().mockResolvedValue('neutral') };
 
   const mockWorkspace = {
     _id: 'ws_123',
@@ -49,7 +60,7 @@ describe('WebhookWorker Auto-Reply Engine', () => {
   };
 
   const mockConversation = { _id: 'conv_123', save: jest.fn() };
-  const mockContact = { _id: 'contact_123' };
+  const mockContact = { _id: 'contact_123', phone: '+919876543210' };
 
   const mockWorkspaceModel = { findOne: jest.fn().mockResolvedValue(mockWorkspace) };
   const mockContactModel = { findOne: jest.fn().mockResolvedValue(mockContact) };
@@ -70,13 +81,14 @@ describe('WebhookWorker Auto-Reply Engine', () => {
         { provide: SocketGateway, useValue: mockSocketGateway },
         { provide: RagService, useValue: mockRagService },
         { provide: FlowExecutionEngine, useValue: mockFlowExecutionEngine },
+        { provide: MessagesService, useValue: mockMessagesService },
+        { provide: SentimentService, useValue: mockSentimentService },
         { provide: getModelToken(Workspace.name), useValue: mockWorkspaceModel },
         { provide: getModelToken(Contact.name), useValue: mockContactModel },
         { provide: getModelToken(Conversation.name), useValue: mockConversationModel },
         { provide: getModelToken(Message.name), useValue: mockMessageModel },
       ],
     }).compile();
-
 
     worker = module.get<WebhookWorker>(WebhookWorker);
   });
@@ -95,15 +107,11 @@ describe('WebhookWorker Auto-Reply Engine', () => {
         'What are your hours?',
       );
 
-      expect(mockRagService.queryKnowledgeBase).toHaveBeenCalledWith('ws_123', 'What are your hours?');
-      expect(mockMessageModel.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          workspaceId: 'ws_123',
-          direction: 'outbound',
-          body: 'Our business hours are 9am to 6pm.',
-        }),
-      );
-      expect(mockSocketGateway.emitToWorkspace).toHaveBeenCalledWith('ws_123', 'message.sent', expect.any(Object));
+      expect(mockRagService.queryKnowledgeBase).toHaveBeenCalledWith('ws_123', 'What are your hours?', 'conv_123');
+      expect(mockMessagesService.sendTextMessage).toHaveBeenCalledWith('ws_123', {
+        to: '+919876543210',
+        body: 'Our business hours are 9am to 6pm.',
+      });
     });
 
     it('should escalate to human agent on low RAG confidence', async () => {

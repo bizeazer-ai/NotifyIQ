@@ -1,10 +1,9 @@
 import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { Worker, Job } from 'bullmq';
+import { QueueService, QueueName, UnifiedWorker } from '../queue.service.js';
 import crypto from 'crypto';
 import { RedisService } from '../../common/services/redis.service.js';
-import { QueueName } from '../queue.service.js';
 import { Workspace, WorkspaceDocument } from '../../database/schemas/workspace.schema.js';
 import { Contact, ContactDocument } from '../../database/schemas/contact.schema.js';
 import { Conversation, ConversationDocument } from '../../database/schemas/conversation.schema.js';
@@ -23,9 +22,10 @@ interface CampaignJobData {
 
 @Injectable()
 export class CampaignWorker implements OnModuleInit, OnModuleDestroy {
-  private worker: Worker;
+  private worker: UnifiedWorker;
 
   constructor(
+    private readonly queueService: QueueService,
     private readonly redisService: RedisService,
     private readonly socketGateway: SocketGateway,
     @InjectModel(Workspace.name) private readonly workspaceModel: Model<WorkspaceDocument>,
@@ -35,12 +35,10 @@ export class CampaignWorker implements OnModuleInit, OnModuleDestroy {
   ) { }
 
   onModuleInit() {
-    const connection = this.redisService.getClient();
-
-    this.worker = new Worker(
+    this.worker = this.queueService.createWorker(
       QueueName.CAMPAIGN,
-      async (job: Job<CampaignJobData>) => {
-        const { campaignId, workspaceId, templateName, contactIds, languageCode } = job.data;
+      async (job: any) => {
+        const { campaignId, workspaceId, templateName, contactIds, languageCode } = job.data as CampaignJobData;
         console.log(`[CampaignWorker] Executing campaign ${campaignId} for ${contactIds.length} contacts...`);
 
         // 1. Fetch Workspace & Decrypt WABA Access Token
@@ -163,7 +161,6 @@ export class CampaignWorker implements OnModuleInit, OnModuleDestroy {
         };
       },
       {
-        connection,
         concurrency: 5, // process up to 5 campaigns in parallel
       },
     );

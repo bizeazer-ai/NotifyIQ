@@ -19,6 +19,7 @@ jest.mock('bullmq', () => {
 });
 
 import { CampaignWorker } from './campaign.worker.js';
+import { QueueService } from '../queue.service.js';
 import { RedisService } from '../../common/services/redis.service.js';
 import { SocketGateway } from '../../socket/socket.gateway.js';
 import { Workspace } from '../../database/schemas/workspace.schema.js';
@@ -37,6 +38,14 @@ describe('CampaignWorker', () => {
 
   const mockRedisService = {
     getClient: jest.fn().mockReturnValue(mockRedisClient),
+  };
+
+  const mockQueueService = {
+    createWorker: jest.fn().mockImplementation((name, processor) => ({
+      on: jest.fn(),
+      close: jest.fn().mockResolvedValue(true),
+      processor,
+    })),
   };
 
   const mockSocketGateway = {
@@ -82,6 +91,7 @@ describe('CampaignWorker', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CampaignWorker,
+        { provide: QueueService, useValue: mockQueueService },
         { provide: RedisService, useValue: mockRedisService },
         { provide: SocketGateway, useValue: mockSocketGateway },
         { provide: getModelToken(Workspace.name), useValue: mockWorkspaceModel },
