@@ -16,7 +16,7 @@ interface DashboardMetrics {
   totalContacts: number;
   botContainmentRatePercent: number;
   totalAccruedCost: number;
-  dailyMetrics: Array<{ day: string; inbound: number; outbound: number }>;
+  dailyMetrics: Array<{ day: string; dateStr?: string; inbound: number; outbound: number }>;
 }
 
 export default function OverviewDashboardPage() {
@@ -24,12 +24,13 @@ export default function OverviewDashboardPage() {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [activeRange, setActiveRange] = useState<number>(7);
 
-  const loadMetrics = async () => {
+  const loadMetrics = async (range: number = activeRange) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await apiClient.get<{ data: DashboardMetrics }>('/api/analytics/overview');
+      const res = await apiClient.get<{ data: DashboardMetrics }>(`/api/analytics/overview?days=${range}`);
       if (res.data) {
         setMetrics(res.data);
       } else {
@@ -44,8 +45,12 @@ export default function OverviewDashboardPage() {
   };
 
   useEffect(() => {
-    loadMetrics();
-  }, []);
+    loadMetrics(activeRange);
+  }, [activeRange]);
+
+  const handleRangeChange = (days: number) => {
+    setActiveRange(days);
+  };
 
   return (
     <div className="page-container">
@@ -59,7 +64,7 @@ export default function OverviewDashboardPage() {
         </div>
 
         <div className="page-actions">
-          <button className="btn btn-secondary" onClick={loadMetrics}>
+          <button className="btn btn-secondary" onClick={() => loadMetrics(activeRange)}>
             <Icon name="refresh" size={14} />
             <span>Refresh Analytics</span>
           </button>
@@ -73,14 +78,15 @@ export default function OverviewDashboardPage() {
       {loading ? (
         <LoadingState message="Calculating workspace analytics and Meta SLA telemetry..." />
       ) : error ? (
-        <ErrorAlert message={error} onRetry={loadMetrics} title="Dashboard Analytics Error" />
+        <ErrorAlert message={error} onRetry={() => loadMetrics(activeRange)} title="Dashboard Analytics Error" />
       ) : !metrics ? (
+
         <EmptyState
           title="No Analytics Data Available"
           description="Start sending messages or launch campaigns to view workspace analytics and delivery rates."
           icon="sparkles"
           actionLabel="Refresh Overview"
-          onAction={loadMetrics}
+          onAction={() => loadMetrics(activeRange)}
         />
       ) : (
         <div style={{ animation: 'slideUp 0.35s ease' }}>
@@ -137,17 +143,31 @@ export default function OverviewDashboardPage() {
           </div>
 
           {/* Chart & Quick Shortcuts Grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 'var(--space-6)', marginBottom: 'var(--space-8)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 'var(--space-6)', marginBottom: 'var(--space-8)' }}>
             {/* 1. Bar Chart Section */}
             <div className="section-card">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-4)' }}>
                 <h3 className="section-title" style={{ margin: 0 }}>
                   <Icon name="chats" className="section-title-icon" />
-                  <span>Weekly Dispatches & Response Telemetry</span>
+                  <span>{activeRange === 30 ? '30-Day Message Telemetry' : 'Weekly Dispatches & Response Telemetry'}</span>
                 </h3>
                 <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-                  <span className="filter-pill active">Last 7 Days</span>
-                  <span className="filter-pill">30 Days</span>
+                  <button
+                    type="button"
+                    className={`filter-pill ${activeRange === 7 ? 'active' : ''}`}
+                    onClick={() => handleRangeChange(7)}
+                    style={{ cursor: 'pointer', border: 'none', font: 'inherit' }}
+                  >
+                    Last 7 Days
+                  </button>
+                  <button
+                    type="button"
+                    className={`filter-pill ${activeRange === 30 ? 'active' : ''}`}
+                    onClick={() => handleRangeChange(30)}
+                    style={{ cursor: 'pointer', border: 'none', font: 'inherit' }}
+                  >
+                    30 Days
+                  </button>
                 </div>
               </div>
 
@@ -155,67 +175,70 @@ export default function OverviewDashboardPage() {
               <div style={{
                 display: 'flex',
                 alignItems: 'flex-end',
-                gap: 'var(--space-6)',
+                gap: activeRange === 30 ? '4px' : 'var(--space-6)',
                 height: '220px',
                 paddingTop: 'var(--space-6)',
                 paddingBottom: 'var(--space-4)',
                 borderBottom: '1px solid var(--color-border)',
+                overflowX: 'auto',
               }}>
-                {(metrics.dailyMetrics || [
-                  { day: 'Mon', inbound: 120, outbound: 450 },
-                  { day: 'Tue', inbound: 190, outbound: 520 },
-                  { day: 'Wed', inbound: 240, outbound: 680 },
-                  { day: 'Thu', inbound: 180, outbound: 590 },
-                  { day: 'Fri', inbound: 310, outbound: 740 },
-                  { day: 'Sat', inbound: 150, outbound: 410 },
-                  { day: 'Sun', inbound: 210, outbound: 490 },
-                ]).map((item) => {
-                  const maxVal = 800;
-                  const outHeight = Math.max(12, (item.outbound / maxVal) * 170);
-                  const inHeight = Math.max(12, (item.inbound / maxVal) * 170);
+                {(() => {
+                  const dailyMetrics = metrics.dailyMetrics || [];
+                  const highestCount = Math.max(1, ...dailyMetrics.map((item) => Math.max(item.inbound, item.outbound)));
 
-                  return (
-                    <div key={item.day} style={{
-                      flex: 1,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      height: '100%',
-                      justifyContent: 'flex-end',
-                    }}>
-                      <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'flex-end', height: '170px' }}>
-                        <div
-                          title={`Inbound: ${item.inbound}`}
-                          style={{
-                            width: '20px',
-                            height: `${inHeight}px`,
-                            backgroundColor: 'var(--color-info)',
-                            borderRadius: 'var(--radius-xs) var(--radius-xs) 0 0',
-                            transition: 'height 0.4s ease',
-                          }}
-                        />
-                        <div
-                          title={`Outbound: ${item.outbound}`}
-                          style={{
-                            width: '20px',
-                            height: `${outHeight}px`,
-                            backgroundColor: 'var(--color-primary)',
-                            borderRadius: 'var(--radius-xs) var(--radius-xs) 0 0',
-                            transition: 'height 0.4s ease',
-                          }}
-                        />
-                      </div>
-                      <span style={{
-                        fontSize: 'var(--text-xs)',
-                        color: 'var(--color-foreground-secondary)',
-                        marginTop: 'var(--space-3)',
-                        fontWeight: 600,
+                  return dailyMetrics.map((item, idx) => {
+                    const outHeight = item.outbound > 0 ? Math.max(6, (item.outbound / highestCount) * 160) : 0;
+                    const inHeight = item.inbound > 0 ? Math.max(6, (item.inbound / highestCount) * 160) : 0;
+
+                    return (
+                      <div key={item.dateStr || item.day || idx} style={{
+                        flex: 1,
+                        minWidth: activeRange === 30 ? '18px' : '36px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        height: '100%',
+                        justifyContent: 'flex-end',
                       }}>
-                        {item.day}
-                      </span>
-                    </div>
-                  );
-                })}
+                        <div style={{ display: 'flex', gap: '2px', alignItems: 'flex-end', height: '170px' }}>
+                          <div
+                            title={`${item.day} - Inbound: ${item.inbound}`}
+                            style={{
+                              width: activeRange === 30 ? '8px' : '14px',
+                              height: `${inHeight}px`,
+                              backgroundColor: 'var(--color-info)',
+                              borderRadius: 'var(--radius-xs) var(--radius-xs) 0 0',
+                              transition: 'height 0.4s ease',
+                              opacity: item.inbound > 0 ? 1 : 0.2,
+                            }}
+                          />
+                          <div
+                            title={`${item.day} - Outbound: ${item.outbound}`}
+                            style={{
+                              width: activeRange === 30 ? '8px' : '14px',
+                              height: `${outHeight}px`,
+                              backgroundColor: 'var(--color-primary)',
+                              borderRadius: 'var(--radius-xs) var(--radius-xs) 0 0',
+                              transition: 'height 0.4s ease',
+                              opacity: item.outbound > 0 ? 1 : 0.2,
+                            }}
+                          />
+                        </div>
+                        <span style={{
+                          fontSize: activeRange === 30 ? '9px' : 'var(--text-xs)',
+                          color: 'var(--color-foreground-secondary)',
+                          marginTop: 'var(--space-2)',
+                          fontWeight: 600,
+                          whiteSpace: 'nowrap',
+                          transform: activeRange === 30 ? 'rotate(-45deg)' : 'none',
+                          transformOrigin: 'top left',
+                        }}>
+                          {activeRange === 30 && idx % 3 !== 0 ? '' : item.day}
+                        </span>
+                      </div>
+                    );
+                  });
+                })()}
               </div>
 
               {/* Chart Legend */}

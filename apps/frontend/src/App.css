@@ -1047,3 +1047,107 @@
 .auth-link:hover {
   color: var(--color-primary-hover);
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   Responsive Inbox Layout & Mobile Drawer Styles
+   ═══════════════════════════════════════════════════════════════ */
+
+.inbox-main-layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  height: 100%;
+  width: 100%;
+  position: relative;
+}
+
+.inbox-mobile-nav {
+  display: none;
+}
+
+.inbox-panel-wrapper {
+  display: flex;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.inbox-panel-wrapper.list-wrapper {
+  width: 340px;
+  flex-shrink: 0;
+}
+
+.inbox-panel-wrapper.chat-wrapper {
+  flex: 1;
+  min-width: 0;
+}
+
+.inbox-panel-wrapper.rag-panel {
+  width: 320px;
+  border-left: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  padding: 24px;
+  flex-direction: column;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+/* Mobile & Tablet viewports (< 1024px) */
+@media (max-width: 1024px) {
+  .inbox-main-layout {
+    flex-direction: column;
+  }
+
+  .inbox-mobile-nav {
+    display: flex;
+    background-color: var(--color-surface);
+    border-bottom: 1px solid var(--color-border);
+    padding: 6px;
+    gap: 6px;
+    z-index: 10;
+  }
+
+  .mobile-tab-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 10px;
+    border-radius: var(--radius-md);
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--color-foreground-secondary);
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s ease;
+  }
+
+  .mobile-tab-btn.active {
+    background-color: var(--color-primary-muted);
+    color: var(--color-primary);
+    border-color: rgba(37, 99, 235, 0.25);
+  }
+
+  .mobile-tab-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .inbox-panel-wrapper.list-wrapper,
+  .inbox-panel-wrapper.rag-panel {
+    width: 100% !important;
+  }
+
+  .inbox-panel-wrapper.mobile-hidden {
+    display: none !important;
+  }
+
+  .inbox-panel-wrapper.mobile-visible {
+    display: flex !important;
+    flex: 1;
+    width: 100% !important;
+    height: 100%;
+  }
+}

@@ -6,7 +6,11 @@ import { useTranslation } from '../../../i18n';
 import { Icon } from '../../../components/ui/Icon';
 import { apiClient } from '../../../lib/api/apiClient';
 
-export default function ChatWindow() {
+interface ChatWindowProps {
+  onBackToList?: () => void;
+}
+
+export default function ChatWindow({ onBackToList }: ChatWindowProps = {}) {
   const dispatch = useAppDispatch();
   const { t } = useTranslation();
 
@@ -26,6 +30,7 @@ export default function ChatWindow() {
   const [botModeActive, setBotModeActive] = useState(true);
   const [selectedTemplate, setSelectedTemplate] = useState('');
   const [wabaTemplates, setWabaTemplates] = useState<any[]>([]);
+
 
   useEffect(() => {
     apiClient
@@ -135,21 +140,38 @@ export default function ChatWindow() {
 
   if (!activeConv) {
     return (
-      <section className="chat-window" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-foreground-muted)' }}>
+      <section className="chat-window" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-foreground-muted)', flex: 1, padding: '24px' }}>
         <div style={{ textAlign: 'center' }}>
           <Icon name="chats" size={48} style={{ color: 'var(--color-border-strong)', marginBottom: '12px' }} />
-          <div style={{ fontWeight: 600 }}>{t('selectConversation')}</div>
-          <div style={{ fontSize: '12px', marginTop: '4px' }}>Choose a contact from the list on the left to start chatting</div>
+          <div style={{ fontWeight: 700, fontSize: '16px', color: 'var(--color-foreground)' }}>{t('selectConversation')}</div>
+          <div style={{ fontSize: '13px', marginTop: '6px', color: 'var(--color-foreground-secondary)' }}>Choose a contact from the list to view chat logs and start messaging</div>
+          {onBackToList && (
+            <button className="btn btn-primary btn-sm" onClick={onBackToList} style={{ marginTop: '16px' }}>
+              <span>← View Conversations</span>
+            </button>
+          )}
         </div>
       </section>
     );
   }
 
   return (
-    <section className="chat-window" style={{ display: 'flex', flexDirection: 'column', flex: 1, backgroundColor: 'var(--color-surface)', height: '100%' }}>
+    <section className="chat-window" style={{ display: 'flex', flexDirection: 'column', flex: 1, backgroundColor: 'var(--color-surface)', height: '100%', minWidth: 0 }}>
       {/* Active Header */}
-      <header className="chat-header" style={{ padding: 'var(--space-4) var(--space-6)', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div className="active-contact-info" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+      <header className="chat-header" style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', height: 'auto', minHeight: '64px' }}>
+        <div className="active-contact-info" style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: '1 1 auto', minWidth: 0 }}>
+          {onBackToList && (
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={onBackToList}
+              style={{ padding: '6px 10px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+              title="Back to conversations list"
+            >
+              <span>←</span>
+              <span style={{ fontSize: '12px', fontWeight: 600 }}>Back</span>
+            </button>
+          )}
           <div
             style={{
               width: '40px',
@@ -163,20 +185,23 @@ export default function ChatWindow() {
               fontWeight: 800,
               fontSize: '14px',
               border: '1px solid var(--color-border)',
+              flexShrink: 0,
             }}
           >
             {activeConv.contactName.substring(0, 2).toUpperCase()}
           </div>
-          <div className="active-contact-details">
-            <div className="name" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontWeight: 700, fontSize: '15px', color: 'var(--color-foreground)' }}>{activeConv.contactName}</span>
+          <div className="active-contact-details" style={{ minWidth: 0, flex: 1 }}>
+            <div className="name" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <span style={{ fontWeight: 700, fontSize: '15px', color: 'var(--color-foreground)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {activeConv.contactName}
+              </span>
               <span
                 onClick={() => setBotModeActive(!botModeActive)}
                 style={{
                   cursor: 'pointer',
-                  padding: '3px 10px',
+                  padding: '2px 8px',
                   borderRadius: 'var(--radius-full)',
-                  fontSize: '11px',
+                  fontSize: '10.5px',
                   fontWeight: 700,
                   backgroundColor: botModeActive ? 'var(--color-info-muted)' : 'var(--color-error-muted)',
                   color: botModeActive ? 'var(--color-info)' : 'var(--color-error)',
@@ -184,44 +209,48 @@ export default function ChatWindow() {
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '4px',
+                  whiteSpace: 'nowrap',
                 }}
               >
                 <Icon name={botModeActive ? 'bot' : 'user'} size={12} />
-                {botModeActive ? 'Gemini Bot Mode' : 'Human Takeover'}
+                {botModeActive ? 'Gemini Bot' : 'Human Mode'}
               </span>
             </div>
-            <div className="phone" style={{ fontSize: '12px', color: 'var(--color-foreground-secondary)' }}>{activeConv.phone}</div>
+            <div className="phone" style={{ fontSize: '11.5px', color: 'var(--color-foreground-secondary)', fontFamily: 'monospace' }}>
+              {activeConv.phone}
+            </div>
           </div>
         </div>
 
-        <div className="header-actions" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+        <div className="header-actions" style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
           <select
             className="form-select"
             value={selectedTemplate}
             onChange={(e) => handleApplyTemplate(e.target.value)}
-            style={{ width: 'auto', padding: '6px 12px', fontSize: '12px', borderRadius: 'var(--radius-md)' }}
+            style={{ width: 'auto', padding: '6px 10px', fontSize: '11.5px', borderRadius: 'var(--radius-md)' }}
           >
-            <option value="">-- Select WABA Template --</option>
+            <option value="">-- WABA Template --</option>
             {wabaTemplates.map((tpl) => (
               <option key={tpl.id || tpl.name} value={tpl.name}>
-                {tpl.name} ({tpl.status || 'APPROVED'})
+                {tpl.name}
               </option>
             ))}
           </select>
 
-          <button className="btn btn-secondary btn-sm" onClick={handleExportData}>
-            <Icon name="download" size={14} />
-            <span>{t('exportData')}</span>
+          <button className="btn btn-secondary btn-sm" onClick={handleExportData} title={t('exportData')}>
+            <Icon name="download" size={13} />
+            <span style={{ fontSize: '11.5px' }}>GDPR</span>
           </button>
           <button
             className="btn btn-danger btn-sm"
             onClick={handleEraseContact}
+            title={t('eraseContact')}
           >
-            <Icon name="trash" size={14} />
-            <span>{t('eraseContact')}</span>
+            <Icon name="trash" size={13} />
           </button>
         </div>
       </header>
+
 
       {/* Messages Stream */}
       <div className="messages-scroller" ref={scrollRef} style={{ flex: 1, padding: 'var(--space-6)', overflowY: 'auto', backgroundColor: 'var(--color-background)' }}>

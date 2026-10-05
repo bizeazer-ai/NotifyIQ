@@ -10,6 +10,9 @@ export default function InboxPage() {
   const dispatch = useAppDispatch();
   const activeConvId = useAppSelector((state) => state.inbox.activeConversationId);
 
+  // Mobile layout view state ('chats' | 'chat' | 'knowledge')
+  const [mobileTab, setMobileTab] = useState<'chats' | 'chat' | 'knowledge'>('chats');
+
   // RAG Search States
   const [ragQueryText, setRagQueryText] = useState('');
   const [ragAnswer, setRagAnswer] = useState('');
@@ -32,6 +35,10 @@ export default function InboxPage() {
       dispatch(fetchMessageHistory(activeConvId));
     }
   }, [activeConvId, dispatch]);
+
+  const handleSelectConversation = () => {
+    setMobileTab('chat');
+  };
 
   const handleRagQuery = async (e: FormEvent) => {
     e.preventDefault();
@@ -82,27 +89,48 @@ export default function InboxPage() {
   };
 
   return (
-    <div style={{ display: 'flex', flex: 1, overflow: 'hidden', height: '100%' }}>
+    <div className="inbox-main-layout">
+      {/* Mobile Navigation Header Bar (Shown only on mobile/tablet viewports) */}
+      <div className="inbox-mobile-nav">
+        <button
+          type="button"
+          className={`mobile-tab-btn ${mobileTab === 'chats' ? 'active' : ''}`}
+          onClick={() => setMobileTab('chats')}
+        >
+          <Icon name="chats" size={16} />
+          <span>Conversations</span>
+        </button>
+        <button
+          type="button"
+          className={`mobile-tab-btn ${mobileTab === 'chat' ? 'active' : ''}`}
+          onClick={() => setMobileTab('chat')}
+          disabled={!activeConvId}
+        >
+          <Icon name="inbox" size={16} />
+          <span>Active Chat</span>
+        </button>
+        <button
+          type="button"
+          className={`mobile-tab-btn ${mobileTab === 'knowledge' ? 'active' : ''}`}
+          onClick={() => setMobileTab('knowledge')}
+        >
+          <Icon name="brain" size={16} />
+          <span>RAG Knowledge</span>
+        </button>
+      </div>
+
       {/* 1. Conversations List Panel */}
-      <ConversationList />
+      <div className={`inbox-panel-wrapper list-wrapper ${mobileTab === 'chats' ? 'mobile-visible' : 'mobile-hidden'}`}>
+        <ConversationList onSelectConversation={handleSelectConversation} />
+      </div>
 
       {/* 2. Active Chat Panel */}
-      <ChatWindow />
+      <div className={`inbox-panel-wrapper chat-wrapper ${mobileTab === 'chat' ? 'mobile-visible' : 'mobile-hidden'}`}>
+        <ChatWindow onBackToList={() => setMobileTab('chats')} />
+      </div>
 
       {/* 3. Grounded RAG Assistant Panel */}
-      <div 
-        style={{ 
-          width: '320px', 
-          borderLeft: '1px solid var(--color-border)', 
-          backgroundColor: 'var(--color-surface)', 
-          padding: '24px', 
-          display: 'flex', 
-          flexDirection: 'column', 
-          boxSizing: 'border-box',
-          overflowY: 'auto',
-          flexShrink: 0,
-        }}
-      >
+      <div className={`inbox-panel-wrapper rag-panel ${mobileTab === 'knowledge' ? 'mobile-visible' : 'mobile-hidden'}`}>
         <h3 className="rag-heading" style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '0 0 8px 0', fontSize: '15px', fontWeight: 700, color: 'var(--color-foreground)' }}>
           <Icon name="brain" style={{ color: 'var(--color-primary)' }} />
           <span>RAG Knowledge Assistant</span>
@@ -197,3 +225,4 @@ export default function InboxPage() {
     </div>
   );
 }
+

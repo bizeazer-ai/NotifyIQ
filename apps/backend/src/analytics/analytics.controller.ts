@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, UseGuards, Req, Query } from '@nestjs/common';
 import { AnalyticsService } from './analytics.service.js';
 import { AuthGuard, WorkspaceGuard } from '../common/guards/index.js';
 import type { AuthenticatedRequest } from '../common/guards/index.js';
@@ -9,12 +9,14 @@ export class AnalyticsController {
 
   @Get('overview')
   @UseGuards(AuthGuard, WorkspaceGuard)
-  async getOverview(@Req() req: AuthenticatedRequest) {
+  async getOverview(@Req() req: AuthenticatedRequest, @Query('days') days?: string) {
     const workspaceId = req.workspaceId as string;
-    const overview = await this.analyticsService.getExecutiveOverview(workspaceId);
+    const daysNum = days ? parseInt(days, 10) || 7 : 7;
+    const overview = await this.analyticsService.getExecutiveOverview(workspaceId, daysNum);
     return {
       message: 'Executive analytics overview retrieved successfully',
       data: overview,
     };
   }
 }
+
