@@ -62,8 +62,12 @@ export default function CampaignsPage() {
         setWabaTemplates(templatesRes.data);
         if (templatesRes.data.length > 0 && !templateName) {
           setTemplateName(templatesRes.data[0].name);
+          if (templatesRes.data[0].language) {
+            setLanguageCode(templatesRes.data[0].language);
+          }
         }
       }
+
     } catch (err: any) {
       setError(err?.message || 'Failed to fetch campaign statistics or target contacts.');
     } finally {
@@ -179,11 +183,23 @@ export default function CampaignsPage() {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
                   <div className="form-group">
                     <label className="form-label-styled">Meta WABA Template</label>
-                    <select className="form-select" value={templateName} onChange={(e) => setTemplateName(e.target.value)} required>
+                    <select
+                      className="form-select"
+                      value={templateName}
+                      onChange={(e) => {
+                        const name = e.target.value;
+                        setTemplateName(name);
+                        const found = wabaTemplates.find((t) => t.name === name);
+                        if (found?.language) {
+                          setLanguageCode(found.language);
+                        }
+                      }}
+                      required
+                    >
                       <option value="">-- Select WABA Template --</option>
                       {wabaTemplates.map((tpl) => (
                         <option key={tpl.id || tpl.name} value={tpl.name}>
-                          {tpl.name} ({tpl.status || 'APPROVED'})
+                          {tpl.name} ({tpl.language || 'original'})
                         </option>
                       ))}
                     </select>
@@ -195,15 +211,17 @@ export default function CampaignsPage() {
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label-styled">Language</label>
-                    <select className="form-select" value={languageCode} onChange={(e) => setLanguageCode(e.target.value)}>
-                      <option value="en">English (en)</option>
-                      <option value="hi">हिन्दी (hi)</option>
-                      <option value="es">Español (es)</option>
-                      <option value="fr">Français (fr)</option>
-                    </select>
+                    <label className="form-label-styled">Original Language</label>
+                    <input
+                      type="text"
+                      className="form-input-styled"
+                      value={languageCode || 'en_US'}
+                      readOnly
+                      style={{ backgroundColor: 'var(--color-surface-secondary)', cursor: 'not-allowed' }}
+                    />
                   </div>
                 </div>
+
 
                 {/* Dispatch Schedule Timing */}
                 <div style={{

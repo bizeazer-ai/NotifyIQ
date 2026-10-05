@@ -50,10 +50,32 @@ export class CampaignWorker implements OnModuleInit, OnModuleDestroy {
         // const decryptedToken = decrypt(workspace.waba.accessToken);
         const decryptedToken = env.META_ACCESS_TOKEN;
         const phoneNumberId = workspace.waba.phoneNumberId;
+        const businessAccountId = workspace.waba.businessAccountId;
         if (!phoneNumberId) {
           throw new Error(`Workspace ${workspaceId} WABA phone number ID is missing`);
         }
         const isMock = process.env.MOCK_SERVICES === 'true';
+
+        // 1b. Resolve template's original registered language from Meta to avoid #132001 translation mismatch
+        let originalLanguageCode = languageCode && languageCode !== 'en' ? languageCode : 'en_US';
+        if (!isMock && businessAccountId) {
+          try {
+            const tplLookupUrl = `https://graph.facebook.com/v20.0/${businessAccountId}/message_templates?name=${templateName}`;
+            const tplRes = await fetch(tplLookupUrl, {
+              headers: { Authorization: `Bearer ${decryptedToken}` },
+            });
+            const tplData = (await tplRes.json()) as any;
+            if (tplRes.ok && tplData.data && tplData.data.length > 0) {
+              const matchedTpl = tplData.data.find((t: any) => t.name === templateName);
+              if (matchedTpl?.language) {
+                originalLanguageCode = matchedTpl.language;
+                console.log(`[CampaignWorker] Resolved template '${templateName}' original language: '${originalLanguageCode}'`);
+              }
+            }
+          } catch (err: any) {
+            console.warn(`[CampaignWorker] Unable to fetch template language details from Meta: ${err.message}`);
+          }
+        }
 
         let successCount = 0;
         let skipCount = 0;
@@ -90,7 +112,7 @@ export class CampaignWorker implements OnModuleInit, OnModuleDestroy {
 
           let waMessageId = '';
 
-          // 4. Dispatch template message via Meta Cloud API
+          // 4. Dispatch template message via Meta Cloud API using original language
           if (!isMock) {
             try {
               const metaUrl = `https://graph.facebook.com/v20.0/${phoneNumberId}/messages`;
@@ -108,7 +130,7 @@ export class CampaignWorker implements OnModuleInit, OnModuleDestroy {
                   template: {
                     name: templateName,
                     language: {
-                      code: languageCode || 'en',
+                      code: originalLanguageCode,
                     },
                   },
                 }),
@@ -123,6 +145,7 @@ export class CampaignWorker implements OnModuleInit, OnModuleDestroy {
                 console.error(`[CampaignWorker] Meta dispatch failed for contact ${contact.phone}:`, data);
                 waMessageId = `failed_${Date.now()}`;
               }
+
             } catch (err) {
               console.error(`[CampaignWorker] Meta API error for contact ${contact.phone}:`, err.message);
               waMessageId = `failed_${Date.now()}`;
