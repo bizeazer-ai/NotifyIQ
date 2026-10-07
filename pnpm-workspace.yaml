@@ -5,10 +5,10 @@ packages:
   # EXCLUDING TESTS
   - "!**/tests/**"
 allowBuilds:
-  "bcrypt": true,
+  bcrypt: true,
   "@swc/core": true
   "@google/genai": true
   "@scarf/scarf": true
-  "msgpackr-extract": true
-  "protobufjs": true
-  "unrs-resolver": true
+  msgpackr-extract: true
+  protobufjs: true
+  unrs-resolver: true
