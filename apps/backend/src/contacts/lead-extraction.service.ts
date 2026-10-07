@@ -12,6 +12,7 @@ export interface UserDetailsDto {
   category?: string;
   budget?: string;
   productInterest?: string;
+  [key: string]: any;
 }
 
 @Injectable()

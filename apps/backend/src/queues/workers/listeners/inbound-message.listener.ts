@@ -134,10 +134,24 @@ export class InboundMessageListener {
     if (messageRecord) return; // Already processed (duplicate delivery)
 
     let messageBody: string | null = null;
+    let mediaUrl: string | null = null;
+
     if (msg.type === 'text') {
       messageBody = msg.text?.body || '';
     } else if (msg.type === 'interactive') {
       messageBody = msg.interactive?.button_reply?.title || msg.interactive?.list_reply?.title || '[Interactive Message]';
+    } else if (msg.type === 'image') {
+      messageBody = msg.image?.caption || '[Image]';
+      mediaUrl = msg.image?.id ? `/api/messages/media/${msg.image.id}` : null;
+    } else if (msg.type === 'document') {
+      messageBody = msg.document?.caption || msg.document?.filename || '[Document]';
+      mediaUrl = msg.document?.id ? `/api/messages/media/${msg.document.id}` : null;
+    } else if (msg.type === 'video') {
+      messageBody = msg.video?.caption || '[Video]';
+      mediaUrl = msg.video?.id ? `/api/messages/media/${msg.video.id}` : null;
+    } else if (msg.type === 'audio') {
+      messageBody = '[Voice Note]';
+      mediaUrl = msg.audio?.id ? `/api/messages/media/${msg.audio.id}` : null;
     } else {
       messageBody = `[Media: ${msg.type}]`;
     }
@@ -150,6 +164,7 @@ export class InboundMessageListener {
       type: msg.type,
       status: 'delivered',
       body: messageBody,
+      mediaUrl,
     });
 
     messageRecord = createdMsg;

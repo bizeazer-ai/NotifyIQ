@@ -62,6 +62,51 @@ export const sendMessage = createAsyncThunk(
   }
 );
 
+// Send media message (image, video, document, audio)
+export const sendMediaMessage = createAsyncThunk(
+  'inbox/sendMediaMessage',
+  async (
+    payload: {
+      to: string;
+      type: 'image' | 'video' | 'document' | 'audio';
+      mediaUrl: string;
+      caption?: string;
+      filename?: string;
+    },
+    { rejectWithValue }
+  ) => {
+    try {
+      const res = await apiClient.post<{ data: Message }>('/api/messages/send-media', payload);
+      return res.data;
+    } catch (err: any) {
+      return rejectWithValue(err.message || 'Failed to send media');
+    }
+  }
+);
+
+// Send template message with dynamic components and rendered body
+export const sendTemplateMessage = createAsyncThunk(
+  'inbox/sendTemplateMessage',
+  async (
+    payload: {
+      to: string;
+      templateName: string;
+      languageCode?: string;
+      components?: any[];
+      renderedBody?: string;
+      mediaUrl?: string;
+    },
+    { rejectWithValue }
+  ) => {
+    try {
+      const res = await apiClient.post<{ data: Message }>('/api/messages/send-template', payload);
+      return res.data;
+    } catch (err: any) {
+      return rejectWithValue(err.message || 'Failed to send template message');
+    }
+  }
+);
+
 // Toggle AI auto-reply
 export const toggleConversationAi = createAsyncThunk(
   'inbox/toggleConversationAi',
@@ -208,6 +253,50 @@ const inboxSlice = createSlice({
       })
       .addCase(sendMessage.rejected, (state, action) => {
         state.error = (action.payload as string) || 'Failed to dispatch message via Meta Cloud API';
+        const convId = state.activeConversationId;
+        if (convId && state.messagesByConversationId[convId]) {
+          const idx = state.messagesByConversationId[convId].findIndex((m) => m._id.startsWith('optimistic_'));
+          if (idx !== -1) {
+            state.messagesByConversationId[convId][idx].status = 'failed';
+          }
+        }
+      })
+      .addCase(sendMediaMessage.fulfilled, (state, action) => {
+        const message = action.payload;
+        const convId = message.conversationId || state.activeConversationId;
+        if (convId && state.messagesByConversationId[convId]) {
+          const idx = state.messagesByConversationId[convId].findIndex((m) => m._id.startsWith('optimistic_'));
+          if (idx !== -1) {
+            state.messagesByConversationId[convId][idx] = message;
+          } else {
+            state.messagesByConversationId[convId].push(message);
+          }
+        }
+      })
+      .addCase(sendMediaMessage.rejected, (state, action) => {
+        state.error = (action.payload as string) || 'Failed to dispatch media via Meta Cloud API';
+        const convId = state.activeConversationId;
+        if (convId && state.messagesByConversationId[convId]) {
+          const idx = state.messagesByConversationId[convId].findIndex((m) => m._id.startsWith('optimistic_'));
+          if (idx !== -1) {
+            state.messagesByConversationId[convId][idx].status = 'failed';
+          }
+        }
+      })
+      .addCase(sendTemplateMessage.fulfilled, (state, action) => {
+        const message = action.payload;
+        const convId = message.conversationId || state.activeConversationId;
+        if (convId && state.messagesByConversationId[convId]) {
+          const idx = state.messagesByConversationId[convId].findIndex((m) => m._id.startsWith('optimistic_'));
+          if (idx !== -1) {
+            state.messagesByConversationId[convId][idx] = message;
+          } else {
+            state.messagesByConversationId[convId].push(message);
+          }
+        }
+      })
+      .addCase(sendTemplateMessage.rejected, (state, action) => {
+        state.error = (action.payload as string) || 'Failed to dispatch template via Meta Cloud API';
         const convId = state.activeConversationId;
         if (convId && state.messagesByConversationId[convId]) {
           const idx = state.messagesByConversationId[convId].findIndex((m) => m._id.startsWith('optimistic_'));

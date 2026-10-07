@@ -28,7 +28,7 @@ export interface MessageContract {
   _id: string;
   waMessageId: string;
   direction: 'inbound' | 'outbound';
-  type: 'text' | 'audio' | 'image';
+  type: 'text' | 'audio' | 'image' | 'document' | 'video' | 'template';
   status: 'sent' | 'delivered' | 'read' | 'failed';
   body: string | null;
   mediaUrl?: string | null;
@@ -43,6 +43,13 @@ export const CampaignLaunchSchema = z.object({
   contactIds: z.array(z.string()),
   languageCode: z.string().default('en'),
   scheduledAt: z.string().optional(),
+  templateParameters: z
+    .object({
+      headerUrl: z.string().optional(),
+      bodyParams: z.array(z.string()).optional(),
+      buttonParams: z.array(z.string()).optional(),
+    })
+    .optional(),
 });
 
 export type CampaignLaunchPayload = z.infer<typeof CampaignLaunchSchema>;

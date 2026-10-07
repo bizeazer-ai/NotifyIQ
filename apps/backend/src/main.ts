@@ -11,14 +11,16 @@ async function bootstrap() {
   await connectToDatabase();
   const app = await NestFactory.create(AppModule);
 
-  // Enable raw body buffer on request for webhook signature verification
+  // Enable raw body buffer on request for webhook signature verification with a strict 2MB limit on JSON bodies
   app.use(
     express.json({
+      limit: '2mb',
       verify: (req: any, res, buf) => {
         req.rawBody = buf;
       },
     }),
   );
+  app.use(express.urlencoded({ limit: '2mb', extended: true }));
 
   // 1. Enforce strict DTO validation rules global mapping
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));

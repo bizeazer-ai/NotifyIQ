@@ -23,6 +23,19 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       message = resBody?.message || exception.message;
       error = resBody?.error || exception.name;
     } 
+    // Handle Payload / Entity Too Large (413) from body-parser, multer, or raw-body
+    else if (
+      (exception as any)?.type === 'entity.too.large' ||
+      (exception as any)?.status === 413 ||
+      (exception as any)?.statusCode === 413 ||
+      (exception as any)?.name === 'PayloadTooLargeError' ||
+      ((exception as any)?.message && typeof (exception as any).message === 'string' && (exception as any).message.toLowerCase().includes('entity too large'))
+    ) {
+      statusCode = HttpStatus.PAYLOAD_TOO_LARGE;
+      error = 'PayloadTooLargeError';
+      message = 'Uploaded payload or file exceeds the allowed size limit. WhatsApp limits: 5MB for images, 16MB for audio/video, 25MB for documents.';
+      console.warn(`[GlobalExceptionFilter] 413 Payload Too Large on ${request.method} ${request.url}: ${(exception as any)?.message || 'Limit exceeded'}`);
+    }
     // Example: Cleanly catch validation errors or unexpected operational failures
     else if (exception instanceof Error) {
       // In development, you might want to log this out to your terminal container stream

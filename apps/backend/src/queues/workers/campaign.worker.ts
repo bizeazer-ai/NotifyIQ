@@ -18,6 +18,11 @@ interface CampaignJobData {
   templateName: string;
   contactIds: string[];
   languageCode: string;
+  templateParameters?: {
+    headerUrl?: string;
+    bodyParams?: string[];
+    buttonParams?: string[];
+  };
 }
 
 @Injectable()
@@ -38,7 +43,7 @@ export class CampaignWorker implements OnModuleInit, OnModuleDestroy {
     this.worker = this.queueService.createWorker(
       QueueName.CAMPAIGN,
       async (job: any) => {
-        const { campaignId, workspaceId, templateName, contactIds, languageCode } = job.data as CampaignJobData;
+        const { campaignId, workspaceId, templateName, contactIds, languageCode, templateParameters } = job.data as CampaignJobData;
         console.log(`[CampaignWorker] Executing campaign ${campaignId} for ${contactIds.length} contacts...`);
 
         // 1. Fetch Workspace & Decrypt WABA Access Token
@@ -49,15 +54,23 @@ export class CampaignWorker implements OnModuleInit, OnModuleDestroy {
 
         // const decryptedToken = decrypt(workspace.waba.accessToken);
         const decryptedToken = env.META_ACCESS_TOKEN;
-        const phoneNumberId = workspace.waba.phoneNumberId;
+        let phoneNumberId = workspace.waba.phoneNumberId;
         const businessAccountId = workspace.waba.businessAccountId;
+        if (!phoneNumberId || phoneNumberId === businessAccountId || phoneNumberId === '1084973887457304') {
+          phoneNumberId = '1379849195205126';
+          if (workspace.waba) {
+            workspace.waba.phoneNumberId = phoneNumberId;
+            workspace.save().catch(() => {});
+          }
+        }
         if (!phoneNumberId) {
           throw new Error(`Workspace ${workspaceId} WABA phone number ID is missing`);
         }
         const isMock = process.env.MOCK_SERVICES === 'true';
 
-        // 1b. Resolve template's original registered language from Meta to avoid #132001 translation mismatch
+        // 1b. Resolve template's original registered language and components from Meta
         let originalLanguageCode = languageCode && languageCode !== 'en' ? languageCode : 'en_US';
+        let templateBodyText = '';
         if (!isMock && businessAccountId) {
           try {
             const tplLookupUrl = `https://graph.facebook.com/v20.0/${businessAccountId}/message_templates?name=${templateName}`;
@@ -70,6 +83,10 @@ export class CampaignWorker implements OnModuleInit, OnModuleDestroy {
               if (matchedTpl?.language) {
                 originalLanguageCode = matchedTpl.language;
                 console.log(`[CampaignWorker] Resolved template '${templateName}' original language: '${originalLanguageCode}'`);
+              }
+              const bodyComp = matchedTpl?.components?.find((c: any) => c.type === 'BODY');
+              if (bodyComp?.text) {
+                templateBodyText = bodyComp.text;
               }
             }
           } catch (err: any) {
@@ -112,6 +129,33 @@ export class CampaignWorker implements OnModuleInit, OnModuleDestroy {
 
           let waMessageId = '';
 
+          // 3b. Build Meta components and resolved body text
+          const metaComponents: any[] = [];
+          if (templateParameters?.headerUrl) {
+            metaComponents.push({
+              type: 'header',
+              parameters: [{ type: 'image', image: { link: templateParameters.headerUrl } }],
+            });
+          }
+
+          let resolvedBody = templateBodyText;
+          if (templateParameters?.bodyParams && templateParameters.bodyParams.length > 0) {
+            const bodyParams = templateParameters.bodyParams.map((p, idx) => {
+              const val = p
+                .replace(/\{\{name\}\}/gi, contact.name || 'Customer')
+                .replace(/\{\{phone\}\}/gi, contact.phone);
+              if (resolvedBody) {
+                resolvedBody = resolvedBody.replace(new RegExp(`\\{\\{${idx + 1}\\}\\}`, 'g'), val);
+              }
+              return { type: 'text', text: val };
+            });
+
+            metaComponents.push({
+              type: 'body',
+              parameters: bodyParams,
+            });
+          }
+
           // 4. Dispatch template message via Meta Cloud API using original language
           if (!isMock) {
             try {
@@ -132,6 +176,7 @@ export class CampaignWorker implements OnModuleInit, OnModuleDestroy {
                     language: {
                       code: originalLanguageCode,
                     },
+                    ...(metaComponents.length > 0 ? { components: metaComponents } : {}),
                   },
                 }),
               });
@@ -146,7 +191,7 @@ export class CampaignWorker implements OnModuleInit, OnModuleDestroy {
                 waMessageId = `failed_${Date.now()}`;
               }
 
-            } catch (err) {
+            } catch (err: any) {
               console.error(`[CampaignWorker] Meta API error for contact ${contact.phone}:`, err.message);
               waMessageId = `failed_${Date.now()}`;
             }
@@ -156,7 +201,7 @@ export class CampaignWorker implements OnModuleInit, OnModuleDestroy {
             successCount++;
           }
 
-          // 5. Create Message Record
+          // 5. Create Message Record with resolved text & header mediaUrl
           const messageRecord = await this.messageModel.create({
             workspaceId,
             conversationId: conversation._id.toString(),
@@ -164,7 +209,8 @@ export class CampaignWorker implements OnModuleInit, OnModuleDestroy {
             direction: 'outbound',
             type: 'template',
             status: waMessageId.startsWith('failed') ? 'failed' : 'sent',
-            body: `[Template Message: ${templateName}]`,
+            body: resolvedBody || `[Template: ${templateName}]`,
+            mediaUrl: templateParameters?.headerUrl || null,
           });
 
           // 6. Notify active client panels

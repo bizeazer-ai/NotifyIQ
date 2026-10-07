@@ -30,7 +30,7 @@ export class CreateTemplateDto {
 
   @IsString()
   @IsOptional()
-  headerType?: 'NONE' | 'TEXT' | 'IMAGE' | 'DOCUMENT';
+  headerType?: 'NONE' | 'TEXT' | 'IMAGE' | 'DOCUMENT' | 'VIDEO';
 
   @IsString()
   @IsOptional()

@@ -42,6 +42,19 @@ export default function CampaignsPage() {
   const [scheduledAt, setScheduledAt] = useState('');
   const [statusMessage, setStatusMessage] = useState('');
 
+  // Dynamic Template Values
+  const [headerUrl, setHeaderUrl] = useState('');
+  const [bodyParams, setBodyParams] = useState<Record<string, string>>({ '{{1}}': '{{name}}' });
+
+  const selectedTemplateObj = wabaTemplates.find((t) => t.name === templateName);
+  const headerComp = selectedTemplateObj?.components?.find((c: any) => c.type === 'HEADER');
+  const headerFormat = (headerComp?.format || (selectedTemplateObj?.headerText ? 'TEXT' : 'NONE')).toUpperCase();
+  const bodyComp = selectedTemplateObj?.components?.find((c: any) => c.type === 'BODY');
+  const bodyText = bodyComp?.text || selectedTemplateObj?.bodyText || '';
+  const footerComp = selectedTemplateObj?.components?.find((c: any) => c.type === 'FOOTER');
+  const footerText = footerComp?.text || selectedTemplateObj?.footerText || '';
+  const templateVariables: string[] = Array.from(new Set(bodyText.match(/\{\{(\d+)\}\}/g) || []));
+
   const loadData = async () => {
     setLoading(true);
     setError(null);
@@ -107,6 +120,11 @@ export default function CampaignsPage() {
       return;
     }
 
+    if (['IMAGE', 'DOCUMENT', 'VIDEO'].includes(headerFormat) && !headerUrl.trim()) {
+      alert(`Please enter a valid header ${headerFormat} URL for this template.`);
+      return;
+    }
+
     setStatusMessage(dispatchType === 'scheduled' ? `Scheduling campaign for ${new Date(scheduledAt).toLocaleString()}...` : 'Launching immediate broadcast job...');
 
     try {
@@ -115,6 +133,10 @@ export default function CampaignsPage() {
         languageCode,
         contactIds: selectedContactIds,
         scheduledAt: dispatchType === 'scheduled' ? scheduledAt : undefined,
+        templateParameters: {
+          headerUrl: headerUrl || undefined,
+          bodyParams: templateVariables.map((v) => bodyParams[v] || v),
+        },
       });
 
       setStatusMessage(dispatchType === 'scheduled' ? `Campaign scheduled successfully for ${new Date(scheduledAt).toLocaleString()}!` : 'Campaign launched successfully! Broadcaster enqueued to BullMQ Redis.');
@@ -221,6 +243,120 @@ export default function CampaignsPage() {
                     />
                   </div>
                 </div>
+
+                {/* Dynamic Template Parameters (Variables & Media) */}
+                {selectedTemplateObj && (
+                  <div
+                    style={{
+                      backgroundColor: 'var(--color-surface-secondary)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: 'var(--radius-lg)',
+                      padding: 'var(--space-4)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 'var(--space-3)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 700, color: 'var(--color-primary)' }}>
+                      <Icon name="sparkles" size={14} />
+                      <span>Template Customization & Dynamic Variables</span>
+                    </div>
+
+                    {/* Header Media URL if required */}
+                    {['IMAGE', 'DOCUMENT', 'VIDEO'].includes(headerFormat) && (
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label-styled">
+                          Header {headerFormat} URL <span style={{ color: 'var(--color-error)' }}>*</span>
+                        </label>
+                        <input
+                          type="url"
+                          className="form-input-styled"
+                          placeholder={`https://example.com/media.${headerFormat === 'IMAGE' ? 'jpg' : 'pdf'}`}
+                          value={headerUrl}
+                          onChange={(e) => setHeaderUrl(e.target.value)}
+                          required
+                        />
+                        <div style={{ fontSize: '11px', color: 'var(--color-foreground-muted)', marginTop: '2px' }}>
+                          Meta Cloud API requires a publicly accessible HTTPS link for template header media.
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Body Variables {{1}}, {{2}}, etc. */}
+                    {templateVariables.length > 0 ? (
+                      <div style={{ display: 'grid', gridTemplateColumns: templateVariables.length > 1 ? '1fr 1fr' : '1fr', gap: 'var(--space-3)' }}>
+                        {templateVariables.map((varTag, idx) => (
+                          <div className="form-group" key={varTag} style={{ marginBottom: 0 }}>
+                            <label className="form-label-styled">
+                              Variable {varTag} {idx === 0 ? '(Recipient Name)' : ''}
+                            </label>
+                            <input
+                              type="text"
+                              className="form-input-styled"
+                              placeholder={idx === 0 ? '{{name}} (Replaced with contact name)' : `Value for ${varTag}`}
+                              value={bodyParams[varTag] !== undefined ? bodyParams[varTag] : (idx === 0 ? '{{name}}' : '')}
+                              onChange={(e) =>
+                                setBodyParams({
+                                  ...bodyParams,
+                                  [varTag]: e.target.value,
+                                })
+                              }
+                            />
+                            <div style={{ fontSize: '10.5px', color: 'var(--color-foreground-muted)', marginTop: '2px' }}>
+                              Tip: Use <code>&#123;&#123;name&#125;&#125;</code> for contact's name or <code>&#123;&#123;phone&#125;&#125;</code> for phone.
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      !['IMAGE', 'DOCUMENT', 'VIDEO'].includes(headerFormat) && (
+                        <div style={{ fontSize: '11.5px', color: 'var(--color-foreground-muted)' }}>
+                          This template does not require dynamic parameters. It will be sent with its approved text.
+                        </div>
+                      )
+                    )}
+
+                    {/* Live WhatsApp Preview */}
+                    <div
+                      style={{
+                        marginTop: '4px',
+                        backgroundColor: 'var(--color-surface)',
+                        borderRadius: 'var(--radius-md)',
+                        padding: '10px 14px',
+                        border: '1px solid var(--color-border)',
+                      }}
+                    >
+                      <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--color-foreground-secondary)', marginBottom: '4px' }}>
+                        Live Message Card Preview:
+                      </div>
+                      {headerUrl && ['IMAGE', 'DOCUMENT', 'VIDEO'].includes(headerFormat) && (
+                        <img
+                          src={headerUrl}
+                          alt="Header media preview"
+                          style={{ width: '100%', maxHeight: '140px', objectFit: 'cover', borderRadius: '4px', marginBottom: '6px' }}
+                        />
+                      )}
+                      <div style={{ fontSize: '12.5px', whiteSpace: 'pre-wrap', color: 'var(--color-foreground)' }}>
+                        {(() => {
+                          let text = bodyText;
+                          templateVariables.forEach((v) => {
+                            const val = bodyParams[v] !== undefined ? bodyParams[v] : (v === '{{1}}' ? '{{name}}' : v);
+                            text = text.replace(
+                              new RegExp(v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'),
+                              val ? `[${val}]` : v
+                            );
+                          });
+                          return text;
+                        })()}
+                      </div>
+                      {footerText && (
+                        <div style={{ fontSize: '10.5px', color: 'var(--color-foreground-muted)', marginTop: '4px' }}>
+                          {footerText}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
 
 
                 {/* Dispatch Schedule Timing */}

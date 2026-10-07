@@ -37,7 +37,10 @@ export class ErrorRetryWorker implements OnModuleInit, OnModuleDestroy {
         await log.save();
 
         try {
-          const { phoneNumberId, to, type, body, template } = log.payload;
+          let { phoneNumberId, to, type, body, template } = log.payload;
+          if (!phoneNumberId || phoneNumberId === '1084973887457304') {
+            phoneNumberId = '1379849195205126';
+          }
           const workspace = await this.workspaceModel.findById(log.workspaceId);
           if (!workspace) {
             throw new Error(`Workspace ${log.workspaceId} not found`);

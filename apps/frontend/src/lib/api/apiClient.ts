@@ -25,9 +25,12 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
     url += `?${searchParams.toString()}`;
   }
 
-  const defaultHeaders: Record<string, string> = {
-    'Content-Type': 'application/json',
-  };
+  const isFormData = typeof FormData !== 'undefined' && customOptions.body instanceof FormData;
+
+  const defaultHeaders: Record<string, string> = {};
+  if (!isFormData) {
+    defaultHeaders['Content-Type'] = 'application/json';
+  }
 
   const token = localStorage.getItem('notifyiq_token');
   if (token) {
@@ -48,6 +51,11 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
   }
 
   const mergedHeaders = { ...defaultHeaders, ...headers };
+  // If sending FormData, delete Content-Type so fetch/browser automatically generates multipart boundary
+  if (isFormData) {
+    delete (mergedHeaders as any)['Content-Type'];
+    delete (mergedHeaders as any)['content-type'];
+  }
 
   try {
     const response = await fetch(url, {
@@ -87,14 +95,32 @@ export const apiClient = {
   get: <T>(endpoint: string, options?: RequestOptions) =>
     request<T>(endpoint, { ...options, method: 'GET' }),
 
-  post: <T>(endpoint: string, body?: any, options?: RequestOptions) =>
-    request<T>(endpoint, { ...options, method: 'POST', body: JSON.stringify(body) }),
+  post: <T>(endpoint: string, body?: any, options?: RequestOptions) => {
+    const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
+    return request<T>(endpoint, {
+      ...options,
+      method: 'POST',
+      body: isFormData ? body : (body !== undefined ? JSON.stringify(body) : undefined),
+    });
+  },
 
-  put: <T>(endpoint: string, body?: any, options?: RequestOptions) =>
-    request<T>(endpoint, { ...options, method: 'PUT', body: JSON.stringify(body) }),
+  put: <T>(endpoint: string, body?: any, options?: RequestOptions) => {
+    const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
+    return request<T>(endpoint, {
+      ...options,
+      method: 'PUT',
+      body: isFormData ? body : (body !== undefined ? JSON.stringify(body) : undefined),
+    });
+  },
 
-  patch: <T>(endpoint: string, body?: any, options?: RequestOptions) =>
-    request<T>(endpoint, { ...options, method: 'PATCH', body: JSON.stringify(body) }),
+  patch: <T>(endpoint: string, body?: any, options?: RequestOptions) => {
+    const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
+    return request<T>(endpoint, {
+      ...options,
+      method: 'PATCH',
+      body: isFormData ? body : (body !== undefined ? JSON.stringify(body) : undefined),
+    });
+  },
 
   delete: <T>(endpoint: string, options?: RequestOptions) =>
     request<T>(endpoint, { ...options, method: 'DELETE' }),
