@@ -18,6 +18,7 @@ import { FlowsModule } from './flows/flows.module.js';
 import { ContactsModule } from './contacts/contacts.module.js';
 import { AnalyticsModule } from './analytics/analytics.module.js';
 import { AdminModule } from './admin/admin.module.js';
+import { OutboundWebhooksModule } from './outbound-webhooks/outbound-webhooks.module.js';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { AdminModule } from './admin/admin.module.js';
     FlowsModule,
     ContactsModule,
     AnalyticsModule,
+    OutboundWebhooksModule,
   ],
   controllers: [AppController],
   providers: [AppService],

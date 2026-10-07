@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Flow, FlowDocument } from '../database/schemas/flow.schema.js';
@@ -8,6 +8,7 @@ import { Conversation, ConversationDocument } from '../database/schemas/conversa
 import { SocketGateway } from '../socket/socket.gateway.js';
 import { RagService } from '../ai/rag.service.js';
 import { MessagesService } from '../messages/messages.service.js';
+import { OutboundWebhookDispatcher } from '../outbound-webhooks/outbound-webhook.dispatcher.js';
 
 export interface FlowExecutionResult {
   executed: boolean;
@@ -31,6 +32,7 @@ export class FlowExecutionEngine {
     private readonly socketGateway: SocketGateway,
     private readonly ragService: RagService,
     private readonly messagesService: MessagesService,
+    @Optional() private readonly dispatcher?: OutboundWebhookDispatcher,
   ) { }
 
 
@@ -237,14 +239,32 @@ export class FlowExecutionEngine {
             const currentTags: string[] = (contact as any).tags || [];
             (contact as any).tags = currentTags.filter((t) => t !== tagName);
             await (contact as any).save();
+          } else if (actionType === 'update_lead_status' || actionType === 'lead_status') {
+            const newStatus = config.leadStatus || config.status || 'qualified';
+            const previousStatus = (contact as any).leadStatus || 'new';
+            (contact as any).leadStatus = newStatus;
+            await (contact as any).save();
+
+            // Dispatch outbound webhook: lead.status_changed
+            if (this.dispatcher) {
+              this.dispatcher.dispatchEvent(workspaceId, 'lead.status_changed', {
+                contactId: contact._id.toString(),
+                phone: contact.phone,
+                name: contact.name,
+                fromStatus: previousStatus,
+                toStatus: newStatus,
+                flowId: flow._id.toString(),
+                flowName: flow.name,
+              }).catch((err) => this.logger.error(`[FlowEngine] Dispatcher (lead.status_changed) error: ${err.message}`));
+            }
           }
 
-          actionsTaken.push(`action_${actionType}: ${tagName}`);
+          actionsTaken.push(`action_${actionType}: ${config.leadStatus || config.status || tagName}`);
           executionLog.push({
             nodeId: currentNode.id,
             type: 'action',
             label: nodeLabel,
-            detail: `Applied contact action ${actionType}: ${tagName}`,
+            detail: `Applied contact action ${actionType}: ${config.leadStatus || config.status || tagName}`,
           });
 
           currentNodeId = this.getNextNodeId(flow, currentNode.id, null);

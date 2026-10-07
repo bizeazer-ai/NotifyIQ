@@ -19,6 +19,11 @@ jest.mock('bullmq', () => {
 });
 
 import { WebhookWorker } from './webhook.worker.js';
+import { InboundMessageListener } from './listeners/inbound-message.listener.js';
+import { MessageStatusListener } from './listeners/message-status.listener.js';
+import { TemplateStatusListener } from './listeners/template-status.listener.js';
+import { AccountUpdateListener } from './listeners/account-update.listener.js';
+import { OutboundWebhookDispatcher } from '../../outbound-webhooks/outbound-webhook.dispatcher.js';
 import { RedisService } from '../../common/services/redis.service.js';
 import { QueueService } from '../queue.service.js';
 import { SocketGateway } from '../../socket/socket.gateway.js';
@@ -48,6 +53,7 @@ describe('WebhookWorker Auto-Reply Engine', () => {
   const mockFlowExecutionEngine = { executeFlowForInboundMessage: jest.fn().mockResolvedValue({ executed: false }) };
   const mockMessagesService = { sendTextMessage: jest.fn().mockResolvedValue({}) };
   const mockSentimentService = { analyzeMessageSentiment: jest.fn().mockResolvedValue('neutral') };
+  const mockDispatcher = { dispatchEvent: jest.fn().mockResolvedValue(undefined) };
 
   const mockWorkspace = {
     _id: 'ws_123',
@@ -76,6 +82,11 @@ describe('WebhookWorker Auto-Reply Engine', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         WebhookWorker,
+        InboundMessageListener,
+        MessageStatusListener,
+        TemplateStatusListener,
+        AccountUpdateListener,
+        { provide: OutboundWebhookDispatcher, useValue: mockDispatcher },
         { provide: RedisService, useValue: mockRedisService },
         { provide: QueueService, useValue: mockQueueService },
         { provide: SocketGateway, useValue: mockSocketGateway },

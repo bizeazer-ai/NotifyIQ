@@ -26,6 +26,9 @@ export class Contact {
   @Prop({ type: [String], default: ['Customer'] })
   tags: string[];
 
+  @Prop({ type: String, default: 'new' })
+  leadStatus: string;
+
   @Prop({ default: false })
   consentGiven: boolean;
 

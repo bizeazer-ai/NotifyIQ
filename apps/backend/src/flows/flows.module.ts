@@ -7,9 +7,10 @@ import { FlowsService } from './flows.service.js';
 import { FlowExecutionEngine } from './flow-execution.engine.js';
 
 import { MessagesModule } from '../messages/messages.module.js';
+import { OutboundWebhooksModule } from '../outbound-webhooks/outbound-webhooks.module.js';
 
 @Module({
-  imports: [DatabaseModule, SocketModule, AiModule, MessagesModule],
+  imports: [DatabaseModule, SocketModule, AiModule, MessagesModule, OutboundWebhooksModule],
   controllers: [FlowsController],
   providers: [FlowsService, FlowExecutionEngine],
   exports: [FlowsService, FlowExecutionEngine],
