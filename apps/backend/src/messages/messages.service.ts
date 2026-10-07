@@ -6,6 +6,8 @@ import { Workspace, WorkspaceDocument } from '../database/schemas/workspace.sche
 import { Contact, ContactDocument } from '../database/schemas/contact.schema.js';
 import { Conversation, ConversationDocument } from '../database/schemas/conversation.schema.js';
 import { Message, MessageDocument } from '../database/schemas/message.schema.js';
+import { ErrorRetryLog, ErrorRetryLogDocument } from '../database/schemas/error-retry-log.schema.js';
+import { QueueService, QueueName } from '../queues/queue.service.js';
 import { decrypt } from '../lib/utils/encryption.js';
 import { SocketGateway } from '../socket/socket.gateway.js';
 import { env } from '@notifyiq/config';
@@ -22,7 +24,9 @@ export class MessagesService {
     @InjectModel(Contact.name) private readonly contactModel: Model<ContactDocument>,
     @InjectModel(Conversation.name) private readonly conversationModel: Model<ConversationDocument>,
     @InjectModel(Message.name) private readonly messageModel: Model<MessageDocument>,
+    @InjectModel(ErrorRetryLog.name) private readonly errorRetryLogModel: Model<ErrorRetryLogDocument>,
     private readonly socketGateway: SocketGateway,
+    private readonly queueService: QueueService,
   ) { }
 
   async sendTextMessage(workspaceId: string, dto: SendMessageDto): Promise<MessageDocument> {
@@ -85,10 +89,24 @@ export class MessagesService {
         phoneNumberId,
         lastMessageAt: new Date(),
         sentiment: 'neutral',
+        isHumanTakeover: true,
       });
     } else {
+      // 24-hour service window check
+      if (conversation.windowExpiresAt && new Date() > conversation.windowExpiresAt) {
+        throw new BadRequestException(
+          'The 24-hour WhatsApp customer service window has expired for this contact. Please send an approved Meta Template Message to re-engage.',
+        );
+      }
       conversation.lastMessageAt = new Date();
+      // Auto-pause AI when agent sends manual reply
+      conversation.isHumanTakeover = true;
       await conversation.save();
+
+      this.socketGateway.emitToWorkspace(workspaceId, 'conversation.ai_toggled', {
+        conversationId: conversation._id.toString(),
+        isHumanTakeover: true,
+      });
     }
 
     let waMessageId = '';
@@ -122,11 +140,67 @@ export class MessagesService {
         if (!response.ok || !data.messages?.[0]?.id) {
           const errMsg = data.error?.message || `Meta Graph API error (Code: ${data.error?.code || response.status})`;
           console.error('[MessagesService] Meta Cloud API outbound transmission failed:', data);
+
+          const isTransient =
+            response.status === 429 ||
+            response.status >= 500 ||
+            data.error?.code === 131056 ||
+            data.error?.code === 130429;
+
+          if (isTransient) {
+            console.warn('[MessagesService] Transient Meta error encountered. Scheduling background retry...');
+            const pendingMsg = await this.messageModel.create({
+              workspaceId,
+              conversationId: conversation._id.toString(),
+              waMessageId: `wamid.retry_${crypto.randomBytes(8).toString('hex')}`,
+              direction: 'outbound',
+              type: 'text',
+              status: 'pending',
+              body: dto.body,
+            });
+
+            const errorLog = await this.errorRetryLogModel.create({
+              workspaceId,
+              messageId: pendingMsg._id,
+              payload: {
+                phoneNumberId,
+                to: phone,
+                type: 'text',
+                body: dto.body,
+              },
+              attemptCount: 1,
+              maxAttempts: 4,
+              status: 'pending',
+              nextRetryAt: new Date(Date.now() + 60000),
+              lastError: errMsg,
+              errorTrace: data,
+            });
+
+            await this.queueService.addJob(
+              QueueName.ERROR_RETRY,
+              'retry-failed-meta-call',
+              { errorRetryLogId: errorLog._id.toString() },
+              undefined,
+              { delay: 60000 },
+            );
+
+            this.socketGateway.emitToWorkspace(workspaceId, 'message.sent', {
+              message: pendingMsg,
+              contact,
+              conversation,
+            });
+
+            return pendingMsg;
+          }
+
           throw new BadRequestException(errMsg);
         }
 
         waMessageId = data.messages[0].id;
       } catch (err: any) {
+        if (err instanceof BadRequestException) {
+          throw err;
+        }
         console.error('[MessagesService] Outbound dispatch error:', err);
         throw new BadRequestException(err instanceof Error ? err.message : 'Meta dispatch failed');
       }
@@ -176,11 +250,17 @@ export class MessagesService {
 
       result.push({
         _id: conv._id.toString(),
+        contactId: conv.contactId?.toString(),
         contactName: contact?.name || 'WhatsApp User',
         phone: contact?.phone || '',
         sentiment: conv.sentiment || 'neutral',
         lastMessageAt: conv.lastMessageAt,
         lastMessageText: lastMessage?.body || '',
+        isHumanTakeover: conv.isHumanTakeover || false,
+        status: conv.status || 'open',
+        assignedTo: conv.assignedTo ? conv.assignedTo.toString() : null,
+        lastInboundAt: conv.lastInboundAt || null,
+        windowExpiresAt: conv.windowExpiresAt || null,
       });
     }
 
@@ -198,6 +278,66 @@ export class MessagesService {
       .find({ conversationId })
       .sort({ createdAt: 1 })
       .exec();
+  }
+
+  /**
+   * Toggle AI auto-reply (Pause / Resume AI) for a conversation
+   */
+  async toggleAi(workspaceId: string, conversationId: string): Promise<{ isHumanTakeover: boolean }> {
+    const conv = await this.conversationModel.findOne({ _id: conversationId, workspaceId });
+    if (!conv) {
+      throw new NotFoundException('Conversation not found in this workspace');
+    }
+
+    conv.isHumanTakeover = !conv.isHumanTakeover;
+    await conv.save();
+
+    this.socketGateway.emitToWorkspace(workspaceId, 'conversation.ai_toggled', {
+      conversationId: conv._id.toString(),
+      isHumanTakeover: conv.isHumanTakeover,
+    });
+
+    return { isHumanTakeover: conv.isHumanTakeover };
+  }
+
+  /**
+   * Assign conversation to a staff user
+   */
+  async assignConversation(workspaceId: string, conversationId: string, staffId: string | null): Promise<ConversationDocument> {
+    const conv = await this.conversationModel.findOne({ _id: conversationId, workspaceId });
+    if (!conv) {
+      throw new NotFoundException('Conversation not found in this workspace');
+    }
+
+    conv.assignedTo = staffId;
+    await conv.save();
+
+    this.socketGateway.emitToWorkspace(workspaceId, 'conversation.assigned', {
+      conversationId: conv._id.toString(),
+      assignedTo: staffId,
+    });
+
+    return conv;
+  }
+
+  /**
+   * Update conversation status (open / pending / resolved)
+   */
+  async updateConversationStatus(workspaceId: string, conversationId: string, status: string): Promise<ConversationDocument> {
+    const conv = await this.conversationModel.findOne({ _id: conversationId, workspaceId });
+    if (!conv) {
+      throw new NotFoundException('Conversation not found in this workspace');
+    }
+
+    conv.status = status;
+    await conv.save();
+
+    this.socketGateway.emitToWorkspace(workspaceId, 'conversation.status_updated', {
+      conversationId: conv._id.toString(),
+      status,
+    });
+
+    return conv;
   }
 
   async getCampaignStats(workspaceId: string): Promise<any> {

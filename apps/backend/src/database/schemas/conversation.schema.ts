@@ -22,6 +22,26 @@ export class Conversation {
 
   @Prop({ type: String, default: null })
   summary: string | null;
+
+  /** Human takeover flag: when true, AI auto-replies are paused for this thread */
+  @Prop({ type: Boolean, default: false })
+  isHumanTakeover: boolean;
+
+  /** Assigned staff member */
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', default: null })
+  assignedTo: MongooseSchema.Types.ObjectId | string | null;
+
+  /** Conversation status */
+  @Prop({ type: String, enum: ['open', 'pending', 'resolved'], default: 'open' })
+  status: string;
+
+  /** Timestamp of the last inbound message from customer */
+  @Prop({ type: Date, default: null })
+  lastInboundAt: Date | null;
+
+  /** WhatsApp 24-hour service window expiry (lastInboundAt + 24 hours) */
+  @Prop({ type: Date, default: null })
+  windowExpiresAt: Date | null;
 }
 
 

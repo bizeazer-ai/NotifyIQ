@@ -158,6 +158,10 @@ export class Workspace {
 
   @Prop({ type: String, default: null })
   referralSource: string | null;
+
+  /** Predefined business category tags for lead extraction & broadcast filtering */
+  @Prop({ type: [String], default: ['Wholesale', 'Retail', 'Inquiry', 'Support', 'General'] })
+  categories: string[];
 }
 
 export const WorkspaceSchema = SchemaFactory.createForClass(Workspace);

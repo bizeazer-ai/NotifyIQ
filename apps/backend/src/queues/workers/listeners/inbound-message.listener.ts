@@ -12,6 +12,7 @@ import { SentimentService } from '../../../ai/sentiment.service.js';
 import { FlowExecutionEngine } from '../../../flows/flow-execution.engine.js';
 import { MessagesService } from '../../../messages/messages.service.js';
 import { RagService } from '../../../ai/rag.service.js';
+import { LeadExtractionService } from '../../../contacts/lead-extraction.service.js';
 
 interface MessageDebounceBuffer {
   workspace: WorkspaceDocument;
@@ -39,7 +40,10 @@ interface MessageDebounceBuffer {
 export class InboundMessageListener {
   private readonly logger = new Logger(InboundMessageListener.name);
   private readonly debounceBuffers: Map<string, MessageDebounceBuffer> = new Map();
-  private readonly DEBOUNCE_MS = 2500;
+  private readonly DEBOUNCE_MS = 4000;
+  private readonly contactReplyTracker: Map<string, { count: number; resetAt: number }> = new Map();
+  private readonly SPAM_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
+  private readonly MAX_REPLIES_PER_WINDOW = 5;
 
   constructor(
     @InjectModel(Contact.name) private readonly contactModel: Model<ContactDocument>,
@@ -52,6 +56,7 @@ export class InboundMessageListener {
     private readonly flowExecutionEngine: FlowExecutionEngine,
     private readonly messagesService: MessagesService,
     private readonly ragService: RagService,
+    private readonly leadExtractionService: LeadExtractionService,
   ) {}
 
   /**
@@ -103,16 +108,24 @@ export class InboundMessageListener {
       phoneNumberId,
     });
 
+    const now = new Date();
+    const windowExpiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
     if (!conversation) {
       conversation = await this.conversationModel.create({
         workspaceId,
         contactId: contact._id.toString(),
         phoneNumberId,
-        lastMessageAt: new Date(),
+        lastMessageAt: now,
+        lastInboundAt: now,
+        windowExpiresAt,
         sentiment: 'neutral',
+        status: 'open',
       });
     } else {
-      conversation.lastMessageAt = new Date();
+      conversation.lastMessageAt = now;
+      conversation.lastInboundAt = now;
+      conversation.windowExpiresAt = windowExpiresAt;
       await conversation.save();
     }
 
@@ -303,6 +316,76 @@ export class InboundMessageListener {
       return;
     }
 
+    // 1. Anti-Spam Rate Limiter (Loop Prevention)
+    const now = Date.now();
+    const contactKey = `${workspaceId}:${contact.phone}`;
+    let tracker = this.contactReplyTracker.get(contactKey);
+
+    if (!tracker || now > tracker.resetAt) {
+      tracker = { count: 0, resetAt: now + this.SPAM_WINDOW_MS };
+      this.contactReplyTracker.set(contactKey, tracker);
+    }
+
+    if (tracker.count >= this.MAX_REPLIES_PER_WINDOW) {
+      this.logger.warn(`[InboundMessage] Anti-spam triggered for ${contact.phone} (>5 replies in 5m). Halting AI auto-reply.`);
+      conversation.isHumanTakeover = true;
+      await conversation.save();
+
+      this.socketGateway.emitToWorkspace(workspaceId, 'escalation.alert', {
+        messageId: conversation._id.toString(),
+        conversationId: conversation._id.toString(),
+        sentiment: 'urgent',
+        body: `Anti-spam loop protection: Contact ${contact.phone} received 5 consecutive AI replies within 5 minutes. Automated replies halted.`,
+        timestamp: new Date(),
+      });
+
+      this.dispatcher.dispatchEvent(workspaceId, 'human.handover', {
+        reason: 'anti_spam_limit_exceeded',
+        triggeredBy: 'auto_reply_limiter',
+        contact: { id: contact._id.toString(), phone: contact.phone, name: contact.name },
+        conversation: { id: conversation._id.toString(), sentiment: 'urgent' },
+      }).catch((err) => this.logger.error(`[InboundMessage] Dispatcher error: ${err.message}`));
+
+      return;
+    }
+
+    // 2. Business Operating Hours & Out-of-Hours Check
+    const operatingHours = settings.operatingHours;
+    if (operatingHours && operatingHours.enabled) {
+      try {
+        const tz = operatingHours.timezone || 'Asia/Kolkata';
+        const nowInTz = new Date(new Date().toLocaleString('en-US', { timeZone: tz }));
+        const currentDay = nowInTz.getDay();
+        const currentHour = nowInTz.getHours();
+        const currentMinute = nowInTz.getMinutes();
+        const currentTimeMinutes = currentHour * 60 + currentMinute;
+
+        const [startH, startM] = (operatingHours.startTime || '09:00').split(':').map(Number);
+        const [endH, endM] = (operatingHours.endTime || '18:00').split(':').map(Number);
+        const startTotal = (startH || 9) * 60 + (startM || 0);
+        const endTotal = (endH || 18) * 60 + (endM || 0);
+
+        const isWorkDay = Array.isArray(operatingHours.workDays) ? operatingHours.workDays.includes(currentDay) : true;
+        const isWithinHours = isWorkDay && currentTimeMinutes >= startTotal && currentTimeMinutes < endTotal;
+
+        if (settings.outOfHoursOnly && isWithinHours) {
+          this.logger.log(`[InboundMessage] Business is currently OPEN (within operating hours). Skipping auto-reply for human staff.`);
+          return;
+        }
+
+        if (!isWithinHours && settings.outOfHoursMessage && settings.outOfHoursOnly) {
+          await this.messagesService.sendTextMessage(workspaceId, {
+            to: contact.phone,
+            body: settings.outOfHoursMessage,
+          });
+          tracker.count++;
+          return;
+        }
+      } catch (err: any) {
+        this.logger.warn(`[InboundMessage] Operating hours check error: ${err.message}`);
+      }
+    }
+
     const ragResult = await this.ragService.queryKnowledgeBase(
       workspaceId,
       userQuery,
@@ -310,7 +393,24 @@ export class InboundMessageListener {
     );
     const threshold = settings.confidenceThreshold || 0.70;
 
+    // Automatically parse & persist extracted lead attributes if detected
+    if (ragResult.userDetails) {
+      this.leadExtractionService
+        .processExtractedLead(
+          workspaceId,
+          contact._id.toString(),
+          contact.phone,
+          ragResult.userDetails,
+          userQuery,
+          ragResult.confidenceScore,
+        )
+        .catch((err) =>
+          this.logger.warn(`[InboundMessage] Lead extraction execution error: ${err.message}`),
+        );
+    }
+
     if (ragResult.answer && (ragResult.confidenceScore === undefined || ragResult.confidenceScore >= threshold)) {
+      tracker.count++;
       this.logger.log(`[InboundMessage] AI auto-reply triggered. Confidence: ${ragResult.confidenceScore}`);
 
       await this.messagesService.sendTextMessage(workspaceId, {

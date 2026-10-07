@@ -16,6 +16,9 @@ import { AdminSession, AdminSessionSchema } from './schemas/admin-session.schema
 import { Coupon, CouponSchema } from './schemas/coupon.schema.js';
 import { AiUsageEvent, AiUsageEventSchema } from './schemas/ai-usage-event.schema.js';
 
+import { ExtractedLead, ExtractedLeadSchema } from './schemas/extracted-lead.schema.js';
+import { ErrorRetryLog, ErrorRetryLogSchema } from './schemas/error-retry-log.schema.js';
+
 @Module({
   imports: [
     MongooseModule.forFeature([
@@ -34,6 +37,8 @@ import { AiUsageEvent, AiUsageEventSchema } from './schemas/ai-usage-event.schem
       { name: AdminSession.name, schema: AdminSessionSchema },
       { name: Coupon.name, schema: CouponSchema },
       { name: AiUsageEvent.name, schema: AiUsageEventSchema },
+      { name: ExtractedLead.name, schema: ExtractedLeadSchema },
+      { name: ErrorRetryLog.name, schema: ErrorRetryLogSchema },
     ]),
   ],
   exports: [MongooseModule],

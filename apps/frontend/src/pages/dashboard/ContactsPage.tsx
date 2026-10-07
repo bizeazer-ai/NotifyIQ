@@ -5,6 +5,7 @@ import { Icon } from '../../components/ui/Icon';
 import { LoadingState } from '../../components/ui/LoadingState';
 import { ErrorAlert } from '../../components/ui/ErrorAlert';
 import { EmptyState } from '../../components/ui/EmptyState';
+import ChatHistoryImportModal from '../../features/inbox/components/ChatHistoryImportModal';
 
 export default function ContactsPage() {
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -12,6 +13,9 @@ export default function ContactsPage() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTagFilter, setActiveTagFilter] = useState('ALL');
+
+  // WhatsApp Chat Export Import Modal State
+  const [showChatImportModal, setShowChatImportModal] = useState(false);
 
   // Add Contact Modal State
   const [showAddModal, setShowAddModal] = useState(false);
@@ -171,6 +175,14 @@ export default function ContactsPage() {
           <button className="btn btn-secondary" onClick={() => setShowImportModal(true)}>
             <Icon name="attachment" size={14} />
             <span>Import CSV</span>
+          </button>
+          <button
+            className="btn btn-secondary"
+            onClick={() => setShowChatImportModal(true)}
+            title="Import WhatsApp .txt chat export to backfill messages & seed leads"
+          >
+            <Icon name="chats" size={14} />
+            <span>Import WhatsApp Chat</span>
           </button>
           <button className="btn btn-secondary" onClick={handleExportCsv}>
             <Icon name="download" size={14} />
@@ -460,6 +472,17 @@ export default function ContactsPage() {
           </div>
         </div>
       )}
+
+      {/* WhatsApp Chat History Import Modal */}
+      <ChatHistoryImportModal
+        isOpen={showChatImportModal}
+        onClose={() => setShowChatImportModal(false)}
+        onSuccess={(summary) => {
+          setStatusMessage(summary);
+          loadContacts();
+          setTimeout(() => setStatusMessage(''), 4500);
+        }}
+      />
     </div>
   );
 }

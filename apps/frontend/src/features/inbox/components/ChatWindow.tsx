@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAppSelector, useAppDispatch } from '../../../store/hooks';
-import { sendMessage, addOptimisticMessage } from '../../../store/slices/inboxSlice';
+import { sendMessage, addOptimisticMessage, toggleConversationAi } from '../../../store/slices/inboxSlice';
 import type { Message } from '../../../store/slices/inboxSlice';
 import { useTranslation } from '../../../i18n';
 import { Icon } from '../../../components/ui/Icon';
 import { apiClient } from '../../../lib/api/apiClient';
+import LeadDrawer from './LeadDrawer';
 
 interface ChatWindowProps {
   onBackToList?: () => void;
@@ -27,9 +28,23 @@ export default function ChatWindow({ onBackToList }: ChatWindowProps = {}) {
   const [inputText, setInputText] = useState('');
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
-  const [botModeActive, setBotModeActive] = useState(true);
   const [selectedTemplate, setSelectedTemplate] = useState('');
   const [wabaTemplates, setWabaTemplates] = useState<any[]>([]);
+  const [isLeadDrawerOpen, setIsLeadDrawerOpen] = useState(false);
+
+  const isBotActive = !activeConv?.isHumanTakeover;
+  const isWindowActive = activeConv?.windowExpiresAt
+    ? new Date(activeConv.windowExpiresAt).getTime() > Date.now()
+    : true;
+
+  const formatWindowTimeLeft = () => {
+    if (!activeConv?.windowExpiresAt) return 'Active session';
+    const diffMs = new Date(activeConv.windowExpiresAt).getTime() - Date.now();
+    if (diffMs <= 0) return 'Expired';
+    const hours = Math.floor(diffMs / (1000 * 60 * 60));
+    const mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    return `${hours}h ${mins}m left`;
+  };
 
 
   useEffect(() => {
@@ -196,24 +211,46 @@ export default function ChatWindow({ onBackToList }: ChatWindowProps = {}) {
                 {activeConv.contactName}
               </span>
               <span
-                onClick={() => setBotModeActive(!botModeActive)}
+                onClick={() => dispatch(toggleConversationAi(activeConv._id))}
+                title={isBotActive ? 'Click to Pause AI (Human Takeover)' : 'Click to Resume AI Bot'}
                 style={{
                   cursor: 'pointer',
                   padding: '2px 8px',
                   borderRadius: 'var(--radius-full)',
                   fontSize: '10.5px',
                   fontWeight: 700,
-                  backgroundColor: botModeActive ? 'var(--color-info-muted)' : 'var(--color-error-muted)',
-                  color: botModeActive ? 'var(--color-info)' : 'var(--color-error)',
-                  border: `1px solid ${botModeActive ? 'rgba(14, 165, 233, 0.25)' : 'rgba(220, 38, 38, 0.25)'}`,
+                  backgroundColor: isBotActive ? 'rgba(14, 165, 233, 0.12)' : 'rgba(234, 88, 12, 0.12)',
+                  color: isBotActive ? 'var(--color-info)' : '#ea580c',
+                  border: `1px solid ${isBotActive ? 'rgba(14, 165, 233, 0.3)' : 'rgba(234, 88, 12, 0.3)'}`,
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '4px',
                   whiteSpace: 'nowrap',
                 }}
               >
-                <Icon name={botModeActive ? 'bot' : 'user'} size={12} />
-                {botModeActive ? 'Gemini Bot' : 'Human Mode'}
+                <Icon name={isBotActive ? 'bot' : 'user'} size={12} />
+                {isBotActive ? 'AI Bot Active' : 'Human Co-Pilot'}
+              </span>
+
+              {/* 24-Hour WhatsApp Service Window Badge */}
+              <span
+                style={{
+                  padding: '2px 8px',
+                  borderRadius: 'var(--radius-full)',
+                  fontSize: '10.5px',
+                  fontWeight: 700,
+                  backgroundColor: isWindowActive ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                  color: isWindowActive ? '#16a34a' : '#dc2626',
+                  border: `1px solid ${isWindowActive ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  whiteSpace: 'nowrap',
+                }}
+                title={isWindowActive ? 'WhatsApp 24-hour customer service window is open' : '24-hour window expired. Meta requires a template message.'}
+              >
+                <span>{isWindowActive ? '⚡ 24h Window:' : '⚠️ Window Expired:'}</span>
+                <span>{formatWindowTimeLeft()}</span>
               </span>
             </div>
             <div className="phone" style={{ fontSize: '11.5px', color: 'var(--color-foreground-secondary)', fontFamily: 'monospace' }}>
@@ -236,6 +273,17 @@ export default function ChatWindow({ onBackToList }: ChatWindowProps = {}) {
               </option>
             ))}
           </select>
+
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={() => setIsLeadDrawerOpen(true)}
+            title="View AI Lead Intelligence & CRM Details"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '6px 10px', fontSize: '11.5px' }}
+          >
+            <Icon name="sparkles" size={13} style={{ color: 'var(--color-primary)' }} />
+            <span>Lead Profile</span>
+          </button>
 
           <button className="btn btn-secondary btn-sm" onClick={handleExportData} title={t('exportData')}>
             <Icon name="download" size={13} />
@@ -345,6 +393,27 @@ export default function ChatWindow({ onBackToList }: ChatWindowProps = {}) {
 
       {/* Input Panel */}
       <footer className="input-panel" style={{ padding: '12px 16px', borderTop: '1px solid var(--color-border)', backgroundColor: 'var(--color-surface)' }}>
+        {!isWindowActive && (
+          <div
+            style={{
+              backgroundColor: 'rgba(239, 68, 68, 0.08)',
+              border: '1px solid rgba(239, 68, 68, 0.25)',
+              borderRadius: 'var(--radius-md)',
+              padding: '8px 12px',
+              marginBottom: '10px',
+              fontSize: '11.5px',
+              color: '#b91c1c',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+            }}
+          >
+            <Icon name="alert" size={14} style={{ color: '#dc2626', flexShrink: 0 }} />
+            <span>
+              <strong>24-Hour WhatsApp Service Window Expired:</strong> Standard text messages will be rejected by Meta Cloud API. Please select and send an approved WABA Template from the dropdown above to re-engage this customer.
+            </span>
+          </div>
+        )}
         <form
           className="input-form"
           onSubmit={(e) => {
@@ -370,6 +439,14 @@ export default function ChatWindow({ onBackToList }: ChatWindowProps = {}) {
           </button>
         </form>
       </footer>
+
+      {/* Slide-out Lead Drawer */}
+      <LeadDrawer
+        isOpen={isLeadDrawerOpen}
+        onClose={() => setIsLeadDrawerOpen(false)}
+        contactPhone={activeConv.phone}
+        contactName={activeConv.contactName}
+      />
     </section>
   );
 }

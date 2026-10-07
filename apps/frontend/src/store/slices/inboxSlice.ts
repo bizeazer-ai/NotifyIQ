@@ -62,12 +62,47 @@ export const sendMessage = createAsyncThunk(
   }
 );
 
+// Toggle AI auto-reply
+export const toggleConversationAi = createAsyncThunk(
+  'inbox/toggleConversationAi',
+  async (conversationId: string, { rejectWithValue }) => {
+    try {
+      const res = await apiClient.post<{ data: { isHumanTakeover: boolean } }>(
+        `/api/messages/conversations/${conversationId}/toggle-ai`
+      );
+      return { conversationId, isHumanTakeover: res.data.isHumanTakeover };
+    } catch (err: any) {
+      return rejectWithValue(err.message || 'Failed to toggle AI');
+    }
+  }
+);
+
 const inboxSlice = createSlice({
   name: 'inbox',
   initialState,
   reducers: {
     setActiveConversationId(state, action: PayloadAction<string>) {
       state.activeConversationId = action.payload;
+    },
+    updateConversationAi(
+      state,
+      action: PayloadAction<{ conversationId: string; isHumanTakeover: boolean }>
+    ) {
+      const { conversationId, isHumanTakeover } = action.payload;
+      const conv = state.conversations.find((c) => c._id === conversationId);
+      if (conv) {
+        conv.isHumanTakeover = isHumanTakeover;
+      }
+    },
+    updateConversationStatus(
+      state,
+      action: PayloadAction<{ conversationId: string; status: 'open' | 'pending' | 'resolved' }>
+    ) {
+      const { conversationId, status } = action.payload;
+      const conv = state.conversations.find((c) => c._id === conversationId);
+      if (conv) {
+        conv.status = status;
+      }
     },
     // Real-time WebSocket message receiver
     receiveMessage(
@@ -93,6 +128,15 @@ const inboxSlice = createSlice({
         state.conversations[existingConvIdx].lastMessageText = message.body || '[Attachment]';
         state.conversations[existingConvIdx].lastMessageAt = 'Just now';
         state.conversations[existingConvIdx].sentiment = conversation.sentiment || state.conversations[existingConvIdx].sentiment;
+        if (conversation.windowExpiresAt !== undefined) {
+          state.conversations[existingConvIdx].windowExpiresAt = conversation.windowExpiresAt;
+        }
+        if (conversation.isHumanTakeover !== undefined) {
+          state.conversations[existingConvIdx].isHumanTakeover = conversation.isHumanTakeover;
+        }
+        if (conversation.status !== undefined) {
+          state.conversations[existingConvIdx].status = conversation.status;
+        }
         
         // Reorder card to the top
         const conv = state.conversations[existingConvIdx];
@@ -106,6 +150,9 @@ const inboxSlice = createSlice({
           sentiment: conversation.sentiment || 'neutral',
           lastMessageAt: 'Just now',
           lastMessageText: message.body || '',
+          isHumanTakeover: conversation.isHumanTakeover || false,
+          windowExpiresAt: conversation.windowExpiresAt || null,
+          status: conversation.status || 'open',
         });
       }
     },
@@ -168,9 +215,22 @@ const inboxSlice = createSlice({
             state.messagesByConversationId[convId][idx].status = 'failed';
           }
         }
+      })
+      .addCase(toggleConversationAi.fulfilled, (state, action) => {
+        const { conversationId, isHumanTakeover } = action.payload;
+        const conv = state.conversations.find((c) => c._id === conversationId);
+        if (conv) {
+          conv.isHumanTakeover = isHumanTakeover;
+        }
       });
   },
 });
 
-export const { setActiveConversationId, receiveMessage, addOptimisticMessage } = inboxSlice.actions;
+export const {
+  setActiveConversationId,
+  receiveMessage,
+  addOptimisticMessage,
+  updateConversationAi,
+  updateConversationStatus,
+} = inboxSlice.actions;
 export default inboxSlice.reducer;

@@ -37,6 +37,7 @@ describe('BillingService', () => {
 
   const mockAuditLogModel = {
     create: jest.fn().mockResolvedValue({}),
+    findOne: jest.fn().mockResolvedValue(null),
     find: jest.fn().mockReturnValue({
       sort: jest.fn().mockReturnValue({
         exec: jest.fn().mockResolvedValue([

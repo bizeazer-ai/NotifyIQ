@@ -7,6 +7,8 @@ import { Contact } from '../database/schemas/contact.schema.js';
 import { Conversation } from '../database/schemas/conversation.schema.js';
 import { SocketGateway } from '../socket/socket.gateway.js';
 import { RagService } from '../ai/rag.service.js';
+import { MessagesService } from '../messages/messages.service.js';
+import { OutboundWebhookDispatcher } from '../outbound-webhooks/outbound-webhook.dispatcher.js';
 
 jest.mock('@notifyiq/config', () => ({
   env: { JWT_SECRET: 'test-secret' },
@@ -21,12 +23,17 @@ describe('FlowExecutionEngine', () => {
   let mockConversationModel: any;
   let mockSocketGateway: any;
   let mockRagService: any;
+  let mockMessagesService: any;
+  let mockDispatcher: any;
 
   const mockWorkspaceId = '507f1f77bcf86cd799439011';
 
   beforeEach(async () => {
     mockFlowModel = {
       findOne: jest.fn(),
+      find: jest.fn().mockReturnValue({
+        sort: jest.fn().mockResolvedValue([]),
+      }),
     };
     mockMessageModel = {
       create: jest.fn().mockImplementation((dto) => Promise.resolve({ _id: 'msg_123', ...dto })),
@@ -45,6 +52,14 @@ describe('FlowExecutionEngine', () => {
       }),
     };
 
+    mockMessagesService = {
+      sendTextMessage: jest.fn().mockResolvedValue({}),
+    };
+
+    mockDispatcher = {
+      dispatchEvent: jest.fn().mockResolvedValue(undefined),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         FlowExecutionEngine,
@@ -54,6 +69,8 @@ describe('FlowExecutionEngine', () => {
         { provide: getModelToken(Conversation.name), useValue: mockConversationModel },
         { provide: SocketGateway, useValue: mockSocketGateway },
         { provide: RagService, useValue: mockRagService },
+        { provide: MessagesService, useValue: mockMessagesService },
+        { provide: OutboundWebhookDispatcher, useValue: mockDispatcher },
       ],
     }).compile();
 
@@ -65,7 +82,9 @@ describe('FlowExecutionEngine', () => {
   });
 
   it('should return executed=false if no active flow exists', async () => {
-    mockFlowModel.findOne.mockResolvedValue(null);
+    mockFlowModel.find.mockReturnValue({
+      sort: jest.fn().mockResolvedValue([]),
+    });
     const mockConv: any = { _id: 'conv_1' };
     const mockContact: any = { _id: 'contact_1' };
 
@@ -90,9 +109,11 @@ describe('FlowExecutionEngine', () => {
       ],
     };
 
-    mockFlowModel.findOne.mockResolvedValue(mockActiveFlow);
+    mockFlowModel.find.mockReturnValue({
+      sort: jest.fn().mockResolvedValue([mockActiveFlow]),
+    });
     const mockConv: any = { _id: 'conv_123', sentiment: 'neutral', save: jest.fn() };
-    const mockContact: any = { _id: 'contact_123', tags: [], save: jest.fn().mockResolvedValue(true) };
+    const mockContact: any = { _id: 'contact_123', phone: '+919876543210', tags: [], save: jest.fn().mockResolvedValue(true) };
 
     const result = await engine.executeFlowForInboundMessage(mockWorkspaceId, mockConv, mockContact, 'Hello there');
 
@@ -100,17 +121,10 @@ describe('FlowExecutionEngine', () => {
     expect(result.nodesExecuted).toEqual(['1', '2', '3']);
     expect(result.actionsTaken).toContain('sent_message: Welcome to NotifyIQ!');
     expect(result.actionsTaken).toContain('action_add_tag: new_lead');
-    expect(mockMessageModel.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        body: 'Welcome to NotifyIQ!',
-        direction: 'outbound',
-      }),
-    );
-    expect(mockSocketGateway.emitToWorkspace).toHaveBeenCalledWith(
-      mockWorkspaceId,
-      'message.sent',
-      expect.any(Object),
-    );
+    expect(mockMessagesService.sendTextMessage).toHaveBeenCalledWith(mockWorkspaceId, {
+      to: '+919876543210',
+      body: 'Welcome to NotifyIQ!',
+    });
   });
 
   it('should evaluate condition node routes based on sentiment match', async () => {
@@ -131,7 +145,9 @@ describe('FlowExecutionEngine', () => {
       ],
     };
 
-    mockFlowModel.findOne.mockResolvedValue(mockConditionalFlow);
+    mockFlowModel.find.mockReturnValue({
+      sort: jest.fn().mockResolvedValue([mockConditionalFlow]),
+    });
     const mockConv: any = { _id: 'conv_456', sentiment: 'urgent', save: jest.fn().mockResolvedValue(true) };
     const mockContact: any = { _id: 'contact_456', tags: [], save: jest.fn() };
 

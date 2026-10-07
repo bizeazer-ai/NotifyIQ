@@ -12,6 +12,7 @@ export enum QueueName {
   CHATBOT = 'chatbot',
   SEGMENTATION = 'segmentation',
   COMPLIANCE = 'compliance',
+  ERROR_RETRY = 'error-retry',
 }
 
 export interface IUnifiedWorker {

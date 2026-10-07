@@ -106,7 +106,7 @@ export class RagService {
     workspaceId: string,
     query: string,
     conversationId?: string,
-  ): Promise<{ answer: string; sources: string[]; confidenceScore: number }> {
+  ): Promise<{ answer: string; sources: string[]; confidenceScore: number, userDetails?:Record<string,string>}> {
     this.logger.log(`[RagService] Querying knowledge base for: "${query}" in workspace: ${workspaceId}`);
     const autoReplySettings = await this.workspaceService.getAutoReplySettings(workspaceId);
 
@@ -171,17 +171,70 @@ export class RagService {
       };
     }
 
+    // Business operating hours awareness
+    let businessTimeContext = '';
+    const operatingHours = autoReplySettings?.operatingHours;
+    if (operatingHours && operatingHours.enabled) {
+      try {
+        const tz = operatingHours.timezone || 'Asia/Kolkata';
+        const nowInTz = new Date(new Date().toLocaleString('en-US', { timeZone: tz }));
+        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const dayStr = dayNames[nowInTz.getDay()];
+        const timeStr = nowInTz.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+
+        const currentDay = nowInTz.getDay();
+        const currentHour = nowInTz.getHours();
+        const currentMinute = nowInTz.getMinutes();
+        const currentTimeMinutes = currentHour * 60 + currentMinute;
+        const [startH, startM] = (operatingHours.startTime || '09:00').split(':').map(Number);
+        const [endH, endM] = (operatingHours.endTime || '18:00').split(':').map(Number);
+        const isWorkDay = Array.isArray(operatingHours.workDays) ? operatingHours.workDays.includes(currentDay) : true;
+        const isWithinHours = isWorkDay && currentTimeMinutes >= ((startH || 9) * 60 + (startM || 0)) && currentTimeMinutes < ((endH || 18) * 60 + (endM || 0));
+
+        businessTimeContext = `Current Business Time: ${dayStr} ${timeStr} (${tz})\nBusiness Operating Status: ${isWithinHours ? 'OPEN' : 'CLOSED'} (Operating Hours: ${operatingHours.startTime} - ${operatingHours.endTime})`;
+      } catch (_) {}
+    }
+
     const contextText = contextDocs.map((doc, idx) => `[Source ${idx + 1} - ${doc.title} (Chunk ${doc.chunkIndex})]:\n${doc.content}`).join('\n\n');
     const sources = Array.from(new Set(contextDocs.map((doc) => doc.title)));
 
     let answer = '';
+    let userDetails: { name?: string; category?: string; budget?: string; productInterest?: string } | undefined = undefined;
+
     try {
       const systemInstruction = `You are an AI support assistant. You must answer the user question using ONLY the provided knowledge context and conversation history.
+${businessTimeContext ? '\n' + businessTimeContext + '\n' : ''}
 If the context does not contain enough information to answer the question, state that you do not know.
-Do NOT make up facts or use external knowledge. Always remain professional, grounded, and concise.`;
+Do NOT make up facts or use external knowledge. Always remain professional, grounded, and concise.
+
+If you can detect any customer details (name, lead category, budget, or specific product of interest) from the conversation, format your final response as valid JSON with:
+{
+  "reply": "Your conversational reply to the customer",
+  "userDetails": {
+    "name": "Customer name if mentioned",
+    "category": "Inquiry category (e.g. Wholesale, Pricing, General)",
+    "budget": "Budget or quantity if mentioned",
+    "productInterest": "Products or services asked about"
+  }
+}
+If no lead details are detected, return a normal concise reply.`;
 
       const prompt = `${historyContextText ? historyContextText + '\n\n' : ''}Knowledge Base Context:\n${contextText}\n\nUser Question / Latest Message:\n${query}`;
       answer = await this.geminiService.generateCompletion(prompt, systemInstruction);
+
+      // Parse structured JSON if returned
+      try {
+        const trimmed = answer.trim().replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
+        if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+          const parsed = JSON.parse(trimmed);
+          if (parsed.reply) {
+            answer = parsed.reply;
+          }
+          if (parsed.userDetails && Object.values(parsed.userDetails).some((v) => !!v)) {
+            userDetails = parsed.userDetails;
+          }
+        }
+      } catch (_) {}
     } catch (err: any) {
       this.logger.error(`[RagService] Gemini completion failed: ${err.message}`);
       answer = this.generateMockAnswer(query, contextDocs);
@@ -191,6 +244,7 @@ Do NOT make up facts or use external knowledge. Always remain professional, grou
       answer,
       sources,
       confidenceScore: topConfidenceScore,
+      userDetails,
     };
   }
 

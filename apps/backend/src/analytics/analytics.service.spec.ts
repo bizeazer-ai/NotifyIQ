@@ -10,6 +10,7 @@ describe('AnalyticsService', () => {
 
   const mockMessageModel = {
     countDocuments: jest.fn(),
+    aggregate: jest.fn().mockResolvedValue([]),
   };
 
   const mockConversationModel = {
@@ -67,8 +68,8 @@ describe('AnalyticsService', () => {
 
       const metrics = await service.getExecutiveOverview('ws_empty');
 
-      expect(metrics.deliveryRatePercent).toBe(99.4);
-      expect(metrics.botContainmentRatePercent).toBe(94.2);
+      expect(metrics.deliveryRatePercent).toBe(0);
+      expect(metrics.botContainmentRatePercent).toBe(0);
       expect(metrics.totalAccruedCost).toBe(0);
     });
   });

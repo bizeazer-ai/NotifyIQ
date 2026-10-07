@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { useAppSelector, useAppDispatch } from '../store/hooks';
-import { receiveMessage } from '../store/slices/inboxSlice';
+import { receiveMessage, updateConversationAi, updateConversationStatus } from '../store/slices/inboxSlice';
 import { config } from './config';
 
 interface SocketContextProps {
@@ -70,6 +70,20 @@ export default function SocketProvider({ children }: SocketProviderProps) {
       console.log('[SocketProvider] Message echo sent:', data);
       if (data.message && data.conversation) {
         dispatch(receiveMessage({ message: data.message, conversation: data.conversation }));
+      }
+    });
+
+    newSocket.on('conversation.ai_toggled', (data: any) => {
+      console.log('[SocketProvider] Conversation AI toggled:', data);
+      if (data.conversationId && data.isHumanTakeover !== undefined) {
+        dispatch(updateConversationAi({ conversationId: data.conversationId, isHumanTakeover: data.isHumanTakeover }));
+      }
+    });
+
+    newSocket.on('conversation.status_updated', (data: any) => {
+      console.log('[SocketProvider] Conversation status updated:', data);
+      if (data.conversationId && data.status) {
+        dispatch(updateConversationStatus({ conversationId: data.conversationId, status: data.status }));
       }
     });
 

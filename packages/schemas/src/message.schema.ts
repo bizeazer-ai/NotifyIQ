@@ -11,11 +11,17 @@ export type SendMessagePayload = z.infer<typeof SendMessageSchema>;
 
 export interface ConversationContract {
   _id: string;
+  contactId?: string;
   contactName: string;
   phone: string;
   sentiment: 'positive' | 'neutral' | 'negative' | 'urgent';
   lastMessageAt: string;
   lastMessageText: string;
+  isHumanTakeover?: boolean;
+  status?: 'open' | 'pending' | 'resolved';
+  assignedTo?: string | null;
+  lastInboundAt?: string | null;
+  windowExpiresAt?: string | null;
 }
 
 export interface MessageContract {

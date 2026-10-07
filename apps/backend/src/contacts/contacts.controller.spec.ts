@@ -6,6 +6,8 @@ jest.mock('@notifyiq/config', () => ({
 
 import { ContactsController } from './contacts.controller.js';
 import { ContactsService } from './contacts.service.js';
+import { LeadExtractionService } from './lead-extraction.service.js';
+import { ChatHistoryImportService } from './chat-history-import.service.js';
 import { AuthGuard, WorkspaceGuard } from '../common/guards/index.js';
 
 describe('ContactsController', () => {
@@ -20,12 +22,27 @@ describe('ContactsController', () => {
     deleteContact: jest.fn(),
   };
 
+  const mockLeadExtractionService = {
+    getLeads: jest.fn(),
+    getLeadByPhone: jest.fn(),
+    updateLead: jest.fn(),
+    processExtractedLead: jest.fn(),
+  };
+
+  const mockChatHistoryImportService = {
+    importWhatsAppChat: jest.fn(),
+  };
+
   beforeEach(async () => {
     jest.clearAllMocks();
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [ContactsController],
-      providers: [{ provide: ContactsService, useValue: mockContactsService }],
+      providers: [
+        { provide: ContactsService, useValue: mockContactsService },
+        { provide: LeadExtractionService, useValue: mockLeadExtractionService },
+        { provide: ChatHistoryImportService, useValue: mockChatHistoryImportService },
+      ],
     })
       .overrideGuard(AuthGuard)
       .useValue({ canActivate: () => true })

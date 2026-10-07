@@ -37,6 +37,10 @@ export class CreateTemplateDto {
   headerText?: string;
 
   @IsString()
+  @IsOptional()
+  headerUrl?: string;
+
+  @IsString()
   @IsNotEmpty()
   bodyText: string;
 

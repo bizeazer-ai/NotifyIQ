@@ -98,6 +98,12 @@ export class FlowsService {
 
   async toggleFlowActive(workspaceId: string, flowId: string, active: boolean): Promise<FlowDocument> {
     const flow = await this.getFlowById(workspaceId, flowId);
+    if (active) {
+      await this.flowModel.updateMany(
+        { workspaceId, _id: { $ne: flowId } },
+        { $set: { active: false } },
+      );
+    }
     flow.active = active;
     await flow.save();
     return flow;

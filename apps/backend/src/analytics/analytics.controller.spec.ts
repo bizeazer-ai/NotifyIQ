@@ -46,7 +46,7 @@ describe('AnalyticsController', () => {
       const req = { workspaceId: 'ws_123' } as any;
       const res = await controller.getOverview(req);
 
-      expect(service.getExecutiveOverview).toHaveBeenCalledWith('ws_123');
+      expect(service.getExecutiveOverview).toHaveBeenCalledWith('ws_123', 7);
       expect(res.data).toEqual(mockOverview);
     });
   });

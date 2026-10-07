@@ -35,6 +35,7 @@ import { Conversation } from '../../database/schemas/conversation.schema.js';
 import { Message } from '../../database/schemas/message.schema.js';
 import { MessagesService } from '../../messages/messages.service.js';
 import { SentimentService } from '../../ai/sentiment.service.js';
+import { LeadExtractionService } from '../../contacts/lead-extraction.service.js';
 
 describe('WebhookWorker Auto-Reply Engine', () => {
   let worker: WebhookWorker;
@@ -54,6 +55,7 @@ describe('WebhookWorker Auto-Reply Engine', () => {
   const mockMessagesService = { sendTextMessage: jest.fn().mockResolvedValue({}) };
   const mockSentimentService = { analyzeMessageSentiment: jest.fn().mockResolvedValue('neutral') };
   const mockDispatcher = { dispatchEvent: jest.fn().mockResolvedValue(undefined) };
+  const mockLeadExtractionService = { processExtractedLead: jest.fn().mockResolvedValue(null) };
 
   const mockWorkspace = {
     _id: 'ws_123',
@@ -94,6 +96,7 @@ describe('WebhookWorker Auto-Reply Engine', () => {
         { provide: FlowExecutionEngine, useValue: mockFlowExecutionEngine },
         { provide: MessagesService, useValue: mockMessagesService },
         { provide: SentimentService, useValue: mockSentimentService },
+        { provide: LeadExtractionService, useValue: mockLeadExtractionService },
         { provide: getModelToken(Workspace.name), useValue: mockWorkspaceModel },
         { provide: getModelToken(Contact.name), useValue: mockContactModel },
         { provide: getModelToken(Conversation.name), useValue: mockConversationModel },

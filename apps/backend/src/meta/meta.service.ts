@@ -344,6 +344,50 @@ export class MetaService {
   }
 
   /**
+   * Uploads a media file buffer from a URL to Meta Resumable Upload API
+   * to retrieve an upload handle for template headers.
+   */
+  async uploadMediaHandleToMeta(
+    appId: string,
+    token: string,
+    mediaUrl: string,
+    fileType = 'image/jpeg',
+  ): Promise<string | null> {
+    try {
+      const res = await fetch(mediaUrl);
+      if (!res.ok) throw new Error(`Failed to fetch media from ${mediaUrl}: ${res.statusText}`);
+      const buffer = Buffer.from(await res.arrayBuffer());
+
+      // 1. Create upload session
+      const createSessionUrl = `https://graph.facebook.com/v20.0/${appId}/uploads?file_length=${buffer.length}&file_type=${fileType}`;
+      const sessionRes = await fetch(createSessionUrl, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const sessionData = (await sessionRes.json()) as any;
+      const sessionId = sessionData.id;
+      if (!sessionId) throw new Error(`Meta upload session creation failed: ${JSON.stringify(sessionData)}`);
+
+      // 2. Upload file buffer to session
+      const uploadUrl = `https://graph.facebook.com/v20.0/${sessionId}`;
+      const uploadRes = await fetch(uploadUrl, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          file_offset: '0',
+          'Content-Type': fileType,
+        },
+        body: buffer,
+      });
+      const uploadData = (await uploadRes.json()) as any;
+      return uploadData.h || null;
+    } catch (err: any) {
+      this.logger.error(`[MetaService] uploadMediaHandleToMeta failed: ${err.message}`);
+      return null;
+    }
+  }
+
+  /**
    * Submit WhatsApp Message Template to Meta for approval
    */
   async createTemplate(workspaceId: string, dto: CreateTemplateDto): Promise<{ success: boolean; id: string; status: string }> {
@@ -353,20 +397,50 @@ export class MetaService {
     }
 
     const templateId = `tpl_${Date.now()}`;
-    // const token = decrypt(workspace.waba.accessToken);
-    const token = env.META_ACCESS_TOKEN;
+    const token = env.META_ACCESS_TOKEN || workspace.waba.accessToken;
     const wabaId = workspace.waba.businessAccountId;
     const isMock = process.env.MOCK_SERVICES === 'true';
 
-    const components: any[] = [{ type: 'BODY', text: dto.bodyText }];
-    if (dto.headerText && dto.headerType === 'TEXT') {
-      components.push({ type: 'HEADER', format: 'TEXT', text: dto.headerText });
-    } else if (dto.headerType && dto.headerType !== 'NONE') {
-      components.push({ type: 'HEADER', format: dto.headerType });
+    // 1. Process Body Component & Auto-Inject Example for {{1}}, {{2}} variables (Resolves Error 2388043)
+    const bodyMatches = dto.bodyText.match(/\{\{(\d+)\}\}/g);
+    const bodyComponent: any = { type: 'BODY', text: dto.bodyText };
+    if (bodyMatches && bodyMatches.length > 0) {
+      const distinctCount = new Set(bodyMatches).size;
+      const sampleValues = Array.from({ length: distinctCount }, (_, i) => `Sample_${i + 1}`);
+      bodyComponent.example = {
+        body_text: [sampleValues],
+      };
     }
+    const components: any[] = [bodyComponent];
+
+    // 2. Process Header Component (Text or Resumable Media Handle)
+    if (dto.headerText && dto.headerType === 'TEXT') {
+      const headerMatches = dto.headerText.match(/\{\{(\d+)\}\}/g);
+      const headerComp: any = { type: 'HEADER', format: 'TEXT', text: dto.headerText };
+      if (headerMatches && headerMatches.length > 0) {
+        headerComp.example = {
+          header_text: ['Sample Header'],
+        };
+      }
+      components.push(headerComp);
+    } else if (dto.headerType && ['IMAGE', 'DOCUMENT', 'VIDEO'].includes(dto.headerType)) {
+      const headerComp: any = { type: 'HEADER', format: dto.headerType };
+      if (dto.headerUrl && env.META_APP_ID && !isMock) {
+        const mimeType = dto.headerType === 'IMAGE' ? 'image/jpeg' : dto.headerType === 'VIDEO' ? 'video/mp4' : 'application/pdf';
+        const handle = await this.uploadMediaHandleToMeta(env.META_APP_ID, token, dto.headerUrl, mimeType);
+        if (handle) {
+          headerComp.example = { header_handle: [handle] };
+        }
+      }
+      components.push(headerComp);
+    }
+
+    // 3. Process Footer Component
     if (dto.footerText) {
       components.push({ type: 'FOOTER', text: dto.footerText });
     }
+
+    // 4. Process Buttons Component
     if (dto.buttons && dto.buttons.length > 0) {
       components.push({
         type: 'BUTTONS',
@@ -378,10 +452,13 @@ export class MetaService {
       });
     }
 
+    let metaTemplateId = templateId;
+    let metaStatus = 'APPROVED';
+
     if (!isMock) {
       try {
         const url = `https://graph.facebook.com/v20.0/${wabaId}/message_templates`;
-        await fetch(url, {
+        const response = await fetch(url, {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -391,8 +468,20 @@ export class MetaService {
             components,
           }),
         });
+
+        const data = (await response.json()) as any;
+        if (!response.ok || data.error) {
+          const errMsg = data.error?.message || `Meta API Error (${response.status})`;
+          this.logger.error(`[MetaService] Failed submitting template to Meta: ${errMsg}`, data.error);
+          throw new BadRequestException(errMsg);
+        }
+
+        metaTemplateId = data.id || templateId;
+        metaStatus = data.status || 'PENDING';
       } catch (err: any) {
         this.logger.error(`[MetaService] Failed submitting template to Meta: ${err.message}`);
+        if (err instanceof BadRequestException) throw err;
+        throw new BadRequestException(`Meta template submission failed: ${err.message}`);
       }
     }
 
@@ -400,10 +489,10 @@ export class MetaService {
       workspaceId,
       action: 'meta.template_created',
       resource: 'Template',
-      details: { templateName: dto.name, category: dto.category, componentsCount: components.length },
+      details: { templateName: dto.name, category: dto.category, componentsCount: components.length, metaStatus },
     });
 
-    return { success: true, id: templateId, status: 'APPROVED' };
+    return { success: true, id: metaTemplateId, status: metaStatus };
   }
 
   /**

@@ -9,20 +9,23 @@ import { DatabaseModule } from '../database/database.module.js';
 import { FlowsModule } from '../flows/flows.module.js';
 import { MessagesModule } from '../messages/messages.module.js';
 import { OutboundWebhooksModule } from '../outbound-webhooks/outbound-webhooks.module.js';
+import { ContactsModule } from '../contacts/contacts.module.js';
 import { InboundMessageListener } from './workers/listeners/inbound-message.listener.js';
 import { MessageStatusListener } from './workers/listeners/message-status.listener.js';
 import { TemplateStatusListener } from './workers/listeners/template-status.listener.js';
 import { AccountUpdateListener } from './workers/listeners/account-update.listener.js';
+import { ErrorRetryWorker } from './workers/error-retry.worker.js';
 
 @Global() // Make QueueService globally available across all modules
 @Module({
-  imports: [AiModule, DatabaseModule, FlowsModule, MessagesModule, OutboundWebhooksModule],
+  imports: [AiModule, DatabaseModule, FlowsModule, MessagesModule, OutboundWebhooksModule, ContactsModule],
   providers: [
     RedisService,
     QueueService,
     WebhookWorker,
     SentimentWorker,
     CampaignWorker,
+    ErrorRetryWorker,
     InboundMessageListener,
     MessageStatusListener,
     TemplateStatusListener,
@@ -30,6 +33,7 @@ import { AccountUpdateListener } from './workers/listeners/account-update.listen
   ],
   exports: [
     QueueService,
+    ErrorRetryWorker,
     InboundMessageListener,
     MessageStatusListener,
     TemplateStatusListener,
