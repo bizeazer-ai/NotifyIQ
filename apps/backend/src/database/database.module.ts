@@ -18,6 +18,7 @@ import { AiUsageEvent, AiUsageEventSchema } from './schemas/ai-usage-event.schem
 
 import { ExtractedLead, ExtractedLeadSchema } from './schemas/extracted-lead.schema.js';
 import { ErrorRetryLog, ErrorRetryLogSchema } from './schemas/error-retry-log.schema.js';
+import { OutboundWebhook, OutboundWebhookSchema } from './schemas/outbound-webhook.schema.js';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { ErrorRetryLog, ErrorRetryLogSchema } from './schemas/error-retry-log.sc
       { name: AiUsageEvent.name, schema: AiUsageEventSchema },
       { name: ExtractedLead.name, schema: ExtractedLeadSchema },
       { name: ErrorRetryLog.name, schema: ErrorRetryLogSchema },
+      { name: OutboundWebhook.name, schema: OutboundWebhookSchema },
     ]),
   ],
   exports: [MongooseModule],
