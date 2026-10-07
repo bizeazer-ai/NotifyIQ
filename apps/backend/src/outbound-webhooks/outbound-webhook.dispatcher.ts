@@ -85,6 +85,7 @@ export class OutboundWebhookDispatcher {
     let success = false;
 
     try {
+      console.log("endpoint: ", endpoint);
       const response = await fetch(endpoint.url, {
         method: 'POST',
         headers: {
