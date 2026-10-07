@@ -23,7 +23,7 @@ export class OutboundWebhookDispatcher {
   constructor(
     @InjectModel(OutboundWebhook.name)
     private readonly webhookModel: Model<OutboundWebhookDocument>,
-  ) {}
+  ) { }
 
   /**
    * Dispatches a typed, enriched event to all active registered endpoints for a workspace.
@@ -103,6 +103,7 @@ export class OutboundWebhookDispatcher {
         deliveryError = `HTTP ${statusCode}`;
       }
     } catch (err: any) {
+      console.error(err);
       deliveryError = err.name === 'AbortError' ? 'Timeout after 10s' : err.message;
     } finally {
       clearTimeout(timeoutHandle);
