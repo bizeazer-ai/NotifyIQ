@@ -15,6 +15,7 @@ const BillingPage = lazy(() => import('../pages/billing/BillingPage'));
 const SettingsPage = lazy(() => import('../pages/settings/SettingsPage'));
 const KnowledgeBasePage = lazy(() => import('../pages/ai/KnowledgeBasePage'));
 const WabaProfilePage = lazy(() => import('../pages/settings/WabaProfilePage'));
+const WebhooksPage = lazy(() => import('../pages/settings/WebhooksPage'));
 const TemplateBuilderPage = lazy(() => import('../pages/campaigns/TemplateBuilderPage'));
 const NotFoundPage = lazy(() => import('../pages/errors/NotFoundPage'));
 
@@ -145,6 +146,22 @@ export const router = createBrowserRouter([
             element: (
               <Suspense fallback={<PageLoader />}>
                 <WabaProfilePage />
+              </Suspense>
+            ),
+          },
+          {
+            path: '/settings/webhooks',
+            element: (
+              <Suspense fallback={<PageLoader />}>
+                <WebhooksPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: '/webhooks',
+            element: (
+              <Suspense fallback={<PageLoader />}>
+                <WebhooksPage />
               </Suspense>
             ),
           },

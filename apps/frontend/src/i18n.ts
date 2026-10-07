@@ -20,6 +20,7 @@ export const translations = {
     broadcasts: 'Broadcasts',
     compliance: 'DPDP Compliance',
     aiSettings: 'AI Settings',
+    webhooks: 'Webhooks & API',
   },
   hi: {
     inbox: 'इनबॉक्स',
@@ -38,6 +39,7 @@ export const translations = {
     broadcasts: 'प्रसारण',
     compliance: 'डीपीडीपी अनुपालन',
     aiSettings: 'एआई सेटिंग्स',
+    webhooks: 'वेबहुक और एपीआई',
   },
   es: {
     inbox: 'Bandeja de entrada',
@@ -56,6 +58,7 @@ export const translations = {
     broadcasts: 'Transmisiones',
     compliance: 'Cumplimiento DPDP',
     aiSettings: 'Ajustes de IA',
+    webhooks: 'Webhooks y API',
   },
   fr: {
     inbox: 'Boîte de réception',
@@ -74,6 +77,7 @@ export const translations = {
     broadcasts: 'Diffusions',
     compliance: 'Conformité DPDP',
     aiSettings: 'Paramètres IA',
+    webhooks: 'Webhooks et API',
   },
   ar: {
     inbox: 'صندوق الوارد',
@@ -92,6 +96,7 @@ export const translations = {
     broadcasts: 'البث الجماعي',
     compliance: 'امتثال DPDP',
     aiSettings: 'إعدادات الذكاء الاصطناعي',
+    webhooks: 'الخطافات وواجهة برمجة التطبيقات',
   },
 };
 

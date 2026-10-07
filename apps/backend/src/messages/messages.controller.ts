@@ -12,6 +12,7 @@ import {
   BadRequestException,
   UseInterceptors,
   UploadedFile,
+  Query,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import fs from 'fs';
@@ -230,6 +231,28 @@ export class MessagesController {
   async getProxyMedia(@Param('mediaId') mediaId: string, @Res() res: Response) {
     const isMock = process.env.MOCK_SERVICES === 'true';
 
+    // 1. Fast Cache Check: If already saved locally to disk, serve immediately!
+    const uploadDir = path.resolve(process.cwd(), 'uploads');
+    if (fs.existsSync(uploadDir)) {
+      try {
+        const files = fs.readdirSync(uploadDir);
+        const matchingFile = files.find(
+          (f) =>
+            f.startsWith(`meta_${mediaId}.`) ||
+            f.startsWith(`${mediaId}.`) ||
+            f === `meta_${mediaId}` ||
+            f === mediaId
+        );
+        if (matchingFile) {
+          const filePath = path.join(uploadDir, matchingFile);
+          res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
+          return res.sendFile(filePath);
+        }
+      } catch (err: any) {
+        console.warn('[MessagesController] Local media cache check error:', err.message);
+      }
+    }
+
     // Mock handling for simulated environments
     if (isMock || mediaId.startsWith('mock_')) {
       res.setHeader('Content-Type', 'image/svg+xml');
@@ -254,24 +277,44 @@ export class MessagesController {
     }
 
     try {
-      // 1. Fetch direct lookaside URL from Meta Graph API
+      // 2. Fetch direct lookaside URL from Meta Graph API
       const metaRes = await fetch(`https://graph.facebook.com/v20.0/${mediaId}`, {
         headers: { Authorization: `Bearer ${env.META_ACCESS_TOKEN}` },
       });
       const data = (await metaRes.json()) as any;
 
       if (data?.url) {
-        // 2. Stream media binary directly from Meta's lookaside storage to the client
+        // 3. Stream media binary directly from Meta's lookaside storage to the client
         const streamRes = await fetch(data.url, {
           headers: { Authorization: `Bearer ${env.META_ACCESS_TOKEN}` },
         });
 
         const contentType = streamRes.headers.get('content-type') || data.mime_type || 'application/octet-stream';
+        const arrayBuf = await streamRes.arrayBuffer();
+        const buffer = Buffer.from(arrayBuf);
+
+        // 4. Save to local disk cache for instant subsequent hits
+        try {
+          if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+          }
+          let ext = '.bin';
+          if (contentType.includes('jpeg') || contentType.includes('jpg')) ext = '.jpg';
+          else if (contentType.includes('png')) ext = '.png';
+          else if (contentType.includes('webp')) ext = '.webp';
+          else if (contentType.includes('ogg')) ext = '.ogg';
+          else if (contentType.includes('mp4')) ext = '.mp4';
+          else if (contentType.includes('mp3')) ext = '.mp3';
+          else if (contentType.includes('pdf')) ext = '.pdf';
+
+          fs.writeFileSync(path.join(uploadDir, `meta_${mediaId}${ext}`), buffer);
+        } catch (cacheErr: any) {
+          console.warn('[MessagesController] Failed to cache media locally:', cacheErr.message);
+        }
+
         res.setHeader('Content-Type', contentType);
         res.setHeader('Cache-Control', 'public, max-age=86400, immutable'); // 24-hour browser cache
-
-        const arrayBuf = await streamRes.arrayBuffer();
-        return res.send(Buffer.from(arrayBuf));
+        return res.send(buffer);
       }
     } catch (err: any) {
       console.warn(`[MessagesController] Proxy media retrieval error: ${err.message}`);
@@ -297,13 +340,17 @@ export class MessagesController {
   async getMessageHistory(
     @Req() req: AuthenticatedRequest,
     @Param('conversationId') conversationId: string,
+    @Query('limit') limitStr?: string,
+    @Query('before') before?: string,
   ) {
     const workspaceId = req.workspaceId as string;
-    const messages = await this.messagesService.getMessageHistory(workspaceId, conversationId);
+    const limit = limitStr ? parseInt(limitStr, 10) : 20;
+    const messages = await this.messagesService.getMessageHistory(workspaceId, conversationId, limit, before);
     
     return {
       message: 'Messages retrieved successfully',
       data: messages,
+      hasMore: messages.length === limit,
     };
   }
 

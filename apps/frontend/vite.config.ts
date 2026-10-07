@@ -6,7 +6,13 @@ import path from 'path'
 export default defineConfig({
   plugins: [react()],
   server: {
-    allowedHosts: ["elaborate-tribune-geography.ngrok-free.dev"]
+    allowedHosts: ["elaborate-tribune-geography.ngrok-free.dev"],
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+      },
+    },
   },
   resolve: {
     alias: {

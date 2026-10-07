@@ -41,8 +41,13 @@ export interface IconProps {
     | 'external-link'
     | 'sliders'
     | 'bell'
+    | 'code'
+    | 'zap'
+    | 'key'
+    | 'webhook'
     | 'menu';
   size?: number;
+  title?: string;
   className?: string;
   style?: React.CSSProperties;
 }
@@ -145,6 +150,24 @@ export function Icon({ name, size = 18, className, style }: IconProps) {
     path = <path d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />;
   } else if (name === 'menu') {
     path = <path d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />;
+  } else if (name === 'code') {
+    path = <path d="m16 18 6-6-6-6M8 6l-6 6 6 6" />;
+  } else if (name === 'zap') {
+    path = <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />;
+  } else if (name === 'key') {
+    path = (
+      <>
+        <circle cx="7.5" cy="15.5" r="4.5" />
+        <path d="m10.8 12.2 8.7-8.7M16 6l2.5 2.5m-3.5-.5 2.5 2.5" />
+      </>
+    );
+  } else if (name === 'webhook') {
+    path = (
+      <>
+        <path d="M18 16.98h-5.99c-1.1 0-1.95.94-2.48 1.9A4 4 0 0 1 2 17c.01-.7.2-1.4.57-2M4.02 7h5.99c1.1 0 1.95-.94 2.48-1.9A4 4 0 0 1 22 7c-.01.7-.2 1.4-.57 2" />
+        <circle cx="12" cy="12" r="3" />
+      </>
+    );
   }
 
   return (

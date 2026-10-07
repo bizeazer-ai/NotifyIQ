@@ -377,6 +377,18 @@ export class MessagesService {
           const mediaId = data.id as string;
           console.log(`[MessagesService] Successfully uploaded to Meta Cloud API. Media ID: ${mediaId}`);
 
+          // Production Best Practice: Cache uploaded media locally so proxy serving is instant and offline-resilient
+          try {
+            const uploadDir = path.resolve(process.cwd(), 'uploads');
+            if (!fs.existsSync(uploadDir)) {
+              fs.mkdirSync(uploadDir, { recursive: true });
+            }
+            const ext = path.extname(filename).toLowerCase() || '.bin';
+            await fs.promises.writeFile(path.join(uploadDir, `meta_${mediaId}${ext}`), fileBuffer);
+          } catch (cacheErr: any) {
+            console.warn('[MessagesService] Could not cache uploaded media to local disk:', cacheErr.message);
+          }
+
           let metaUrl: string | undefined;
           try {
             const detailRes = await fetch(`https://graph.facebook.com/v20.0/${mediaId}`, {
@@ -693,17 +705,33 @@ export class MessagesService {
     return result;
   }
 
-  async getMessageHistory(workspaceId: string, conversationId: string): Promise<MessageDocument[]> {
+  async getMessageHistory(
+    workspaceId: string,
+    conversationId: string,
+    limit = 20,
+    before?: string,
+  ): Promise<MessageDocument[]> {
     // Verify conversation belongs to workspace
     const conv = await this.conversationModel.findOne({ _id: conversationId, workspaceId });
     if (!conv) {
       throw new NotFoundException('Conversation not found in this workspace');
     }
 
-    return this.messageModel
-      .find({ conversationId })
-      .sort({ createdAt: 1 })
+    const query: any = { conversationId };
+    if (before) {
+      const beforeDate = new Date(before);
+      if (!isNaN(beforeDate.getTime())) {
+        query.createdAt = { $lt: beforeDate };
+      }
+    }
+
+    const messages = await this.messageModel
+      .find(query)
+      .sort({ createdAt: -1 })
+      .limit(limit)
       .exec();
+
+    return messages.reverse();
   }
 
   /**

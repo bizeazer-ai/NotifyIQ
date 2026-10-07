@@ -6,12 +6,68 @@ import {
   sendTemplateMessage,
   addOptimisticMessage,
   toggleConversationAi,
+  fetchOlderMessages,
 } from '../../../store/slices/inboxSlice';
 import type { Message } from '../../../store/slices/inboxSlice';
 import { useTranslation } from '../../../i18n';
 import { Icon } from '../../../components/ui/Icon';
 import { apiClient } from '../../../lib/api/apiClient';
+import { config } from '../../../app/config';
 import LeadDrawer from './LeadDrawer';
+
+function resolveMediaUrl(url?: string | null): string {
+  if (!url) return '';
+  if (
+    url.startsWith('http://') ||
+    url.startsWith('https://') ||
+    url.startsWith('blob:') ||
+    url.startsWith('data:')
+  ) {
+    return url;
+  }
+  const cleanUrl = url.startsWith('/') ? url : `/${url}`;
+  return `${config.apiUrl}${cleanUrl}`;
+}
+
+function formatMessageTime(dateStr?: string): string {
+  if (!dateStr || dateStr === 'Just now') return 'Just now';
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+  } catch {
+    return dateStr;
+  }
+}
+
+function formatDateSeparator(dateStr?: string): string {
+  if (!dateStr) return '';
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    const today = new Date();
+    const yesterday = new Date();
+    yesterday.setDate(today.getDate() - 1);
+
+    if (d.toDateString() === today.toDateString()) return 'Today';
+    if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
+    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  } catch {
+    return dateStr;
+  }
+}
+
+function isNewDay(prevMsg?: Message, currMsg?: Message): boolean {
+  if (!currMsg) return false;
+  if (!prevMsg) return true;
+  try {
+    const d1 = new Date(prevMsg.createdAt).toDateString();
+    const d2 = new Date(currMsg.createdAt).toDateString();
+    return d1 !== d2;
+  } catch {
+    return false;
+  }
+}
 
 interface ChatWindowProps {
   onBackToList?: () => void;
@@ -104,13 +160,88 @@ export default function ChatWindow({ onBackToList }: ChatWindowProps = {}) {
   }, []);
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const prevScrollHeightRef = useRef<number>(0);
+  const prevScrollTopRef = useRef<number>(0);
+  const isLoadingOlderRef = useRef<boolean>(false);
+  const isInitialLoadRef = useRef<boolean>(true);
+  const prevConvIdRef = useRef<string | null>(null);
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
 
-  // Auto-scroll message stream
+  const hasMore = useAppSelector((state) => {
+    if (!activeConvId) return false;
+    return state.inbox.hasMoreByConversationId[activeConvId] ?? false;
+  });
+  const loadingOlder = useAppSelector((state) => state.inbox.loadingOlderMessages);
+
+  // Reset initial load flag when conversation switches
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    if (activeConvId !== prevConvIdRef.current) {
+      prevConvIdRef.current = activeConvId;
+      isInitialLoadRef.current = true;
+      setShowScrollToBottom(false);
+    }
+  }, [activeConvId]);
+
+  // Maintain scroll position / auto-scroll to bottom (WhatsApp style)
+  useEffect(() => {
+    const scroller = scrollRef.current;
+    if (!scroller) return;
+
+    if (isInitialLoadRef.current) {
+      if (activeMessages.length > 0) {
+        scroller.scrollTop = scroller.scrollHeight;
+        isInitialLoadRef.current = false;
+      }
+      return;
+    }
+
+    if (isLoadingOlderRef.current) {
+      const heightDiff = scroller.scrollHeight - prevScrollHeightRef.current;
+      scroller.scrollTop = prevScrollTopRef.current + heightDiff;
+      isLoadingOlderRef.current = false;
+      return;
+    }
+
+    // Auto-scroll to bottom if user is already near bottom or outbound sent
+    const isNearBottom = scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 160;
+    const lastMsg = activeMessages[activeMessages.length - 1];
+    if (isNearBottom || lastMsg?.direction === 'outbound') {
+      scroller.scrollTop = scroller.scrollHeight;
     }
   }, [activeMessages]);
+
+  const handleScroll = () => {
+    const scroller = scrollRef.current;
+    if (!scroller || !activeConvId) return;
+
+    const isNearBottom = scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 140;
+    setShowScrollToBottom(!isNearBottom);
+
+    // If user scrolled up to the top, fetch next older 20 messages
+    if (scroller.scrollTop < 60 && hasMore && !loadingOlder && !isLoadingOlderRef.current) {
+      const earliestMsg = activeMessages[0];
+      if (earliestMsg && earliestMsg.createdAt && earliestMsg.createdAt !== 'Just now') {
+        prevScrollHeightRef.current = scroller.scrollHeight;
+        prevScrollTopRef.current = scroller.scrollTop;
+        isLoadingOlderRef.current = true;
+        dispatch(
+          fetchOlderMessages({
+            conversationId: activeConvId,
+            before: earliestMsg.createdAt,
+          })
+        );
+      }
+    }
+  };
+
+  const scrollToBottom = () => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTo({
+        top: scrollRef.current.scrollHeight,
+        behavior: 'smooth',
+      });
+    }
+  };
 
   // Query AI suggested template responses
   useEffect(() => {
@@ -661,148 +792,269 @@ export default function ChatWindow({ onBackToList }: ChatWindowProps = {}) {
         </div>
       </header>
 
-      {/* Messages Stream */}
-      <div className="messages-scroller" ref={scrollRef} style={{ flex: 1, padding: 'var(--space-6)', overflowY: 'auto', backgroundColor: 'var(--color-background)' }}>
-        {loading && activeMessages.length === 0 ? (
-          <div style={{ padding: '24px', textAlign: 'center', color: 'var(--color-foreground-muted)' }}>
-            Loading message logs...
-          </div>
-        ) : (
-          activeMessages.map((msg) => (
-            <div
-              key={msg._id}
-              className={`message-bubble-wrapper ${msg.direction}`}
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: msg.direction === 'outbound' ? 'flex-end' : 'flex-start',
-                marginBottom: '12px',
-              }}
-            >
-              <div
-                className="message-bubble"
+      {/* Messages Stream Container */}
+      <div style={{ position: 'relative', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, minWidth: 0, overflow: 'hidden' }}>
+        <div
+          className="messages-scroller"
+          ref={scrollRef}
+          onScroll={handleScroll}
+          style={{
+            flex: 1,
+            padding: 'var(--space-4) var(--space-6)',
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            backgroundColor: 'var(--color-background)',
+            minHeight: 0,
+            minWidth: 0,
+          }}
+        >
+          {/* Top Loading Indicator for WhatsApp Upward Scroll */}
+          {loadingOlder && (
+            <div style={{ textAlign: 'center', padding: '6px 0 12px' }}>
+              <span
                 style={{
-                  maxWidth: '70%',
-                  padding: msg.type === 'template' ? '12px 14px' : '10px 14px',
-                  borderRadius: msg.direction === 'outbound' ? '14px 14px 2px 14px' : '14px 14px 14px 2px',
-                  backgroundColor: msg.direction === 'outbound' ? 'var(--color-primary)' : 'var(--color-surface)',
-                  color: msg.direction === 'outbound' ? '#FFFFFF' : 'var(--color-foreground)',
-                  border: msg.direction === 'outbound' ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
+                  fontSize: '12px',
+                  color: 'var(--color-foreground-muted)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  backgroundColor: 'var(--color-surface)',
+                  padding: '4px 14px',
+                  borderRadius: '16px',
                   boxShadow: 'var(--shadow-sm)',
-                  fontSize: '14px',
-                  lineHeight: '1.4',
+                  border: '1px solid var(--color-border)',
                 }}
               >
-                {/* 1. Audio Message */}
-                {msg.type === 'audio' ? (
-                  <div className="audio-player-wrapper">
-                    <audio controls src={msg.mediaUrl || undefined} style={{ width: '100%' }} />
-                    {msg.transcript && (
-                      <div className="voice-transcript" style={{ fontSize: '11px', marginTop: '6px', opacity: 0.9 }}>
-                        <strong>{t('whisperTranscript')}:</strong> {msg.transcript}
-                      </div>
-                    )}
-                  </div>
-                ) : /* 2. Image Message */
-                msg.type === 'image' ? (
-                  <div className="image-message-wrapper">
-                    {msg.mediaUrl && (
-                      <a href={msg.mediaUrl} target="_blank" rel="noopener noreferrer">
-                        <img
-                          src={msg.mediaUrl}
-                          alt="Shared media"
-                          style={{
-                            maxWidth: '100%',
-                            maxHeight: '260px',
-                            borderRadius: '8px',
-                            display: 'block',
-                            objectFit: 'cover',
-                            marginBottom: msg.body && msg.body !== '[Image]' ? '6px' : '0',
-                          }}
-                        />
-                      </a>
-                    )}
-                    {msg.body && msg.body !== '[Image]' && (
-                      <div style={{ fontSize: '13.5px' }}>{msg.body}</div>
-                    )}
-                  </div>
-                ) : /* 3. Video Message */
-                msg.type === 'video' ? (
-                  <div className="video-message-wrapper">
-                    {msg.mediaUrl && (
-                      <video
-                        controls
-                        src={msg.mediaUrl}
-                        style={{ maxWidth: '100%', maxHeight: '260px', borderRadius: '8px', display: 'block', marginBottom: '6px' }}
-                      />
-                    )}
-                    {msg.body && msg.body !== '[Video]' && (
-                      <div style={{ fontSize: '13.5px' }}>{msg.body}</div>
-                    )}
-                  </div>
-                ) : /* 4. Document Message */
-                msg.type === 'document' ? (
-                  <div className="document-message-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div style={{ width: '36px', height: '36px', borderRadius: '6px', backgroundColor: msg.direction === 'outbound' ? 'rgba(255,255,255,0.2)' : 'var(--color-primary-muted)', color: msg.direction === 'outbound' ? '#FFF' : 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <Icon name="document" size={20} />
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 600, fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {msg.body || 'Document'}
-                      </div>
-                      <div style={{ fontSize: '11px', opacity: 0.8 }}>File Attachment</div>
-                    </div>
-                    {msg.mediaUrl && (
-                      <a
-                        href={msg.mediaUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        download
-                        style={{ color: 'inherit', padding: '6px 8px', borderRadius: '4px', background: 'rgba(0,0,0,0.1)' }}
-                        title="Download Document"
-                      >
-                        <Icon name="download" size={14} />
-                      </a>
-                    )}
-                  </div>
-                ) : /* 5. WhatsApp Template Message */
-                msg.type === 'template' ? (
-                  <div className="template-message-card">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '10.5px', fontWeight: 700, opacity: 0.85, marginBottom: '6px', letterSpacing: '0.4px', textTransform: 'uppercase' }}>
-                      <Icon name="sparkles" size={11} />
-                      <span>WhatsApp Template Message</span>
-                    </div>
-                    {msg.mediaUrl && (
-                      <img
-                        src={msg.mediaUrl}
-                        alt="Template Header"
-                        style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '6px', marginBottom: '8px' }}
-                      />
-                    )}
-                    <div style={{ fontSize: '13.5px', whiteSpace: 'pre-wrap' }}>
-                      {renderTemplateMessageBody(msg.body, wabaTemplates)}
-                    </div>
-                  </div>
-                ) : (
-                  /* 6. Standard Text Message */
-                  <div style={{ whiteSpace: 'pre-wrap' }}>{msg.body}</div>
-                )}
-              </div>
-              <div className="message-footer" style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px', fontSize: '10px', color: 'var(--color-foreground-muted)' }}>
-                <span className="message-time-stamp">{msg.createdAt}</span>
-                <span className="message-status" style={{ display: 'inline-flex', alignItems: 'center' }}>
-                  {msg.status === 'failed' ? (
-                    <span style={{ color: 'var(--color-error)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
-                      <Icon name="close" size={10} />
-                      Failed
-                    </span>
-                  ) : (
-                    <Icon name="check" size={10} style={{ color: msg.status === 'read' ? 'var(--color-info)' : 'inherit' }} />
-                  )}
-                </span>
-              </div>
+                <Icon name="spinner" size={13} />
+                <span>Loading earlier messages...</span>
+              </span>
             </div>
-          ))
+          )}
+
+          {loading && activeMessages.length === 0 ? (
+            <div style={{ padding: '32px', textAlign: 'center', color: 'var(--color-foreground-muted)' }}>
+              Loading message logs...
+            </div>
+          ) : (
+            activeMessages.map((msg, idx) => {
+              const prevMsg = activeMessages[idx - 1];
+              const showDateSeparator = isNewDay(prevMsg, msg);
+
+              return (
+                <div key={msg._id} style={{ display: 'flex', flexDirection: 'column', width: '100%', minWidth: 0 }}>
+                  {/* WhatsApp Date Separator Badge */}
+                  {showDateSeparator && (
+                    <div style={{ display: 'flex', justifyContent: 'center', margin: '14px 0 10px' }}>
+                      <span
+                        style={{
+                          backgroundColor: 'var(--color-surface-secondary)',
+                          border: '1px solid var(--color-border)',
+                          color: 'var(--color-foreground-secondary)',
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          padding: '3px 12px',
+                          borderRadius: '12px',
+                          boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.4px',
+                        }}
+                      >
+                        {formatDateSeparator(msg.createdAt)}
+                      </span>
+                    </div>
+                  )}
+
+                  <div
+                    className={`message-bubble-wrapper ${msg.direction}`}
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: msg.direction === 'outbound' ? 'flex-end' : 'flex-start',
+                      marginBottom: '8px',
+                      maxWidth: '100%',
+                      minWidth: 0,
+                    }}
+                  >
+                    <div
+                      className="message-bubble"
+                      style={{
+                        maxWidth: '75%',
+                        minWidth: 0,
+                        padding: msg.type === 'template' ? '12px 14px' : '9px 13px',
+                        borderRadius: msg.direction === 'outbound' ? '14px 14px 3px 14px' : '14px 14px 14px 3px',
+                        backgroundColor: msg.direction === 'outbound' ? '#E7FCE8' : 'var(--color-surface)',
+                        color: msg.direction === 'outbound' ? '#111827' : 'var(--color-foreground)',
+                        border: msg.direction === 'outbound' ? '1px solid #C8F3CA' : '1px solid var(--color-border)',
+                        boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                        fontSize: '13.5px',
+                        lineHeight: '1.45',
+                        wordBreak: 'break-word',
+                        overflowWrap: 'anywhere',
+                        wordWrap: 'break-word',
+                        boxSizing: 'border-box',
+                      }}
+                    >
+                      {/* 1. Audio Message */}
+                      {msg.type === 'audio' ? (
+                        <div className="audio-player-wrapper" style={{ minWidth: '220px', maxWidth: '100%' }}>
+                          <audio controls src={resolveMediaUrl(msg.mediaUrl)} style={{ width: '100%' }} />
+                          {msg.transcript && (
+                            <div className="voice-transcript" style={{ fontSize: '11px', marginTop: '6px', opacity: 0.9 }}>
+                              <strong>{t('whisperTranscript')}:</strong> {msg.transcript}
+                            </div>
+                          )}
+                        </div>
+                      ) : /* 2. Image Message */
+                      msg.type === 'image' ? (
+                        <div className="image-message-wrapper" style={{ maxWidth: '100%' }}>
+                          {msg.mediaUrl && (
+                            <a href={resolveMediaUrl(msg.mediaUrl)} target="_blank" rel="noopener noreferrer">
+                              <img
+                                src={resolveMediaUrl(msg.mediaUrl)}
+                                alt="Shared media"
+                                style={{
+                                  maxWidth: '100%',
+                                  maxHeight: '280px',
+                                  borderRadius: '8px',
+                                  display: 'block',
+                                  objectFit: 'cover',
+                                  marginBottom: msg.body && msg.body !== '[Image]' ? '6px' : '0',
+                                }}
+                              />
+                            </a>
+                          )}
+                          {msg.body && msg.body !== '[Image]' && (
+                            <div style={{ fontSize: '13.5px', wordBreak: 'break-word', overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}>
+                              {msg.body}
+                            </div>
+                          )}
+                        </div>
+                      ) : /* 3. Video Message */
+                      msg.type === 'video' ? (
+                        <div className="video-message-wrapper" style={{ maxWidth: '100%' }}>
+                          {msg.mediaUrl && (
+                            <video
+                              controls
+                              src={resolveMediaUrl(msg.mediaUrl)}
+                              style={{ maxWidth: '100%', maxHeight: '280px', borderRadius: '8px', display: 'block', marginBottom: '6px' }}
+                            />
+                          )}
+                          {msg.body && msg.body !== '[Video]' && (
+                            <div style={{ fontSize: '13.5px', wordBreak: 'break-word', overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}>
+                              {msg.body}
+                            </div>
+                          )}
+                        </div>
+                      ) : /* 4. Document Message */
+                      msg.type === 'document' ? (
+                        <div className="document-message-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: '180px' }}>
+                          <div style={{ width: '36px', height: '36px', borderRadius: '6px', backgroundColor: msg.direction === 'outbound' ? 'rgba(0,0,0,0.06)' : 'var(--color-primary-muted)', color: msg.direction === 'outbound' ? '#047857' : 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <Icon name="document" size={20} />
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontWeight: 600, fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {msg.body || 'Document'}
+                            </div>
+                            <div style={{ fontSize: '11px', opacity: 0.8 }}>File Attachment</div>
+                          </div>
+                          {msg.mediaUrl && (
+                            <a
+                              href={resolveMediaUrl(msg.mediaUrl)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              download
+                              style={{ color: 'inherit', padding: '6px 8px', borderRadius: '4px', background: 'rgba(0,0,0,0.06)', flexShrink: 0 }}
+                              title="Download Document"
+                            >
+                              <Icon name="download" size={14} />
+                            </a>
+                          )}
+                        </div>
+                      ) : /* 5. WhatsApp Template Message */
+                      msg.type === 'template' ? (
+                        <div className="template-message-card" style={{ maxWidth: '100%' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '10.5px', fontWeight: 700, opacity: 0.85, marginBottom: '6px', letterSpacing: '0.4px', textTransform: 'uppercase' }}>
+                            <Icon name="sparkles" size={11} />
+                            <span>WhatsApp Template Message</span>
+                          </div>
+                          {msg.mediaUrl && (
+                            <img
+                              src={resolveMediaUrl(msg.mediaUrl)}
+                              alt="Template Header"
+                              style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '6px', marginBottom: '8px' }}
+                            />
+                          )}
+                          <div style={{ fontSize: '13.5px', whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
+                            {renderTemplateMessageBody(msg.body, wabaTemplates)}
+                          </div>
+                        </div>
+                      ) : (
+                        /* 6. Standard Text Message (with full break-word wrapping) */
+                        <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'anywhere', wordWrap: 'break-word' }}>
+                          {msg.body}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* WhatsApp-Style Message Footer (Timestamp & Checkmarks) */}
+                    <div className="message-footer" style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '3px', fontSize: '10.5px', color: 'var(--color-foreground-muted)', padding: '0 2px' }}>
+                      <span className="message-time-stamp">{formatMessageTime(msg.createdAt)}</span>
+                      {msg.direction === 'outbound' && (
+                        <span className="message-status" style={{ display: 'inline-flex', alignItems: 'center' }}>
+                          {msg.status === 'failed' ? (
+                            <span style={{ color: 'var(--color-error)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '2px' }} title="Failed to deliver">
+                              <Icon name="close" size={10} />
+                              Failed
+                            </span>
+                          ) : msg.status === 'read' ? (
+                            <span style={{ display: 'inline-flex', color: '#53bdeb' }} title="Read by customer">
+                              <Icon name="check" size={11} style={{ marginRight: '-6px' }} />
+                              <Icon name="check" size={11} />
+                            </span>
+                          ) : msg.status === 'delivered' ? (
+                            <span style={{ display: 'inline-flex', opacity: 0.6 }} title="Delivered to device">
+                              <Icon name="check" size={11} style={{ marginRight: '-6px' }} />
+                              <Icon name="check" size={11} />
+                            </span>
+                          ) : (
+                            <Icon name="check" size={11} style={{ opacity: 0.6 }} title="Sent to server" />
+                          )}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Floating WhatsApp Scroll-to-Bottom Button */}
+        {showScrollToBottom && (
+          <button
+            onClick={scrollToBottom}
+            style={{
+              position: 'absolute',
+              bottom: '16px',
+              right: '24px',
+              width: '38px',
+              height: '38px',
+              borderRadius: '50%',
+              backgroundColor: 'var(--color-surface)',
+              border: '1px solid var(--color-border)',
+              boxShadow: '0 4px 14px rgba(0,0,0,0.18)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              zIndex: 10,
+              color: 'var(--color-primary)',
+              transition: 'all 0.2s ease',
+            }}
+            title="Scroll to bottom"
+          >
+            <Icon name="arrow-right" size={16} style={{ transform: 'rotate(90deg)' }} />
+          </button>
         )}
       </div>
 

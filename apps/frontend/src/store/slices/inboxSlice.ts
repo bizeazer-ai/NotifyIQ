@@ -9,8 +9,10 @@ interface InboxState {
   conversations: Conversation[];
   activeConversationId: string | null;
   messagesByConversationId: Record<string, Message[]>;
+  hasMoreByConversationId: Record<string, boolean>;
   loadingConversations: boolean;
   loadingMessages: boolean;
+  loadingOlderMessages: boolean;
   error: string | null;
 }
 
@@ -18,8 +20,10 @@ const initialState: InboxState = {
   conversations: [],
   activeConversationId: null,
   messagesByConversationId: {},
+  hasMoreByConversationId: {},
   loadingConversations: false,
   loadingMessages: false,
+  loadingOlderMessages: false,
   error: null,
 };
 
@@ -41,10 +45,38 @@ export const fetchMessageHistory = createAsyncThunk(
   'inbox/fetchMessageHistory',
   async (conversationId: string, { rejectWithValue }) => {
     try {
-      const res = await apiClient.get<{ data: Message[] }>(`/api/messages/history/${conversationId}`);
-      return { conversationId, messages: res.data };
+      const res = await apiClient.get<{ data: Message[]; hasMore?: boolean }>(
+        `/api/messages/history/${conversationId}?limit=20`
+      );
+      return {
+        conversationId,
+        messages: res.data || [],
+        hasMore: res.hasMore ?? ((res.data || []).length === 20),
+      };
     } catch (err: any) {
       return rejectWithValue(err.message || 'Failed to fetch messages');
+    }
+  }
+);
+
+// Fetch older messages (WhatsApp-like upward infinite scroll)
+export const fetchOlderMessages = createAsyncThunk(
+  'inbox/fetchOlderMessages',
+  async (
+    { conversationId, before }: { conversationId: string; before: string },
+    { rejectWithValue }
+  ) => {
+    try {
+      const res = await apiClient.get<{ data: Message[]; hasMore?: boolean }>(
+        `/api/messages/history/${conversationId}?limit=20&before=${encodeURIComponent(before)}`
+      );
+      return {
+        conversationId,
+        messages: res.data || [],
+        hasMore: res.hasMore ?? ((res.data || []).length === 20),
+      };
+    } catch (err: any) {
+      return rejectWithValue(err.message || 'Failed to fetch older messages');
     }
   }
 );
@@ -231,12 +263,28 @@ const inboxSlice = createSlice({
       })
       .addCase(fetchMessageHistory.fulfilled, (state, action) => {
         state.loadingMessages = false;
-        const { conversationId, messages } = action.payload;
+        const { conversationId, messages, hasMore } = action.payload;
         state.messagesByConversationId[conversationId] = messages;
+        state.hasMoreByConversationId[conversationId] = hasMore;
       })
       .addCase(fetchMessageHistory.rejected, (state, action) => {
         state.loadingMessages = false;
         state.error = action.payload as string;
+      })
+      .addCase(fetchOlderMessages.pending, (state) => {
+        state.loadingOlderMessages = true;
+      })
+      .addCase(fetchOlderMessages.fulfilled, (state, action) => {
+        state.loadingOlderMessages = false;
+        const { conversationId, messages, hasMore } = action.payload;
+        const existing = state.messagesByConversationId[conversationId] || [];
+        const existingIds = new Set(existing.map((m) => m._id));
+        const newUnique = messages.filter((m) => !existingIds.has(m._id));
+        state.messagesByConversationId[conversationId] = [...newUnique, ...existing];
+        state.hasMoreByConversationId[conversationId] = hasMore;
+      })
+      .addCase(fetchOlderMessages.rejected, (state) => {
+        state.loadingOlderMessages = false;
       })
       .addCase(sendMessage.fulfilled, (state, action) => {
         const message = action.payload;

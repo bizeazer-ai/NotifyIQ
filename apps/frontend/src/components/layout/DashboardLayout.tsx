@@ -45,6 +45,7 @@ export default function DashboardLayout() {
     if (p === '/billing') return 'Billing & Usage Analytics';
     if (p === '/settings') return 'AI Agent & System Settings';
     if (p === '/settings/waba') return 'Meta WABA API Profile';
+    if (p === '/settings/webhooks' || p === '/webhooks') return 'Outbound Webhooks & Events';
     return 'Console';
   };
 
@@ -181,6 +182,15 @@ export default function DashboardLayout() {
                 <Icon name="shield" size={16} />
               </div>
               <span className="menu-title">Meta WABA Profile</span>
+            </div>
+          </Link>
+          <Link to="/settings/webhooks" onClick={() => setMobileMenuOpen(false)} style={{ textDecoration: 'none' }}>
+            <div className={`menu-item ${isActiveAny('/settings/webhooks', '/webhooks') ? 'active' : ''}`}>
+              <div className="icon-badge icon-badge-indigo">
+                <Icon name="webhook" size={16} />
+              </div>
+              <span className="menu-title">{t('webhooks')}</span>
+              <span className="nav-badge nav-badge-live">LIVE</span>
             </div>
           </Link>
         </div>
