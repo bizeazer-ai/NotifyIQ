@@ -94,15 +94,16 @@ export class AuthGuard implements CanActivate {
 
   private async validateApiKey(request: AuthenticatedRequest, apiKey: string): Promise<boolean> {
     let prefix = '';
-    if (apiKey.includes('_')) {
-      const parts = apiKey.split('_');
-      prefix = parts.slice(0, 3).join('_');
-    } else {
+    // if (apiKey.includes('_')) {
+    //   const parts = apiKey.split('_');
+    //   prefix = parts.slice(0, 3).join('_');
+    // } else {
       prefix = apiKey.slice(0, 16);
-    }
+    // }
 
     let keyRecord: any = null;
     if (this.apiKeyModel) {
+      console.info("APIKEYMODEL: ", prefix);
       keyRecord = await this.apiKeyModel.findOne({ keyPrefix: prefix });
     } else if (mongoose.models && mongoose.models[ApiKey.name]) {
       keyRecord = await mongoose.models[ApiKey.name].findOne({ keyPrefix: prefix });
