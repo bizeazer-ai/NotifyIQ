@@ -19,6 +19,7 @@ import { ContactsModule } from './contacts/contacts.module.js';
 import { AnalyticsModule } from './analytics/analytics.module.js';
 import { AdminModule } from './admin/admin.module.js';
 import { OutboundWebhooksModule } from './outbound-webhooks/outbound-webhooks.module.js';
+import { ApiKeysModule } from './api-keys/api-keys.module.js';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { OutboundWebhooksModule } from './outbound-webhooks/outbound-webhooks.mo
     ContactsModule,
     AnalyticsModule,
     OutboundWebhooksModule,
+    ApiKeysModule,
   ],
   controllers: [AppController],
   providers: [AppService],
