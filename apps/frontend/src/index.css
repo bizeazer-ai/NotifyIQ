@@ -7,6 +7,7 @@
 /* ── Color Tokens ─────────────────────────────────────────────── */
 :root {
   /* Brand */
+  --color-card: #ffffff;
   --color-primary: #2563EB;
   --color-primary-hover: #1D4ED8;
   --color-primary-light: #3B82F6;
