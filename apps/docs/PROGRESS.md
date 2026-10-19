@@ -242,4 +242,6 @@ NotifyIQ is an enterprise WhatsApp Business API (WABA) intelligence, campaign au
 - Only verified routes and Meta APIs found in `apps/frontend` and `apps/backend` will be documented.
 - **Theme Support**: Implemented complete light theme alongside dark theme. Uses Tailwind v4 `@custom-variant dark (&:where(.dark, .dark *));`, an anti-flash `<head>` bootstrap script, and a reactive `ThemeToggle` built with React 19 `useSyncExternalStore`.
 - **Layout Width**: Eliminated restrictive `max-w-7xl` and expanded all main container boundaries to `max-w-[1700px] w-full mx-auto px-4 sm:px-6 lg:px-8` across Navbar, Footer, Landing Page, and Docs layout, while expanding legal and doc content areas to allow rich multi-column readability on large displays.
+- **Brand Favicon & App Icons**: Configured the official NotifyIQ monogram logo as the site favicon and application icon across `app/icon.svg`, `app/apple-icon.svg`, `app/favicon.ico`, `public/favicon.ico`, and `public/favicon.svg`. Integrated metadata icons in `layout.tsx`. Verified 24/24 static build routes.
+
 
