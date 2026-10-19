@@ -54,9 +54,8 @@ export default function DashboardLayout() {
       {/* Mobile Menu Backdrop */}
       {mobileMenuOpen && (
         <div
-          className="modal-overlay"
+          className="modal-overlay mobile-drawer-backdrop"
           onClick={() => setMobileMenuOpen(false)}
-          style={{ zIndex: 90 }}
         />
       )}
 
@@ -234,7 +233,7 @@ export default function DashboardLayout() {
           {/* Left Title & Mobile Toggle */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
             <button
-              className="btn btn-ghost btn-sm"
+              className="btn btn-ghost btn-sm mobile-nav-toggle"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               style={{ padding: '6px' }}
               aria-label="Toggle Navigation"

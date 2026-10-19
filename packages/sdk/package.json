@@ -13,15 +13,18 @@
       "default": "./dist/index.js"
     }
   },
-  "private": true,
   "scripts": {
     "dev": "tsc --watch",
-    "build": "tsc"
+    "build": "tsc",
+    "prepublishOnly": "pnpm run build"
   },
   "keywords": [
     "notifyiq",
     "whatsapp",
     "sdk"
+  ],
+  "files": [
+    "dist", "README.md"
   ],
   "author": "BizEazer Tech Team",
   "license": "ISC",

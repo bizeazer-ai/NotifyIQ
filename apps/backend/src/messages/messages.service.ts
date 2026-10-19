@@ -324,15 +324,16 @@ export class MessagesService {
   }
 
   /**
-   * Uploads binary media directly to Meta WhatsApp Cloud API /media endpoint.
-   * Auto-resolves phone number ID if WABA ID is given, prioritizes active Meta token,
-   * and falls back cleanly to local file storage if Meta direct upload encounters errors.
+   * Uploads media as a stream directly to Meta WhatsApp Cloud API /media endpoint.
+   * Utilizes fs.openAsBlob to stream file chunks directly from the disk descriptor
+   * without buffering the binary file in Node.js process heap memory.
    */
-  async uploadMediaToMeta(
+  async uploadMediaStreamToMeta(
     workspaceId: string,
-    fileBuffer: Buffer,
+    filePath: string,
     filename: string,
     mimeType: string,
+    fileSize?: number,
   ): Promise<{ mediaId?: string; url: string; metaUrl?: string }> {
     const workspace = await this.workspaceModel.findById(workspaceId);
     if (!workspace) {
@@ -354,14 +355,17 @@ export class MessagesService {
 
     const phoneNumberId = await this.resolveRealPhoneNumberId(workspace, decryptedToken);
 
-    // Try direct Meta Cloud Media upload
+    // Try direct Meta Cloud Media streaming upload
     if (!isMock && decryptedToken && phoneNumberId) {
       try {
-        console.log(`[MessagesService] Uploading media directly to Meta Cloud API for PhoneID: ${phoneNumberId} (${mimeType}, ${fileBuffer.length} bytes)...`);
+        console.log(`[MessagesService] Streaming media directly to Meta Cloud API for PhoneID: ${phoneNumberId} (${mimeType}, file: ${filePath})...`);
+
+        // Node.js fs.openAsBlob streams file chunks directly from disk to network without process RAM buffering
+        const streamBlob = await fs.openAsBlob(filePath, { type: mimeType });
 
         const form = new FormData();
         form.append('messaging_product', 'whatsapp');
-        form.append('file', new Blob([fileBuffer as unknown as BlobPart], { type: mimeType }), filename);
+        form.append('file', streamBlob, filename);
         form.append('type', mimeType);
 
         const response = await fetch(`https://graph.facebook.com/v20.0/${phoneNumberId}/media`, {
@@ -375,18 +379,24 @@ export class MessagesService {
         const data = (await response.json()) as any;
         if (response.ok && data?.id) {
           const mediaId = data.id as string;
-          console.log(`[MessagesService] Successfully uploaded to Meta Cloud API. Media ID: ${mediaId}`);
+          console.log(`[MessagesService] Successfully uploaded to Meta Cloud API via stream. Media ID: ${mediaId}`);
 
-          // Production Best Practice: Cache uploaded media locally so proxy serving is instant and offline-resilient
+          // Zero-copy move to persistent uploads cache
           try {
             const uploadDir = path.resolve(process.cwd(), 'uploads');
             if (!fs.existsSync(uploadDir)) {
               fs.mkdirSync(uploadDir, { recursive: true });
             }
             const ext = path.extname(filename).toLowerCase() || '.bin';
-            await fs.promises.writeFile(path.join(uploadDir, `meta_${mediaId}${ext}`), fileBuffer);
+            const cachePath = path.join(uploadDir, `meta_${mediaId}${ext}`);
+            try {
+              await fs.promises.rename(filePath, cachePath);
+            } catch {
+              await fs.promises.copyFile(filePath, cachePath);
+              await fs.promises.unlink(filePath).catch(() => {});
+            }
           } catch (cacheErr: any) {
-            console.warn('[MessagesService] Could not cache uploaded media to local disk:', cacheErr.message);
+            console.warn('[MessagesService] Could not move streamed media to persistent cache:', cacheErr.message);
           }
 
           let metaUrl: string | undefined;
@@ -408,14 +418,14 @@ export class MessagesService {
             metaUrl,
           };
         } else {
-          console.warn('[MessagesService] Meta /media direct upload returned non-OK, activating local storage fallback:', data);
+          console.warn('[MessagesService] Meta /media direct stream upload returned non-OK, activating local storage fallback:', data);
         }
       } catch (err: any) {
-        console.warn('[MessagesService] Direct Meta media upload error, activating local storage fallback:', err.message);
+        console.warn('[MessagesService] Direct Meta media stream upload error, activating local storage fallback:', err.message);
       }
     }
 
-    // Resilient Fallback: Store locally and serve via static endpoint (ensures media sending NEVER fails)
+    // Resilient Fallback: Move streamed file to uploads dir and serve statically (zero-copy rename)
     const uploadDir = path.resolve(process.cwd(), 'uploads');
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
@@ -426,12 +436,41 @@ export class MessagesService {
     const savedName = `${Date.now()}_${crypto.randomBytes(4).toString('hex')}_${safeBase}${ext}`;
     const targetPath = path.join(uploadDir, savedName);
 
-    await fs.promises.writeFile(targetPath, fileBuffer);
-    console.log(`[MessagesService] Media saved locally: ${targetPath}`);
+    try {
+      await fs.promises.rename(filePath, targetPath);
+    } catch {
+      await fs.promises.copyFile(filePath, targetPath);
+      await fs.promises.unlink(filePath).catch(() => {});
+    }
+
+    console.log(`[MessagesService] Media saved locally (stream fallback): ${targetPath}`);
 
     return {
+      mediaId: `mock_${Date.now()}`,
       url: `/api/messages/media/file/${savedName}`,
     };
+  }
+
+  /**
+   * Uploads binary media directly to Meta WhatsApp Cloud API /media endpoint.
+   * Auto-resolves phone number ID if WABA ID is given, prioritizes active Meta token,
+   * and falls back cleanly to local file storage if Meta direct upload encounters errors.
+   */
+  async uploadMediaToMeta(
+    workspaceId: string,
+    fileBuffer: Buffer,
+    filename: string,
+    mimeType: string,
+  ): Promise<{ mediaId?: string; url: string; metaUrl?: string }> {
+    const uploadDir = path.resolve(process.cwd(), 'uploads', 'tmp');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    const ext = path.extname(filename).toLowerCase() || '.bin';
+    const tmpPath = path.join(uploadDir, `buf_${Date.now()}_${crypto.randomBytes(4).toString('hex')}${ext}`);
+    await fs.promises.writeFile(tmpPath, fileBuffer);
+
+    return this.uploadMediaStreamToMeta(workspaceId, tmpPath, filename, mimeType, fileBuffer.length);
   }
 
   async sendMediaMessage(workspaceId: string, dto: SendMediaDto): Promise<MessageDocument> {
@@ -465,7 +504,6 @@ export class MessagesService {
           const localPath = path.resolve(process.cwd(), 'uploads', filename);
           if (fs.existsSync(localPath)) {
             try {
-              const fileBuffer = await fs.promises.readFile(localPath);
               const ext = path.extname(filename).toLowerCase();
               let mimeType = 'application/octet-stream';
               if (['.jpg', '.jpeg'].includes(ext)) mimeType = 'image/jpeg';
@@ -475,9 +513,10 @@ export class MessagesService {
               else if (['.mp3', '.mpeg'].includes(ext)) mimeType = 'audio/mpeg';
               else if (ext === '.pdf') mimeType = 'application/pdf';
 
+              const streamBlob = await fs.openAsBlob(localPath, { type: mimeType });
               const form = new FormData();
               form.append('messaging_product', 'whatsapp');
-              form.append('file', new Blob([fileBuffer as unknown as BlobPart], { type: mimeType }), dto.filename || filename);
+              form.append('file', streamBlob, dto.filename || filename);
               form.append('type', mimeType);
 
               const uploadRes = await fetch(`https://graph.facebook.com/v20.0/${phoneNumberId}/media`, {

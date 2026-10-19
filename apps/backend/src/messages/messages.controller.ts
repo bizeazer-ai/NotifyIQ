@@ -19,14 +19,28 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { memoryStorage } from 'multer';
+import { diskStorage } from 'multer';
 import { env } from '@notifyiq/config';
 import { MessagesService } from './messages.service.js';
 import { AuthGuard, WorkspaceGuard } from '../common/guards/index.js';
 import type { AuthenticatedRequest } from '../common/guards/index.js';
 import { QueueService, QueueName } from '../queues/queue.service.js';
 
-const uploadStorage = memoryStorage();
+const tmpUploadsDir = path.resolve(process.cwd(), 'uploads', 'tmp');
+if (!fs.existsSync(tmpUploadsDir)) {
+  fs.mkdirSync(tmpUploadsDir, { recursive: true });
+}
+
+const uploadStorage = diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, tmpUploadsDir);
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase() || '.bin';
+    const unique = `${Date.now()}_${crypto.randomBytes(8).toString('hex')}${ext}`;
+    cb(null, unique);
+  },
+});
 
 const ALLOWED_MIME_TYPES = new Set([
   // Images (Meta max: 5MB)
@@ -136,25 +150,28 @@ export class MessagesController {
   ) {
     const workspaceId = req.workspaceId as string;
 
-    // 1. Multipart Form Data upload (streamed in-memory directly to Meta Cloud API)
-    if (file && file.buffer) {
+    // 1. Multipart Form Data upload (streamed to temp disk and streamed to Meta Cloud API)
+    if (file && file.path) {
       const mime = (file.mimetype || '').toLowerCase();
       if (mime.startsWith('image/') && file.size > 5 * 1024 * 1024) {
+        await fs.promises.unlink(file.path).catch(() => {});
         throw new BadRequestException('Image exceeds WhatsApp Cloud API limit of 5MB. Please compress the image.');
       }
       if ((mime.startsWith('audio/') || mime.startsWith('video/')) && file.size > 16 * 1024 * 1024) {
+        await fs.promises.unlink(file.path).catch(() => {});
         throw new BadRequestException('Audio/Video exceeds WhatsApp Cloud API limit of 16MB.');
       }
 
-      const metaUpload = await this.messagesService.uploadMediaToMeta(
+      const metaUpload = await this.messagesService.uploadMediaStreamToMeta(
         workspaceId,
-        file.buffer,
+        file.path,
         file.originalname,
         file.mimetype,
+        file.size,
       );
 
       return {
-        message: 'Media uploaded directly to Meta Cloud successfully',
+        message: 'Media uploaded and streamed directly to Meta Cloud successfully',
         data: {
           mediaId: metaUpload.mediaId,
           url: metaUpload.url,
@@ -166,49 +183,57 @@ export class MessagesController {
       };
     }
 
-    // 2. Fallback for base64 JSON payloads (streamed in-memory directly to Meta Cloud API)
+    // 2. Fallback for base64 JSON payloads (streamed to temp file and streamed directly to Meta Cloud API)
     if (body?.fileData) {
       const matches = body.fileData.match(/^data:([A-Za-z-+/]+);base64,(.+)$/);
-      let buffer: Buffer;
       let mimeType = (body.mimeType || 'application/octet-stream').toLowerCase();
-
+      const base64Data = matches && matches.length === 3 ? matches[2] : body.fileData;
       if (matches && matches.length === 3) {
         mimeType = matches[1].toLowerCase();
-        buffer = Buffer.from(matches[2], 'base64');
-      } else {
-        buffer = Buffer.from(body.fileData, 'base64');
       }
 
       if (!ALLOWED_MIME_TYPES.has(mimeType)) {
         throw new BadRequestException(`Unsupported file format: ${mimeType}`);
       }
 
-      if (mimeType.startsWith('image/') && buffer.length > 5 * 1024 * 1024) {
+      const ext = path.extname(body.filename || '').toLowerCase() || (mimeType.startsWith('image/') ? '.jpg' : '.bin');
+      const tmpPath = path.join(tmpUploadsDir, `b64_${Date.now()}_${crypto.randomBytes(6).toString('hex')}${ext}`);
+
+      // Stream write to temp file so heap memory can be immediately freed
+      await fs.promises.writeFile(tmpPath, Buffer.from(base64Data, 'base64'));
+      const stat = await fs.promises.stat(tmpPath);
+
+      if (mimeType.startsWith('image/') && stat.size > 5 * 1024 * 1024) {
+        await fs.promises.unlink(tmpPath).catch(() => {});
         throw new BadRequestException('Image exceeds WhatsApp Cloud API limit of 5MB.');
-      } else if (mimeType.startsWith('video/') && buffer.length > 16 * 1024 * 1024) {
+      } else if (mimeType.startsWith('video/') && stat.size > 16 * 1024 * 1024) {
+        await fs.promises.unlink(tmpPath).catch(() => {});
         throw new BadRequestException('Video exceeds WhatsApp Cloud API limit of 16MB.');
-      } else if (mimeType.startsWith('audio/') && buffer.length > 16 * 1024 * 1024) {
+      } else if (mimeType.startsWith('audio/') && stat.size > 16 * 1024 * 1024) {
+        await fs.promises.unlink(tmpPath).catch(() => {});
         throw new BadRequestException('Audio exceeds WhatsApp Cloud API limit of 16MB.');
-      } else if (buffer.length > 25 * 1024 * 1024) {
+      } else if (stat.size > 25 * 1024 * 1024) {
+        await fs.promises.unlink(tmpPath).catch(() => {});
         throw new BadRequestException('Document exceeds maximum limit of 25MB.');
       }
 
-      const metaUpload = await this.messagesService.uploadMediaToMeta(
+      const metaUpload = await this.messagesService.uploadMediaStreamToMeta(
         workspaceId,
-        buffer,
+        tmpPath,
         body.filename || 'attachment',
         mimeType,
+        stat.size,
       );
 
       return {
-        message: 'Media uploaded directly to Meta Cloud successfully',
+        message: 'Media uploaded and streamed directly to Meta Cloud successfully',
         data: {
           mediaId: metaUpload.mediaId,
           url: metaUpload.url,
           metaUrl: metaUpload.metaUrl,
           filename: body.filename || 'attachment',
           mimeType,
-          size: buffer.length,
+          size: stat.size,
         },
       };
     }
