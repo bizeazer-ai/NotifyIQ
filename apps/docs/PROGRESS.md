@@ -231,7 +231,7 @@ NotifyIQ is an enterprise WhatsApp Business API (WABA) intelligence, campaign au
 ---
 
 ## Open Questions for the Owner
-1. **Legal Contact Details**: What email address and physical office address should be listed on the Privacy Policy, Terms, and Data Deletion pages (e.g., `support@notifyiq.com` or `privacy@notifyiq.com`)?
+1. **Legal Contact Details**: What email address and physical office address should be listed on the Privacy Policy, Terms, and Data Deletion pages (e.g., `support@notifyiq.app` or `privacy@notifyiq.app`)?
 2. **Jurisdiction City**: Which city in India has legal jurisdiction for the Terms and Conditions (e.g., Surat, Gujarat)?
 3. **Official Logo**: Is there an official vector/SVG or high-res PNG file for NotifyIQ in the repo or brand assets, or should we use an SVG placeholder until provided?
 4. **Instagram Features**: Should the landing page feature Instagram as "Coming Soon / In Review" or showcase it alongside WhatsApp as an omni-channel Meta platform capability?

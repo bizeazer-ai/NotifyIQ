@@ -24,7 +24,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://docs.notifyiq.com"),
+  metadataBase: new URL("https://docs.notifyiq.app"),
   title: {
     template: "%s | NotifyIQ",
     default: "NotifyIQ | Enterprise WhatsApp Automation & Intelligence Platform",
@@ -53,7 +53,7 @@ export const metadata: Metadata = {
     title: "NotifyIQ | Enterprise WhatsApp Automation & Intelligence Platform",
     description:
       "Enterprise WhatsApp Business API (WABA) intelligence, broadcast campaigns, visual flow automation, and AI-driven customer support.",
-    url: "https://docs.notifyiq.com",
+    url: "https://docs.notifyiq.app",
     siteName: "NotifyIQ",
     locale: "en_US",
     type: "website",

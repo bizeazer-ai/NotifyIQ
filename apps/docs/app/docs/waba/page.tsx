@@ -119,7 +119,7 @@ export default function WabaDocPage() {
                   <input
                     type="email"
                     disabled
-                    value="support@notifyiq.com"
+                    value="support@notifyiq.app"
                     className="w-full bg-slate-50 dark:bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-200 dark:border-slate-800 rounded-lg p-2 text-slate-200"
                   />
                 </div>
@@ -129,7 +129,7 @@ export default function WabaDocPage() {
                   <input
                     type="url"
                     disabled
-                    value="https://notifyiq.com"
+                    value="https://notifyiq.app"
                     className="w-full bg-slate-50 dark:bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-200 dark:border-slate-800 rounded-lg p-2 text-slate-200 font-mono text-[11px]"
                   />
                 </div>

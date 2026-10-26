@@ -107,7 +107,7 @@ export default function CampaignsDocPage() {
                   <input
                     type="text"
                     disabled
-                    value="https://cdn.notifyiq.com/banners/festive_special.jpg"
+                    value="https://cdn.notifyiq.app/banners/festive_special.jpg"
                     className="w-full bg-slate-50 dark:bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-200 dark:border-slate-800 rounded-lg p-2 font-mono text-[11px] text-slate-300"
                   />
                 </div>

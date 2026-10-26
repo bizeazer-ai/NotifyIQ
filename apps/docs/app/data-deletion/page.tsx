@@ -51,7 +51,7 @@ export default function DataDeletionPage() {
                   A. Deleting Individual Contacts &amp; Chat Histories
                 </h3>
                 <ol className="list-decimal pl-5 space-y-1 text-sm mt-2">
-                  <li>Log in to your NotifyIQ console at <code className="text-xs bg-slate-200 dark:bg-slate-800 px-1 py-0.5 rounded font-mono">console.notifyiq.com</code>.</li>
+                  <li>Log in to your NotifyIQ console at <code className="text-xs bg-slate-200 dark:bg-slate-800 px-1 py-0.5 rounded font-mono">console.notifyiq.app</code>.</li>
                   <li>Navigate to <strong>Contacts Directory</strong> (<code className="text-xs bg-slate-200 dark:bg-slate-800 px-1 py-0.5 rounded font-mono">/contacts</code>).</li>
                   <li>Locate the target contact using the search bar or tag filter.</li>
                   <li>Click the red <strong>Delete</strong> icon on the right side of the contact row.</li>
@@ -85,10 +85,10 @@ export default function DataDeletionPage() {
             <div className="mt-4 p-5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 text-sm space-y-3">
               <p>
                 <strong>Email:</strong>{" "}
-                <a href="mailto:privacy@notifyiq.com" className="text-emerald-600 dark:text-emerald-400 font-semibold underline">
-                  privacy@notifyiq.com
+                <a href="mailto:privacy@notifyiq.app" className="text-emerald-600 dark:text-emerald-400 font-semibold underline">
+                  privacy@notifyiq.app
                 </a>{" "}
-                (or <a href="mailto:support@notifyiq.com" className="text-emerald-600 dark:text-emerald-400 font-semibold underline">support@notifyiq.com</a>)
+                (or <a href="mailto:support@notifyiq.app" className="text-emerald-600 dark:text-emerald-400 font-semibold underline">support@notifyiq.app</a>)
               </p>
               <p><strong>Subject Line:</strong> <code className="text-xs bg-slate-200 dark:bg-slate-800 px-1.5 py-0.5 rounded font-mono">Data Deletion Request - Meta Platform Data</code></p>
               <p><strong>Please Include:</strong></p>

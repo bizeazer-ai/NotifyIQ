@@ -230,7 +230,7 @@ export default function TermsAndConditionsPage() {
             <div className="mt-3 p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 text-sm">
               <p><strong>Aadi IT Services LLP</strong></p>
               <p>Attn: Legal &amp; Compliance Department</p>
-              <p>Email: <a href="mailto:legal@notifyiq.com" className="text-emerald-600 dark:text-emerald-400 font-medium">legal@notifyiq.com</a> (or <a href="mailto:support@notifyiq.com" className="text-emerald-600 dark:text-emerald-400 font-medium">support@notifyiq.com</a>)</p>
+              <p>Email: <a href="mailto:legal@notifyiq.app" className="text-emerald-600 dark:text-emerald-400 font-medium">legal@notifyiq.app</a> (or <a href="mailto:support@notifyiq.app" className="text-emerald-600 dark:text-emerald-400 font-medium">support@notifyiq.app</a>)</p>
               <p>Jurisdiction City: Delhi, India</p>
             </div>
           </section>

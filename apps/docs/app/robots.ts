@@ -7,6 +7,6 @@ export default function robots(): MetadataRoute.Robots {
       allow: '/',
       disallow: ['/api/'],
     },
-    sitemap: 'https://notifyiq.com/sitemap.xml',
+    sitemap: 'https://notifyiq.app/sitemap.xml',
   };
 }

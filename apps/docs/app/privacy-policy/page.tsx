@@ -181,8 +181,8 @@ export default function PrivacyPolicyPage() {
                   Data Deletion Instructions Page
                 </Link>{" "}
                 or email our Privacy Officer directly at{" "}
-                <a href="mailto:privacy@notifyiq.com" className="text-emerald-600 dark:text-emerald-400 font-semibold underline">
-                  privacy@notifyiq.com
+                <a href="mailto:privacy@notifyiq.app" className="text-emerald-600 dark:text-emerald-400 font-semibold underline">
+                  privacy@notifyiq.app
                 </a>
                 . All requests are processed within 30 days.
               </p>
@@ -236,7 +236,7 @@ export default function PrivacyPolicyPage() {
             <div className="mt-3 p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 text-sm">
               <p><strong>Aadi IT Services LLP</strong></p>
               <p>Attn: Privacy &amp; Data Protection Officer</p>
-              <p>Email: <a href="mailto:privacy@notifyiq.com" className="text-emerald-600 dark:text-emerald-400 font-medium">privacy@notifyiq.com</a> (or <a href="mailto:support@notifyiq.com" className="text-emerald-600 dark:text-emerald-400 font-medium">support@notifyiq.com</a>)</p>
+              <p>Email: <a href="mailto:privacy@notifyiq.app" className="text-emerald-600 dark:text-emerald-400 font-medium">privacy@notifyiq.app</a> (or <a href="mailto:support@notifyiq.app" className="text-emerald-600 dark:text-emerald-400 font-medium">support@notifyiq.app</a>)</p>
               <p>Jurisdiction: Delhi, India</p>
             </div>
           </section>

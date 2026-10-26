@@ -2,7 +2,7 @@ import { MetadataRoute } from 'next';
 import { ALL_DOC_PAGES } from '@/lib/docs-nav';
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = 'https://notifyiq.com';
+  const baseUrl = 'https://notifyiq.app';
   const currentDate = new Date();
 
   // Root and Legal Pages
