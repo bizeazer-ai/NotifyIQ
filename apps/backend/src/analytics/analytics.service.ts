@@ -17,7 +17,7 @@ export class AnalyticsService {
     const workspaceObjectIds = Types.ObjectId.isValid(workspaceId)
       ? [workspaceId, new Types.ObjectId(workspaceId)]
       : [workspaceId];
-    const workspaceFilter = { workspaceId: { $in: workspaceObjectIds } };
+    const workspaceFilter: Record<string, any> = { workspaceId: { $in: workspaceObjectIds } };
 
     const totalMessages = await this.messageModel.countDocuments(workspaceFilter);
     const outboundMessages = await this.messageModel.countDocuments({ ...workspaceFilter, direction: 'outbound' });

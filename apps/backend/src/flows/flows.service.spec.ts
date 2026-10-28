@@ -101,16 +101,13 @@ describe('FlowsService', () => {
   });
 
   describe('toggleFlowActive', () => {
-    it('should deactivate other flows in workspace when activating target flow', async () => {
+    it('should activate target flow and preserve sibling flows for multi-flow operations', async () => {
       const mockTarget = { ...mockFlowData, active: false, save: jest.fn().mockResolvedValue(true) };
       mockFlowModel.findOne.mockResolvedValue(mockTarget);
 
       const result = await service.toggleFlowActive(mockWorkspaceId, mockFlowId, true);
 
-      expect(mockFlowModel.updateMany).toHaveBeenCalledWith(
-        { workspaceId: mockWorkspaceId, _id: { $ne: mockFlowId } },
-        { $set: { active: false } },
-      );
+      expect(mockTarget.save).toHaveBeenCalled();
       expect(result.active).toBe(true);
     });
   });

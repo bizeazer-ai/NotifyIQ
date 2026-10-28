@@ -206,6 +206,75 @@ export class InboundMessageListener {
       });
     }
 
+    // ── DPDP Act 2023 & WhatsApp Business Policy: Opt-Out / Opt-In Handling ──
+    const cleanLowerBody = messageBody ? messageBody.trim().toLowerCase() : '';
+    const isOptOutKeyword = /^(stop|unsubscribe|cancel|optout|opt out|quit|revoke)$/i.test(cleanLowerBody);
+    const isOptInKeyword = /^(start|unstop)$/i.test(cleanLowerBody);
+
+    if (isOptOutKeyword) {
+      this.logger.log(`[InboundMessage] Opt-out keyword received from ${phone}. Setting optedOut=true.`);
+      contact.optedOut = true;
+      contact.consentGiven = false;
+      await contact.save();
+
+      try {
+        await this.messagesService.sendTextMessage(workspaceId, {
+          to: phone,
+          body: 'You have been successfully unsubscribed from automated WhatsApp messages. To resubscribe at any time, reply START.',
+        });
+      } catch (err: any) {
+        this.logger.warn(`[InboundMessage] Failed to dispatch opt-out confirmation to ${phone}: ${err.message}`);
+      }
+
+      this.dispatcher.dispatchEvent(workspaceId, 'compliance.opt_out', {
+        contactId: contact._id.toString(),
+        phone: contact.phone,
+        keyword: cleanLowerBody,
+        timestamp: new Date(),
+      }).catch((err) => this.logger.error(`[InboundMessage] Dispatcher error: ${err.message}`));
+
+      return; // Halt all further automation
+    }
+
+    if (isOptInKeyword) {
+      this.logger.log(`[InboundMessage] Opt-in keyword received from ${phone}. Restoring consent.`);
+      contact.optedOut = false;
+      contact.consentGiven = true;
+      await contact.save();
+
+      try {
+        await this.messagesService.sendTextMessage(workspaceId, {
+          to: phone,
+          body: 'Welcome back! You have successfully resubscribed to WhatsApp notifications.',
+        });
+      } catch (err: any) {
+        this.logger.warn(`[InboundMessage] Failed to dispatch opt-in confirmation to ${phone}: ${err.message}`);
+      }
+
+      this.dispatcher.dispatchEvent(workspaceId, 'compliance.opt_in', {
+        contactId: contact._id.toString(),
+        phone: contact.phone,
+        timestamp: new Date(),
+      }).catch((err) => this.logger.error(`[InboundMessage] Dispatcher error: ${err.message}`));
+
+      return; // Finished handling opt-in command
+    }
+
+    if (contact.optedOut) {
+      this.logger.log(`[InboundMessage] Contact ${phone} is opted out. Storing message but halting AI/flow automation.`);
+      return;
+    }
+
+    // ── Memory Optimization: Evict stale tracker entries if map size grows ──
+    if (this.contactReplyTracker.size > 200) {
+      const now = Date.now();
+      for (const [key, val] of this.contactReplyTracker.entries()) {
+        if (now > val.resetAt) {
+          this.contactReplyTracker.delete(key);
+        }
+      }
+    }
+
     // ── 7. Debounced flow / auto-reply ──────────────────────────────
     if (messageBody) {
       this.bufferAndExecute(workspace, conversation, contact, messageBody);

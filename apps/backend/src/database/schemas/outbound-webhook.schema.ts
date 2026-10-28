@@ -13,6 +13,8 @@ export const VALID_EVENT_TYPES = [
   'flow.executed',
   'template.status_changed',
   'account.quality_changed',
+  'compliance.opt_in',
+  'compliance.opt_out',
   '*',
 ] as const;
 

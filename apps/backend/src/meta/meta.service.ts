@@ -195,7 +195,24 @@ export class MetaService {
   }
 
   /**
-   * Disconnects WABA account from workspace
+   * Helper: Resolves decrypted access token for workspace, with fallback to env.META_ACCESS_TOKEN
+   */
+  getDecryptedToken(workspace: WorkspaceDocument): string {
+    const isDevToken = process.env.DEV_TOKEN === "true";
+    if (!isDevToken && workspace.waba?.accessToken) {
+      try {
+        const decrypted = decrypt(workspace.waba.accessToken);
+        if (decrypted) return decrypted;
+      } catch (err: any) {
+        this.logger.warn(`[MetaService] Failed decrypting workspace WABA token: ${err.message}`);
+      }
+    }
+    this.logger.warn("MOCK SERVICES USING ENV TOKEN");
+    return env.META_ACCESS_TOKEN || '';
+  }
+
+  /**
+   * Disconnects WABA account from workspace and unsubscribes webhooks from Meta
    */
   async disconnectWaba(workspaceId: string, userId?: string): Promise<{ success: boolean }> {
     const workspace = await this.workspaceModel.findById(workspaceId);
@@ -205,19 +222,32 @@ export class MetaService {
 
     const phoneNumberId = workspace.waba.phoneNumberId;
     const businessAccountId = workspace.waba.businessAccountId;
-    // const token = workspace.waba.accessToken ? decrypt(workspace.waba.accessToken) : '';
-    const token = env.META_ACCESS_TOKEN;
+    const token = this.getDecryptedToken(workspace);
     const isMock = process.env.MOCK_SERVICES === 'true';
 
-    if (!isMock && token && phoneNumberId) {
-      try {
-        const unsubscribeUrl = `https://graph.facebook.com/v20.0/${phoneNumberId}/subscribed_apps`;
-        await fetch(unsubscribeUrl, {
-          method: 'DELETE',
-          headers: { Authorization: `Bearer ${token}` },
-        });
-      } catch (err: any) {
-        this.logger.warn(`[MetaService] Unsubscribe app on disconnect warning: ${err.message}`);
+    if (!isMock && token) {
+      if (phoneNumberId) {
+        try {
+          const unsubscribePhoneUrl = `https://graph.facebook.com/v20.0/${phoneNumberId}/subscribed_apps`;
+          await fetch(unsubscribePhoneUrl, {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${token}` },
+          });
+        } catch (err: any) {
+          this.logger.warn(`[MetaService] Unsubscribe phone on disconnect warning: ${err.message}`);
+        }
+      }
+
+      if (businessAccountId && !businessAccountId.startsWith('mock_')) {
+        try {
+          const unsubscribeWabaUrl = `https://graph.facebook.com/v20.0/${businessAccountId}/subscribed_apps`;
+          await fetch(unsubscribeWabaUrl, {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${token}` },
+          });
+        } catch (err: any) {
+          this.logger.warn(`[MetaService] Unsubscribe WABA account on disconnect warning: ${err.message}`);
+        }
       }
     }
 
@@ -253,8 +283,7 @@ export class MetaService {
       };
     }
 
-    // const token = decrypt(workspace.waba.accessToken);
-    const token = env.META_ACCESS_TOKEN;
+    const token = this.getDecryptedToken(workspace);
     const phoneId = workspace.waba.phoneNumberId;
 
     try {
@@ -297,8 +326,7 @@ export class MetaService {
       return { success: true };
     }
 
-    // const token = decrypt(workspace.waba.accessToken);
-    const token = env.META_ACCESS_TOKEN;
+    const token = this.getDecryptedToken(workspace);
     const phoneId = workspace.waba.phoneNumberId;
 
     try {
@@ -324,8 +352,7 @@ export class MetaService {
       return [];
     }
 
-    // const token = decrypt(workspace.waba.accessToken);
-    const token = env.META_ACCESS_TOKEN;
+    const token = this.getDecryptedToken(workspace);
     const wabaId = workspace.waba.businessAccountId;
 
     try {
@@ -502,8 +529,7 @@ export class MetaService {
     const workspace = await this.workspaceModel.findById(workspaceId);
 
     if (workspace && workspace.waba?.accessToken && workspace.waba?.businessAccountId) {
-      // const token = decrypt(workspace.waba.accessToken);
-      const token = env.META_ACCESS_TOKEN;
+      const token = this.getDecryptedToken(workspace);
       const wabaId = workspace.waba.businessAccountId;
 
       try {
@@ -540,12 +566,10 @@ export class MetaService {
       return [];
     }
 
-    const isMock = process.env.MOCK_SERVICES === 'true';
-    // const token = decrypt(workspace.waba.accessToken);
-    const token = env.META_ACCESS_TOKEN;
+    const token = this.getDecryptedToken(workspace);
     const wabaId = workspace.waba.businessAccountId;
 
-    if (!isMock && !wabaId.startsWith('mock_')) {
+    if (!wabaId.startsWith('mock_')) {
       try {
         const url = `https://graph.facebook.com/v20.0/${wabaId}/phone_numbers?access_token=${token}`;
         const res = await fetch(url);
@@ -718,5 +742,48 @@ export class MetaService {
     });
 
     return { success: true, phoneNumberId: newPhoneId, displayPhoneNumber: dto.phoneNumber, verifiedName: dto.displayName };
+  }
+
+  /**
+   * Deregister and disconnect a WhatsApp phone number from Meta Cloud API
+   */
+  async deregisterPhoneNumber(workspaceId: string, phoneNumberId: string, userId?: string): Promise<{ success: boolean; phoneNumberId: string }> {
+    const workspace = await this.workspaceModel.findById(workspaceId);
+    if (!workspace) throw new NotFoundException('Workspace not found');
+
+    const token = this.getDecryptedToken(workspace);
+    const isMock = process.env.MOCK_SERVICES === 'true';
+
+    if (!isMock && token && phoneNumberId) {
+      try {
+        const deregisterUrl = `https://graph.facebook.com/v20.0/${phoneNumberId}/deregister`;
+        const res = await fetch(deregisterUrl, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        });
+        const data = (await res.json()) as any;
+        if (!res.ok) {
+          this.logger.warn(`[MetaService] Phone deregister API warning: ${JSON.stringify(data)}`);
+        }
+      } catch (err: any) {
+        this.logger.error(`[MetaService] Failed to deregister phone number ${phoneNumberId} on Meta API: ${err.message}`);
+      }
+    }
+
+    if (workspace.waba?.phoneNumberId === phoneNumberId) {
+      workspace.waba.phoneNumberId = '';
+      await workspace.save();
+    }
+
+    await this.auditLogModel.create({
+      workspaceId: workspace._id.toString(),
+      userId: userId || null,
+      action: 'waba.deregister_phone_number',
+      resource: 'Workspace',
+      resourceId: workspace._id.toString(),
+      details: { phoneNumberId },
+    });
+
+    return { success: true, phoneNumberId };
   }
 }

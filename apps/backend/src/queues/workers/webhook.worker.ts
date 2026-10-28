@@ -46,16 +46,22 @@ export class WebhookWorker implements OnModuleInit, OnModuleDestroy {
           const changes = entry.changes || [];
           for (const change of changes) {
             const val = change.value;
-            if (!val || val.messaging_product !== 'whatsapp') continue;
+            if (!val) continue;
 
-            const metadata = val.metadata;
-            if (!metadata) continue;
+            // 1. Resolve workspace by phoneNumberId or entry.id (WABA ID)
+            const phoneNumberId = val.metadata?.phone_number_id;
+            const wabaAccountId = entry.id || val.waba_id;
 
-            const phoneNumberId = metadata.phone_number_id;
+            let workspace: WorkspaceDocument | null = null;
+            if (phoneNumberId) {
+              workspace = await this.workspaceModel.findOne({ 'waba.phoneNumberId': phoneNumberId });
+            }
+            if (!workspace && wabaAccountId) {
+              workspace = await this.workspaceModel.findOne({ 'waba.businessAccountId': wabaAccountId });
+            }
 
-            const workspace = await this.workspaceModel.findOne({ 'waba.phoneNumberId': phoneNumberId });
             if (!workspace) {
-              this.logger.warn(`[WebhookWorker] Unknown WABA phone number ID: ${phoneNumberId}`);
+              this.logger.warn(`[WebhookWorker] Unknown WABA webhook event (Phone: ${phoneNumberId || 'none'}, WABA: ${wabaAccountId || 'none'})`);
               continue;
             }
 

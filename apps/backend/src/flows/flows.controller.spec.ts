@@ -107,6 +107,7 @@ describe('FlowsController', () => {
       expect.any(Object),
       'What is the price?',
       'neutral',
+      true,
     );
   });
 });

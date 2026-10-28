@@ -117,12 +117,13 @@ export class MessagesService {
     }
 
     const isMock = process.env.MOCK_SERVICES === 'true';
+    const isDevToken = process.env.DEV_TOKEN === "true";
     let decryptedToken = env.META_ACCESS_TOKEN;
-    if (!isMock && waba.accessToken) {
+    if (!isDevToken && waba.accessToken) {
       try {
-        console.log('decrypted token: ', decryptedToken);
+        decryptedToken = decrypt(waba.accessToken) || env.META_ACCESS_TOKEN;
       } catch (err) {
-        console.error(err);
+        console.warn('[MessagesService] Failed decrypting workspace WABA token, falling back to META_ACCESS_TOKEN:', err);
         decryptedToken = env.META_ACCESS_TOKEN;
       }
     }
@@ -208,7 +209,7 @@ export class MessagesService {
 
     let waMessageId = '';
 
-    if (!isMock) {
+    // if (!isMock) {
       try {
         console.log(`[MessagesService] Sending outbound message to Meta Cloud API for phone: ${phone} via PhoneID: ${phoneNumberId}`);
         const metaUrl = `https://graph.facebook.com/v20.0/${phoneNumberId}/messages`;
@@ -299,10 +300,10 @@ export class MessagesService {
         console.error('[MessagesService] Outbound dispatch error:', err);
         throw new BadRequestException(err instanceof Error ? err.message : 'Meta dispatch failed');
       }
-    } else {
-      waMessageId = `wamid.mock_outbound_${crypto.randomBytes(16).toString('hex')}`;
-      console.log(`[MessagesService] Mock Mode. Simulated message dispatch. ID: ${waMessageId}`);
-    }
+    // } else {
+    //   waMessageId = `wamid.mock_outbound_${crypto.randomBytes(16).toString('hex')}`;
+    //   console.log(`[MessagesService] Mock Mode. Simulated message dispatch. ID: ${waMessageId}`);
+    // }
 
     const messageRecord = await this.messageModel.create({
       workspaceId,
@@ -709,23 +710,47 @@ export class MessagesService {
   }
 
   async getConversations(workspaceId: string): Promise<any[]> {
-    // 1. Fetch conversations for workspace sorted by lastMessageAt desc
+    // 1. Fetch conversations for workspace sorted by lastMessageAt desc (limit 150 for responsiveness)
     const conversations = await this.conversationModel
       .find({ workspaceId })
       .sort({ lastMessageAt: -1 })
+      .limit(150)
       .lean();
 
-    const result: any[] = [];
+    if (!conversations || conversations.length === 0) {
+      return [];
+    }
 
-    // 2. Hydrate each conversation card with contact details and last message body
-    for (const conv of conversations) {
-      const contact = await this.contactModel.findById(conv.contactId).lean();
-      const lastMessage = await this.messageModel
-        .findOne({ conversationId: conv._id.toString() })
-        .sort({ createdAt: -1 })
-        .lean();
+    // 2. High-Performance Batched Hydration: Fetch all contacts and last messages in single batched lookups (Eliminates N+1 query loop)
+    const contactIds = Array.from(
+      new Set(conversations.map((c) => c.contactId?.toString()).filter(Boolean)),
+    );
+    const convIds = conversations.map((c) => c._id.toString());
 
-      result.push({
+    const [contacts, lastMessages] = await Promise.all([
+      this.contactModel.find({ _id: { $in: contactIds } }).lean(),
+      this.messageModel.aggregate([
+        { $match: { conversationId: { $in: convIds } } },
+        { $sort: { createdAt: -1 } },
+        {
+          $group: {
+            _id: '$conversationId',
+            body: { $first: '$body' },
+            type: { $first: '$type' },
+            createdAt: { $first: '$createdAt' },
+          },
+        },
+      ]),
+    ]);
+
+    const contactMap = new Map(contacts.map((c) => [c._id.toString(), c]));
+    const messageMap = new Map(lastMessages.map((m) => [m._id.toString(), m]));
+
+    return conversations.map((conv) => {
+      const contact = conv.contactId ? contactMap.get(conv.contactId.toString()) : null;
+      const lastMessage = messageMap.get(conv._id.toString());
+
+      return {
         _id: conv._id.toString(),
         contactId: conv.contactId?.toString(),
         contactName: contact?.name || 'WhatsApp User',
@@ -738,10 +763,8 @@ export class MessagesService {
         assignedTo: conv.assignedTo ? conv.assignedTo.toString() : null,
         lastInboundAt: conv.lastInboundAt || null,
         windowExpiresAt: conv.windowExpiresAt || null,
-      });
-    }
-
-    return result;
+      };
+    });
   }
 
   async getMessageHistory(

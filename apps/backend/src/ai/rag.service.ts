@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import crypto from 'crypto';
@@ -7,6 +7,8 @@ import { DocumentParserService } from './document-parser.service.js';
 import { ChunkingService } from './chunking.service.js';
 import { Knowledge, KnowledgeDocument } from '../database/schemas/knowledge.schema.js';
 import { Conversation, ConversationDocument } from '../database/schemas/conversation.schema.js';
+import { Contact, ContactDocument } from '../database/schemas/contact.schema.js';
+import { ExtractedLead, ExtractedLeadDocument } from '../database/schemas/extracted-lead.schema.js';
 import { WorkspacesService } from '../workspaces/workspaces.service.js';
 import { MessagesService } from '../messages/messages.service.js';
 
@@ -21,6 +23,8 @@ export class RagService {
     private readonly workspaceService: WorkspacesService,
     private readonly documentParserService: DocumentParserService,
     private readonly chunkingService: ChunkingService,
+    @Optional() @InjectModel(Contact.name) private readonly contactModel?: Model<ContactDocument>,
+    @Optional() @InjectModel(ExtractedLead.name) private readonly extractedLeadModel?: Model<ExtractedLeadDocument>,
   ) { }
 
 
@@ -110,7 +114,7 @@ export class RagService {
     this.logger.log(`[RagService] Querying knowledge base for: "${query}" in workspace: ${workspaceId}`);
     const autoReplySettings = await this.workspaceService.getAutoReplySettings(workspaceId);
 
-    // Fetch user summary & recent chat history context if conversationId is provided
+    // Fetch customer profile, user summary & recent chat history context if conversationId is provided
     let historyContextText = '';
     if (conversationId) {
       try {
@@ -119,13 +123,37 @@ export class RagService {
         const recentMsgs = await this.messageService.getMessageHistory(workspaceId, conversationId);
         const last10 = recentMsgs.slice(-10);
 
-        const summaryBlock = userSummary ? `User Summary & Intent Context:\n"${userSummary}"\n\n` : '';
+        let userProfileBlock = '';
+        if (conversation?.contactId && this.contactModel) {
+          const contact = await this.contactModel.findById(conversation.contactId);
+          if (contact) {
+            const lead = this.extractedLeadModel
+              ? await this.extractedLeadModel.findOne({ workspaceId, contactPhone: contact.phone })
+              : null;
+
+            userProfileBlock = [
+              'Customer Profile & Known Details:',
+              `- Name: ${contact.name || lead?.name || 'Customer'}`,
+              `- Phone: ${contact.phone}`,
+              contact.tags?.length ? `- Tags/Segment: ${contact.tags.join(', ')}` : null,
+              lead?.category ? `- Inquiry Category: ${lead.category}` : null,
+              lead?.productInterest ? `- Product Interest: ${lead.productInterest}` : null,
+              lead?.budget ? `- Budget/Quantity: ${lead.budget}` : null,
+            ]
+              .filter(Boolean)
+              .join('\n');
+          }
+        }
+
+        const summaryBlock = userSummary
+          ? `User Summary & Historical Context:\n"${userSummary}"`
+          : '';
         const historyBlock = last10.length > 0
           ? 'Recent Conversation History (Last 10 Messages):\n' +
             last10.map((m) => `${m.direction === 'inbound' ? 'Customer' : 'Assistant'}: ${m.body}`).join('\n')
           : '';
 
-        historyContextText = `${summaryBlock}${historyBlock}`.trim();
+        historyContextText = [userProfileBlock, summaryBlock, historyBlock].filter(Boolean).join('\n\n').trim();
       } catch (err: any) {
         this.logger.warn(`[RagService] Could not fetch chat history/summary for conversation ${conversationId}: ${err.message}`);
       }
@@ -202,14 +230,16 @@ export class RagService {
     let userDetails: { name?: string; category?: string; budget?: string; productInterest?: string } | undefined = undefined;
 
     try {
-      const systemInstruction = `You are an AI support assistant. You must answer the user question using ONLY the provided knowledge context and conversation history.
+      const systemInstruction = `You are a personalized, helpful AI support assistant. You must answer the user question using the provided knowledge context, customer profile, and conversation history.
 ${businessTimeContext ? '\n' + businessTimeContext + '\n' : ''}
-If the context does not contain enough information to answer the question, state that you do not know.
-Do NOT make up facts or use external knowledge. Always remain professional, grounded, and concise.
+CRITICAL INSTRUCTIONS FOR PERSONALIZATION:
+- If customer profile details or conversation summary are provided above, ALWAYS personalize your response to the customer (e.g. address them warmly by name, seamlessly acknowledge their previous requests or topics without asking them to repeat themselves).
+- Use ONLY the provided knowledge context to answer business questions. If the context does not contain enough information, state politely that you do not have that information and will have an agent follow up.
+- Do NOT make up facts or use external knowledge. Always remain professional, polite, and concise.
 
 If you can detect any customer details (name, lead category, budget, or specific product of interest) from the conversation, format your final response as valid JSON with:
 {
-  "reply": "Your conversational reply to the customer",
+  "reply": "Your personalized conversational reply to the customer",
   "userDetails": {
     "name": "Customer name if mentioned",
     "category": "Inquiry category (e.g. Wholesale, Pricing, General)",

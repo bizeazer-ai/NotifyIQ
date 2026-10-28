@@ -87,6 +87,18 @@ const EVENT_METADATA: Record<string, { label: string; group: string; desc: strin
     desc: 'Phone number quality rating change (Green/Yellow/Red).',
     color: '#14B8A6',
   },
+  'compliance.opt_in': {
+    label: 'Consent Opt-In',
+    group: 'DPDP Compliance',
+    desc: 'User consented/resubscribed via START or unstop keywords.',
+    color: '#10B981',
+  },
+  'compliance.opt_out': {
+    label: 'Consent Opt-Out',
+    group: 'DPDP Compliance',
+    desc: 'User opted out/unsubscribed via STOP, UNSUBSCRIBE, or revoke keywords.',
+    color: '#EF4444',
+  },
 };
 
 export default function WebhooksPage() {

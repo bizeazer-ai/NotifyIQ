@@ -11,7 +11,7 @@ export class FlowsController {
   constructor(
     private readonly flowsService: FlowsService,
     private readonly flowExecutionEngine: FlowExecutionEngine,
-  ) {}
+  ) { }
 
   @Post()
   async create(
@@ -115,8 +115,8 @@ export class FlowsController {
     @Body() dto: TestSimulationDto,
   ) {
     const workspaceId = req.workspaceId as string;
-    const dummyConversation: any = { _id: '507f1f77bcf86cd799439011', sentiment: dto.sentiment || 'neutral', save: async () => {} };
-    const dummyContact: any = { _id: '507f1f77bcf86cd799439022', tags: [], save: async () => {} };
+    const dummyConversation: any = { _id: '507f1f77bcf86cd799439011', sentiment: dto.sentiment || 'neutral', save: async () => { } };
+    const dummyContact: any = { _id: '507f1f77bcf86cd799439022', tags: [], save: async () => { } };
 
 
     const result = await this.flowExecutionEngine.executeFlowForInboundMessage(
@@ -125,6 +125,7 @@ export class FlowsController {
       dummyContact,
       dto.inputMessage || 'Hello test simulation',
       dto.sentiment || 'neutral',
+      // true, // isSimulation
     );
 
     return {

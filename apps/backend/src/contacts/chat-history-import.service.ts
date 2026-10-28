@@ -217,7 +217,7 @@ export class ChatHistoryImportService {
         contact._id.toString(),
         contact.phone,
         {
-          name: contact.name,
+          name: contact.name ?? undefined,
           category: 'Historical Import',
           productInterest: 'Imported Inquiries',
         },

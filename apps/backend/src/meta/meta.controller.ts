@@ -98,6 +98,21 @@ export class MetaController {
     };
   }
 
+  @Delete('phone-numbers/:phoneNumberId')
+  @UseGuards(AuthGuard, WorkspaceGuard)
+  async deregisterPhoneNumber(
+    @Req() req: AuthenticatedRequest,
+    @Param('phoneNumberId') phoneNumberId: string,
+  ) {
+    const workspaceId = req.workspaceId as string;
+    const userId = req.user?.userId;
+    const result = await this.metaService.deregisterPhoneNumber(workspaceId, phoneNumberId, userId);
+    return {
+      message: 'WhatsApp phone number deregistered and disconnected from Meta Cloud API',
+      data: result,
+    };
+  }
+
   @Get('api-logs')
   @UseGuards(AuthGuard, WorkspaceGuard)
   async getApiLogs(@Req() req: AuthenticatedRequest) {

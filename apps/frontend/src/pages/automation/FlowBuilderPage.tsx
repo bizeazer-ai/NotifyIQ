@@ -32,6 +32,7 @@ export default function FlowBuilderPage() {
   const [targetNodeId, setTargetNodeId] = useState<string>('');
   const [edgeLabelInput, setEdgeLabelInput] = useState<string>('');
   const [statusMessage, setStatusMessage] = useState('');
+  const [connectingSourceId, setConnectingSourceId] = useState<string | null>(null);
 
   // Simulator states
   const [showSimulator, setShowSimulator] = useState(false);
@@ -182,33 +183,66 @@ export default function FlowBuilderPage() {
     };
   };
 
-  const handleMouseMove = (e: MouseEvent<HTMLDivElement>) => {
-    if (!draggingNodeId || !activeFlow) return;
+  useEffect(() => {
+    if (!draggingNodeId) return;
 
-    const newX = e.clientX - dragOffsetRef.current.x;
-    const newY = e.clientY - dragOffsetRef.current.y;
+    const onMouseMove = (e: globalThis.MouseEvent) => {
+      const newX = e.clientX - dragOffsetRef.current.x;
+      const newY = e.clientY - dragOffsetRef.current.y;
 
-    const updatedNodes = activeFlow.nodes.map((n) => {
-      if (n.id === draggingNodeId) {
+      setActiveFlow((prev) => {
+        if (!prev) return prev;
         return {
-          ...n,
-          position: {
-            x: Math.max(10, Math.min(1400, newX)),
-            y: Math.max(10, Math.min(900, newY)),
-          },
+          ...prev,
+          nodes: prev.nodes.map((n) =>
+            n.id === draggingNodeId
+              ? {
+                  ...n,
+                  position: {
+                    x: Math.max(10, Math.min(1800, newX)),
+                    y: Math.max(10, Math.min(1200, newY)),
+                  },
+                }
+              : n,
+          ),
         };
-      }
-      return n;
-    });
+      });
+    };
 
+    const onMouseUp = () => {
+      setDraggingNodeId(null);
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+  }, [draggingNodeId]);
+
+  const connectNodes = (sourceId: string, targetId: string, label?: string) => {
+    if (!activeFlow || sourceId === targetId) return;
+    const edgeExists = activeFlow.edges.some((e) => e.source === sourceId && e.target === targetId);
+    if (edgeExists) {
+      setStatusMessage('Connection already exists!');
+      setTimeout(() => setStatusMessage(''), 2500);
+      return;
+    }
+    const newEdge = {
+      id: `e${sourceId}-${targetId}`,
+      source: sourceId,
+      target: targetId,
+      label: label || undefined,
+    };
     setActiveFlow({
       ...activeFlow,
-      nodes: updatedNodes,
+      edges: [...activeFlow.edges, newEdge],
     });
-  };
-
-  const handleMouseUp = () => {
-    setDraggingNodeId(null);
+    setConnectingSourceId(null);
+    setStatusMessage('Connected successfully!');
+    setTimeout(() => setStatusMessage(''), 2500);
   };
 
   const handlePaletteDragStart = (e: React.DragEvent<HTMLDivElement>, type: string) => {
@@ -490,10 +524,24 @@ export default function FlowBuilderPage() {
             >
               {flows.map((f) => (
                 <option key={f._id} value={f._id}>
-                  {f.name} {f.active ? '🟢 (ACTIVE)' : ''}
+                  {f.name} {f.active ? '🟢 (ACTIVE)' : '⚪ (Draft)'} (P:{(f as any).priority ?? 10})
                 </option>
               ))}
             </select>
+            <span
+              style={{
+                fontSize: '11px',
+                padding: '2px 8px',
+                borderRadius: '12px',
+                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                color: 'var(--sentiment-positive)',
+                border: '1px solid rgba(16, 185, 129, 0.2)',
+                fontWeight: 'bold',
+              }}
+              title="Number of active workflows handling inbound traffic"
+            >
+              {flows.filter((f) => f.active).length} Active
+            </span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -523,8 +571,37 @@ export default function FlowBuilderPage() {
                 border: activeFlow?.active ? '1px solid var(--sentiment-positive)' : '1px solid var(--border-color)',
               }}
             >
-              {activeFlow?.active ? 'LIVE ACTIVE FLOW' : 'INACTIVE DRAFT'}
+              {activeFlow?.active ? 'LIVE ACTIVE' : 'INACTIVE DRAFT'}
             </span>
+
+            {/* Priority Selector */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginLeft: '8px' }}>
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600 }}>Priority:</span>
+              <input
+                type="number"
+                min="1"
+                max="100"
+                value={(activeFlow as any)?.priority ?? 10}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value, 10) || 1;
+                  if (activeFlow) {
+                    setActiveFlow({ ...activeFlow, priority: val } as any);
+                  }
+                }}
+                title="Flow execution priority (Higher priority runs first when keywords match)"
+                style={{
+                  width: '48px',
+                  padding: '3px 6px',
+                  fontSize: '12px',
+                  fontWeight: 'bold',
+                  background: 'var(--bg-tertiary)',
+                  border: '1px solid var(--border-color)',
+                  color: 'var(--text-primary)',
+                  borderRadius: '4px',
+                  textAlign: 'center',
+                }}
+              />
+            </div>
           </div>
         </div>
 
@@ -693,13 +770,12 @@ export default function FlowBuilderPage() {
         {/* Central Canvas Editor */}
         <div
           ref={canvasRef}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
           onDragOver={handleCanvasDragOver}
           onDrop={handleCanvasDrop}
           onClick={() => {
             setSelectedNodeId(null);
             setSelectedEdgeId(null);
+            setConnectingSourceId(null);
           }}
           style={{
             flex: 1,
@@ -836,6 +912,74 @@ export default function FlowBuilderPage() {
                       {node.type === 'action' && `Tag: ${node.data.tagName || 'lead'}`}
                       {node.type === 'ai_respond' && (node.data.useKnowledgeBase ? 'RAG Search' : 'AI Prompt')}
                       {node.type === 'human_handoff' && (node.data.reason || 'Escalate')}
+                    </div>
+
+                    {/* Quick Connect Action Button */}
+                    <div style={{ marginTop: '8px', borderTop: '1px solid var(--border-color)', paddingTop: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      {connectingSourceId === node.id ? (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setConnectingSourceId(null);
+                            setStatusMessage('');
+                          }}
+                          style={{
+                            width: '100%',
+                            padding: '3px 8px',
+                            borderRadius: '4px',
+                            background: 'rgba(239, 68, 68, 0.15)',
+                            color: 'var(--sentiment-urgent)',
+                            border: '1px dashed var(--sentiment-urgent)',
+                            fontSize: '11px',
+                            fontWeight: 'bold',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Cancel Connection
+                        </button>
+                      ) : connectingSourceId ? (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            connectNodes(connectingSourceId, node.id);
+                          }}
+                          style={{
+                            width: '100%',
+                            padding: '3px 8px',
+                            borderRadius: '4px',
+                            background: 'rgba(16, 185, 129, 0.2)',
+                            color: 'var(--sentiment-positive)',
+                            border: '1px solid var(--sentiment-positive)',
+                            fontSize: '11px',
+                            fontWeight: 'bold',
+                            cursor: 'pointer',
+                            animation: 'pulse 1.5s infinite',
+                          }}
+                        >
+                          Connect Here →
+                        </button>
+                      ) : (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setConnectingSourceId(node.id);
+                            setStatusMessage(`Click target node to connect from "${node.data.label}"`);
+                          }}
+                          style={{
+                            padding: '2px 8px',
+                            borderRadius: '4px',
+                            background: 'var(--bg-tertiary)',
+                            color: 'var(--accent-light)',
+                            border: '1px solid var(--border-color)',
+                            fontSize: '10px',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                          }}
+                          title="Click to connect this node to another component"
+                        >
+                          + Connect →
+                        </button>
+                      )}
                     </div>
                   </div>
                 );

@@ -45,12 +45,11 @@ export class FlowExecutionEngine {
     contact: ContactDocument,
     messageBody: string,
     sentiment: string = 'neutral',
+    isSimulation: boolean = false,
   ): Promise<FlowExecutionResult> {
     const activeFlows = await this.flowModel
       .find({ workspaceId, active: true })
       .sort({ priority: -1, createdAt: -1 });
-
-    console.log("ActiveFlows: ", activeFlows);
 
     if (!activeFlows || activeFlows.length === 0) {
       return { executed: false, reason: 'no_active_flow' };
@@ -61,17 +60,17 @@ export class FlowExecutionEngine {
 
     // 1. Pass 1: Look for explicit keyword / button match across active flows
     for (const flowItem of activeFlows) {
-      console.log("flow items: ", flowItem);
       if (!flowItem.nodes || flowItem.nodes.length === 0) continue;
       const triggers = flowItem.nodes.filter((n: any) => n.type === 'trigger');
 
       for (const tn of triggers) {
         const config = tn.data || {};
-        console.log("config: ", config)
         if (config.triggerType === 'keyword' && Array.isArray(config.keywords) && config.keywords.length > 0) {
-          const isKeywordMatched = config.keywords.some((kw: string) =>
-            messageBody.toLowerCase().includes(kw.trim().toLowerCase())
-          );
+          const isKeywordMatched = config.keywords.some((kw: string) => {
+            if (!kw) return false;
+            const cleanKw = kw.trim().toLowerCase();
+            return cleanKw.length > 0 && messageBody.toLowerCase().includes(cleanKw);
+          });
           if (isKeywordMatched) {
             targetFlow = flowItem;
             matchedTriggerNode = tn;
@@ -142,7 +141,7 @@ export class FlowExecutionEngine {
           let selectedRoute: string | null = null;
 
           if (config.conditionType === 'keyword_match' && config.value) {
-            const matches = messageBody.toLowerCase().includes(config.value.toLowerCase());
+            const matches = messageBody.toLowerCase().includes(config.value.toLowerCase().trim());
             selectedRoute = matches ? 'true' : 'false';
           } else {
             // Sentiment evaluation route
@@ -161,17 +160,18 @@ export class FlowExecutionEngine {
         }
 
         case 'send_message': {
-          console.log("current node data: ", currentNode.data);
           const config = currentNode.data || {};
           const msgText = config.messageText || config.label || 'Thank you for contacting us!';
 
-          try {
-            await this.messagesService.sendTextMessage(workspaceId, {
-              to: contact.phone,
-              body: msgText,
-            });
-          } catch (err: any) {
-            this.logger.error(`Failed to dispatch Meta WhatsApp message for flow node ${currentNode.id}: ${err.message}`);
+          if (!isSimulation && contact?.phone) {
+            try {
+              await this.messagesService.sendTextMessage(workspaceId, {
+                to: contact.phone,
+                body: msgText,
+              });
+            } catch (err: any) {
+              this.logger.error(`Failed to dispatch Meta WhatsApp message for flow node ${currentNode.id}: ${err.message}`);
+            }
           }
 
           actionsTaken.push(`sent_message: ${msgText}`);
@@ -179,7 +179,7 @@ export class FlowExecutionEngine {
             nodeId: currentNode.id,
             type: 'send_message',
             label: nodeLabel,
-            detail: `Dispatched message: "${msgText}"`,
+            detail: isSimulation ? `[Simulation] Dispatched message: "${msgText}"` : `Dispatched message: "${msgText}"`,
           });
 
           currentNodeId = this.getNextNodeId(flow, currentNode.id, null);
@@ -192,7 +192,11 @@ export class FlowExecutionEngine {
 
           if (config.useKnowledgeBase !== false) {
             try {
-              const ragRes = await this.ragService.queryKnowledgeBase(workspaceId, messageBody);
+              const ragRes = await this.ragService.queryKnowledgeBase(
+                workspaceId,
+                messageBody,
+                conversation?._id ? conversation._id.toString() : undefined,
+              );
               if (ragRes.answer) {
                 answerText = ragRes.answer;
               }
@@ -200,14 +204,16 @@ export class FlowExecutionEngine {
               this.logger.error(`RAG query error in flow node ${currentNode.id}: ${err.message}`);
             }
           }
-
-          try {
-            await this.messagesService.sendTextMessage(workspaceId, {
-              to: contact.phone,
-              body: answerText,
-            });
-          } catch (err: any) {
-            this.logger.error(`Failed to dispatch Meta WhatsApp AI response for flow node ${currentNode.id}: ${err.message}`);
+          this.logger.log(`[Flow Simulation] , isSimulation: ${isSimulation} and contact phone: ${contact?.phone} AI response: ${answerText}`);
+          if (!isSimulation && contact?.phone) {
+            try {
+              await this.messagesService.sendTextMessage(workspaceId, {
+                to: contact.phone,
+                body: answerText,
+              });
+            } catch (err: any) {
+              this.logger.error(`Failed to dispatch Meta WhatsApp AI response for flow node ${currentNode.id}: ${err.message}`);
+            }
           }
 
           actionsTaken.push(`ai_respond: ${answerText}`);
@@ -215,7 +221,7 @@ export class FlowExecutionEngine {
             nodeId: currentNode.id,
             type: 'ai_respond',
             label: nodeLabel,
-            detail: `Generated AI answer: "${answerText.substring(0, 60)}..."`,
+            detail: isSimulation ? `[Simulation] Generated AI answer: "${answerText.substring(0, 60)}..."` : `Generated AI answer: "${answerText.substring(0, 60)}..."`,
           });
 
           currentNodeId = this.getNextNodeId(flow, currentNode.id, null);
@@ -323,9 +329,18 @@ export class FlowExecutionEngine {
     if (edges.length === 0) return null;
 
     if (routeLabel) {
-      const routeLower = routeLabel.toLowerCase();
-      // Try to find edge whose label matches or includes route string
-      const matchedEdge = edges.find((e: any) => e.label && e.label.toLowerCase().includes(routeLower));
+      const routeLower = routeLabel.toLowerCase().trim();
+      // Try exact or substring match
+      const matchedEdge = edges.find((e: any) => {
+        if (!e.label) return false;
+        const edgeLabelLower = e.label.toLowerCase().trim();
+        if (edgeLabelLower.includes(routeLower) || routeLower.includes(edgeLabelLower)) return true;
+        // Synonym checks for boolean condition routing
+        if ((routeLower === 'true' || routeLower === 'positive') && /^(true|yes|match|matched|positive|pass)/.test(edgeLabelLower)) return true;
+        if ((routeLower === 'false' || routeLower === 'negative') && /^(false|no|unmatched|negative|fail)/.test(edgeLabelLower)) return true;
+        if (routeLower === 'urgent' && /urgent|escalate/.test(edgeLabelLower)) return true;
+        return false;
+      });
       if (matchedEdge) return matchedEdge.target;
     }
 
