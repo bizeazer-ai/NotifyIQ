@@ -9,7 +9,7 @@
     "test": "turbo run test",
     "lint": "turbo run lint",
     "check-types": "turbo run check-types",
-    "build-backend" : "pnpm install --frozen-lockfile && pnpm --filter @notifyiq/schemas --filter @notifyiq/config --filter backend build"
+    "build-backend": "pnpm install --frozen-lockfile && pnpm --filter @notifyiq/schemas --filter @notifyiq/config --filter backend build"
   },
   "keywords": [],
   "author": "",
