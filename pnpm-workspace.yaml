@@ -1,14 +1,13 @@
 packages:
   - "packages/*"
   - "apps/*"
-
-  # EXCLUDING TESTS
   - "!**/tests/**"
-allowBuilds:
-  bcrypt: true
-  "@swc/core": true
-  "@google/genai": true
-  "@scarf/scarf": true
-  msgpackr-extract: true
-  protobufjs: true
-  unrs-resolver: true
+
+onlyBuiltDependencies:
+  - bcrypt
+  - "@swc/core"
+  - "@google/genai"
+  - "@scarf/scarf"
+  - msgpackr-extract
+  - protobufjs
+  - unrs-resolver
