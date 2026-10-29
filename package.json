@@ -5,11 +5,12 @@
   "main": "index.js",
   "scripts": {
     "dev": "turbo run dev",
-    "build": "pnpm --filter @notifyiq/schemas --filter @notifyiq/config --filter backend build",
+    "build": "pnpm --filter @notifyiq/schemas --filter @notifyiq/config --filter backend build && node -e \"fs.cpSync('apps/backend/dist', 'dist', {recursive: true})\"",
     "test": "turbo run test",
     "lint": "turbo run lint",
     "check-types": "turbo run check-types",
-    "build-backend": "pnpm install --frozen-lockfile && pnpm --filter @notifyiq/schemas --filter @notifyiq/config --filter backend build"
+    "build-backend": "pnpm install --frozen-lockfile && pnpm --filter @notifyiq/schemas --filter @notifyiq/config --filter backend build",
+    "start": "node apps/backend/dist/main.js"
   },
   "keywords": [],
   "author": "",
