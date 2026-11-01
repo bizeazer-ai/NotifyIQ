@@ -5,7 +5,7 @@
   "main": "apps/backend/dist/main.js",
   "scripts": {
     "dev": "turbo run dev",
-    "build": "pnpm install --frozen-lockfile && pnpm --filter @notifyiq/schemas --filter @notifyiq/config --filter backend frontend build ",
+    "build": "pnpm install --frozen-lockfile && pnpm --filter backend... --filter frontend... build",
     "test": "turbo run test",
     "lint": "turbo run lint",
     "check-types": "turbo run check-types",
