@@ -22,6 +22,16 @@ import { OutboundWebhooksModule } from './outbound-webhooks/outbound-webhooks.mo
 import { ApiKeysModule } from './api-keys/api-keys.module.js';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { resolve } from 'node:path';
+import { existsSync } from 'node:fs';
+
+const getFrontendDistPath = (): string => {
+  const candidatePaths = [
+    resolve(process.cwd(), 'apps/frontend/dist'),
+    resolve(process.cwd(), '../frontend/dist'),
+    resolve(__dirname, '../../frontend/dist'),
+  ];
+  return candidatePaths.find((p) => existsSync(p)) || candidatePaths[0]!;
+};
 
 @Module({
   imports: [
@@ -44,10 +54,10 @@ import { resolve } from 'node:path';
     OutboundWebhooksModule,
     ApiKeysModule,
     ServeStaticModule.forRoot({
-      rootPath: resolve(process.cwd(), 'apps/frontend/dist'),
+      rootPath: getFrontendDistPath(),
       serveRoot: '/',
       exclude: [
-        "/api*", "/admin*"
+        '/api{/*path}', '/admin{/*path}'
       ],
     })
   ],

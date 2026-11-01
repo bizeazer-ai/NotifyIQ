@@ -2,6 +2,18 @@
 import { ExceptionFilter, Catch, ArgumentsHost, HttpException, HttpStatus } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { IApiErrorResponse } from '../interfaces/api-response-interfaces';
+import { resolve } from 'node:path';
+import { existsSync } from 'node:fs';
+
+const getFrontendIndexPath = (): string | null => {
+  const candidatePaths = [
+    resolve(process.cwd(), 'apps/frontend/dist/index.html'),
+    resolve(process.cwd(), '../frontend/dist/index.html'),
+    resolve(__dirname, '../../../../apps/frontend/dist/index.html'),
+    resolve(__dirname, '../../../frontend/dist/index.html'),
+  ];
+  return candidatePaths.find((p) => existsSync(p)) || null;
+};
 
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
@@ -22,6 +34,19 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       
       message = resBody?.message || exception.message;
       error = resBody?.error || exception.name;
+
+      // SPA Fallback: If 404 on a non-API GET request, serve frontend index.html for client-side routing
+      if (
+        statusCode === HttpStatus.NOT_FOUND &&
+        request.method === 'GET' &&
+        !request.url.startsWith('/api') &&
+        !request.url.startsWith('/admin')
+      ) {
+        const indexPath = getFrontendIndexPath();
+        if (indexPath) {
+          return response.sendFile(indexPath);
+        }
+      }
     } 
     // Handle Payload / Entity Too Large (413) from body-parser, multer, or raw-body
     else if (
