@@ -20,6 +20,8 @@ import { AnalyticsModule } from './analytics/analytics.module.js';
 import { AdminModule } from './admin/admin.module.js';
 import { OutboundWebhooksModule } from './outbound-webhooks/outbound-webhooks.module.js';
 import { ApiKeysModule } from './api-keys/api-keys.module.js';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { resolve } from 'node:path';
 
 @Module({
   imports: [
@@ -41,8 +43,15 @@ import { ApiKeysModule } from './api-keys/api-keys.module.js';
     AnalyticsModule,
     OutboundWebhooksModule,
     ApiKeysModule,
+    ServeStaticModule.forRoot({
+      rootPath: resolve(process.cwd(), 'apps/frontend/dist'),
+      serveRoot: '/',
+      exclude: [
+        "/api*", "/admin*"
+      ],
+    })
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule { }
