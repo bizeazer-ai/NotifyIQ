@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
 const configSchema = z.object({
-  apiUrl: z.string().url().default('http://localhost:5000'),
-  socketUrl: z.string().url().default('http://localhost:5000'),
+  apiUrl: z.string().url().default(typeof window !== 'undefined' && window.location.origin ? window.location.origin : 'http://localhost:8000'),
+  socketUrl: z.string().url().default(typeof window !== 'undefined' && window.location.origin ? window.location.origin : 'http://localhost:8000'),
 });
 
 const parsedEnv = {

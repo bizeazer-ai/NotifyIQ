@@ -4,6 +4,7 @@ import path from 'path'
 
 // https://vite.dev/config/
 export default defineConfig({
+  envDir: path.resolve(import.meta.dirname, '../../'),
   plugins: [react()],
   server: {
     allowedHosts: ["elaborate-tribune-geography.ngrok-free.dev"],
