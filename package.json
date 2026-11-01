@@ -2,7 +2,7 @@
   "name": "notifyIQ",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "apps/backend/dist/main.js",
   "scripts": {
     "dev": "turbo run dev",
     "build": "pnpm install --frozen-lockfile && pnpm --filter @notifyiq/schemas --filter @notifyiq/config --filter backend build ",
