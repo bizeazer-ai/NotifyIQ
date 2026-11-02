@@ -297,7 +297,7 @@ export default function KnowledgeBasePage() {
         </div>
       ) : (
         /* RAG Query Playground */
-        <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '28px', maxWidth: '800px', margin: '0 auto' }}>
+        <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '28px', width: '100%' }}>
           <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Icon name="search" style={{ color: 'var(--accent)' }} />
             <span>Live Gemini RAG Grounding Playground</span>
@@ -328,7 +328,7 @@ export default function KnowledgeBasePage() {
             <div style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--accent)', borderRadius: '10px', padding: '20px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                 <span style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--sentiment-positive)' }}>
-                  ✓ Gemini RAG Answer Generated
+                  Response Generated
                 </span>
                 <span style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--accent-light)' }}>
                   Confidence Score: {(queryResult.confidenceScore * 100).toFixed(1)}%
@@ -350,7 +350,7 @@ export default function KnowledgeBasePage() {
                         key={idx}
                         style={{ padding: '4px 10px', borderRadius: '6px', backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-color)', fontSize: '11px', color: 'var(--text-secondary)' }}
                       >
-                        📄 {src}
+                        Source: {src}
                       </span>
                     ))}
                   </div>

@@ -215,7 +215,7 @@ export default function VerifyEmailPage() {
                 className="auth-link"
                 style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px' }}
               >
-                ← Back to token verification
+                Back to token verification
               </button>
             </div>
           </form>

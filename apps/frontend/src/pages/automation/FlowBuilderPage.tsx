@@ -550,7 +550,7 @@ export default function FlowBuilderPage() {
             >
               {flows.map((f) => (
                 <option key={f._id} value={f._id}>
-                  {f.name} {f.active ? '🟢 (Live)' : '⚪ (Draft)'}
+                  {f.name} ({f.active ? 'ACTIVE' : 'DRAFT'})
                 </option>
               ))}
             </select>
@@ -653,7 +653,7 @@ export default function FlowBuilderPage() {
             onClick={() => setShowSimulator(!showSimulator)}
             title="Toggle Interactive Simulation Sandbox"
           >
-            <Icon name="sparkles" size={13} />
+            <Icon name="play" size={13} />
             <span>{showSimulator ? 'Close Simulator' : 'Test Flow'}</span>
           </button>
 
@@ -959,7 +959,7 @@ export default function FlowBuilderPage() {
                             animation: 'pulse 1.5s infinite',
                           }}
                         >
-                          Connect Here →
+                          Connect Target
                         </button>
                       ) : (
                         <button
@@ -980,7 +980,7 @@ export default function FlowBuilderPage() {
                           }}
                           title="Click to connect this node to another component"
                         >
-                          + Connect →
+                          + Connect Node
                         </button>
                       )}
                     </div>
@@ -992,7 +992,7 @@ export default function FlowBuilderPage() {
             <EmptyState
               title="No Active Automation Flow"
               description="Click 'Add Flow Components' to construct a visual automation workflow layout."
-              icon="sparkles"
+              icon="fork"
             />
           )}
         </div>
@@ -1314,7 +1314,7 @@ export default function FlowBuilderPage() {
                           onClick={() => handleDeleteEdge(ed.id)}
                           style={{ border: 'none', background: 'transparent', color: 'var(--sentiment-urgent)', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}
                         >
-                          ×
+                          <Icon name="close" size={12} />
                         </button>
                       </div>
                     ))}
@@ -1388,10 +1388,10 @@ export default function FlowBuilderPage() {
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
             <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 'bold', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Icon name="sparkles" style={{ color: 'var(--accent-light)' }} />
+              <Icon name="play" style={{ color: 'var(--color-primary)' }} />
               <span>Interactive Flow Execution Simulator</span>
             </h4>
-            <button onClick={() => setShowSimulator(false)} className="btn-close" title="Close">✕</button>
+            <button onClick={() => setShowSimulator(false)} className="btn-close" title="Close"><Icon name="close" size={14} /></button>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>

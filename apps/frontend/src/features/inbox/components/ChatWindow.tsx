@@ -748,7 +748,7 @@ export default function ChatWindow({ onBackToList }: ChatWindowProps = {}) {
                 }}
                 title={isWindowActive ? 'WhatsApp 24-hour customer service window is open' : '24-hour window expired. Meta requires a template message.'}
               >
-                <span>{isWindowActive ? '⚡ 24h Window:' : '⚠️ Window Expired:'}</span>
+                <span>{isWindowActive ? '24h Window Active:' : '24h Window Expired:'}</span>
                 <span>{formatWindowTimeLeft()}</span>
               </span>
             </div>
@@ -780,7 +780,7 @@ export default function ChatWindow({ onBackToList }: ChatWindowProps = {}) {
             title="View AI Lead Intelligence & CRM Details"
             style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '6px 10px', fontSize: '11.5px' }}
           >
-            <Icon name="sparkles" size={13} style={{ color: 'var(--color-primary)' }} />
+            <Icon name="user" size={13} style={{ color: 'var(--color-primary)' }} />
             <span>Lead Profile</span>
           </button>
 
@@ -980,8 +980,8 @@ export default function ChatWindow({ onBackToList }: ChatWindowProps = {}) {
                       msg.type === 'template' ? (
                         <div className="template-message-card" style={{ maxWidth: '100%' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '10.5px', fontWeight: 700, opacity: 0.85, marginBottom: '6px', letterSpacing: '0.4px', textTransform: 'uppercase' }}>
-                            <Icon name="sparkles" size={11} />
-                            <span>WhatsApp Template Message</span>
+                            <span className="badge badge-neutral" style={{ fontSize: '9.5px', padding: '1px 5px' }}>TEMPLATE</span>
+                            <span>Meta Approved Format</span>
                           </div>
                           {msg.mediaUrl && (
                             <img
@@ -1077,9 +1077,8 @@ export default function ChatWindow({ onBackToList }: ChatWindowProps = {}) {
           overflowX: 'auto',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 700, color: 'var(--color-primary)', flexShrink: 0 }}>
-          <Icon name="sparkles" size={12} />
-          <span>AI Suggestions:</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 700, color: 'var(--color-foreground-secondary)', flexShrink: 0 }}>
+          <span>SUGGESTED REPLIES:</span>
         </div>
         {loadingSuggestions ? (
           <span style={{ fontSize: '12px', color: 'var(--color-foreground-muted)' }}>Generating replies...</span>

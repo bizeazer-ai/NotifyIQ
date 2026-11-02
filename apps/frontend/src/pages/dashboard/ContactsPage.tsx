@@ -375,7 +375,7 @@ export default function ContactsPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-5)' }}>
               <h3 className="modal-title" style={{ margin: 0 }}>Add Single Contact</h3>
               <button className="btn-close" onClick={() => setShowAddModal(false)} title="Close">
-                ✕
+                <Icon name="close" size={14} />
               </button>
             </div>
             <form onSubmit={handleCreateContact} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
@@ -446,7 +446,7 @@ export default function ContactsPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-5)' }}>
               <h3 className="modal-title" style={{ margin: 0 }}>Bulk CSV Contact Import</h3>
               <button className="btn-close" onClick={() => setShowImportModal(false)} title="Close">
-                ✕
+                <Icon name="close" size={14} />
               </button>
             </div>
             <div

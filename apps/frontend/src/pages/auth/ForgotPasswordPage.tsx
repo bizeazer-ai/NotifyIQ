@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { apiClient, ApiError } from '../../lib/api/apiClient';
 import { AppFooter } from '../../components/layout/AppFooter';
+import { Icon } from '../../components/ui/Icon';
 
 interface ForgotPasswordResponse {
   message: string;
@@ -53,7 +54,7 @@ export default function ForgotPasswordPage() {
 
         {submitted ? (
           <div className="auth-info-box">
-            <div className="auth-icon-circle">✉️</div>
+            <div className="auth-icon-circle"><Icon name="mail" size={24} /></div>
             <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: 700 }}>Check your inbox</h3>
             <p style={{ margin: '0 0 12px 0', fontSize: '14px', color: 'var(--color-foreground-muted)', lineHeight: 1.5 }}>
               If an account exists for <strong style={{ color: 'var(--color-primary)' }}>{email}</strong>, we have sent a password reset link to your email.

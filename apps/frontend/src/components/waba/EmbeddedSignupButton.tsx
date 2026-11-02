@@ -84,13 +84,13 @@ export function EmbeddedSignupButton({ onSuccess }: EmbeddedSignupButtonProps) {
           gap: '10px',
           padding: '12px 24px',
           borderRadius: '8px',
-          background: 'linear-gradient(135deg, #1877F2 0%, #0056b3 100%)',
+          backgroundColor: '#1877F2',
           color: '#fff',
           fontWeight: 'bold',
           fontSize: '14px',
           border: 'none',
           cursor: loading ? 'not-allowed' : 'pointer',
-          boxShadow: '0 4px 12px rgba(24, 119, 242, 0.3)',
+          boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
         }}
       >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">

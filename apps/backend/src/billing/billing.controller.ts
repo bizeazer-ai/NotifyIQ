@@ -2,7 +2,7 @@ import { Controller, Get, Post, Patch, Delete, Param, Body, Headers, Req, HttpCo
 import crypto from 'crypto';
 import { env } from '@notifyiq/config';
 import { BillingService } from './billing.service.js';
-import { CheckoutDto, RazorpayOrderDto } from './dto/index.js';
+import { CheckoutDto, RazorpayOrderDto, ChargeDto, VerifyRazorpayDto, VerifyStripeDto, CancelSubscriptionDto } from './dto/index.js';
 import { AuthGuard, WorkspaceGuard } from '../common/guards/index.js';
 import type { AuthenticatedRequest } from '../common/guards/index.js';
 
@@ -27,6 +27,76 @@ export class BillingController {
     return {
       message: 'Stripe Checkout Session initialized',
       data: session,
+    };
+  }
+
+  @Post('charge')
+  @UseGuards(AuthGuard, WorkspaceGuard)
+  async payWithMethod(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: ChargeDto,
+  ) {
+    const workspaceId = req.workspaceId as string;
+    const result = await this.billingService.payWithMethod(workspaceId, dto);
+    return {
+      message: result.message,
+      data: result,
+    };
+  }
+
+  @Post('razorpay/verify')
+  @UseGuards(AuthGuard, WorkspaceGuard)
+  async verifyRazorpay(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: VerifyRazorpayDto,
+  ) {
+    const workspaceId = req.workspaceId as string;
+    const result = await this.billingService.verifyRazorpayPayment(workspaceId, dto);
+    return {
+      message: result.message,
+      data: result,
+    };
+  }
+
+  @Post('stripe/verify')
+  @UseGuards(AuthGuard, WorkspaceGuard)
+  async verifyStripe(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: VerifyStripeDto,
+  ) {
+    const workspaceId = req.workspaceId as string;
+    const result = await this.billingService.verifyStripeSession(workspaceId, dto.sessionId);
+    return {
+      message: result.message,
+      data: result,
+    };
+  }
+
+  @Post('cancel-subscription')
+  @UseGuards(AuthGuard, WorkspaceGuard)
+  async cancelSubscription(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: CancelSubscriptionDto,
+  ) {
+    const workspaceId = req.workspaceId as string;
+    const result = await this.billingService.cancelSubscription(workspaceId, dto?.reason);
+    return {
+      message: result.message,
+      data: result,
+    };
+  }
+
+  @Get('invoices/:id')
+  @UseGuards(AuthGuard, WorkspaceGuard)
+  async getInvoice(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') invoiceId: string,
+  ) {
+    const workspaceId = req.workspaceId as string;
+    const invoice = await this.billingService.getInvoiceById(workspaceId, invoiceId);
+    return {
+      message: 'Invoice details retrieved successfully',
+      data: invoice,
     };
   }
 

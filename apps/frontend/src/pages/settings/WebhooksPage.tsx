@@ -1013,7 +1013,7 @@ async def receive_webhook(
                 className="btn-close"
                 title="Close"
               >
-                ✕
+                <Icon name="close" size={14} />
               </button>
             </div>
 
@@ -1237,7 +1237,7 @@ async def receive_webhook(
                 marginBottom: '16px',
               }}
             >
-              ⚠️ <strong>Store this secret securely!</strong> For your protection, this plaintext secret will never be displayed again.
+              <strong>Store this secret securely!</strong> For your protection, this plaintext secret will never be displayed again.
             </div>
 
             <div

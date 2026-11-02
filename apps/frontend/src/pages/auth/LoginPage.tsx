@@ -82,7 +82,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="auth-container" style={{ flexDirection: 'column', padding: 'var(--space-6) var(--space-4)' }}>
+    <div className="auth-container">
       <div className="auth-card">
         <div className="auth-header">
           <div className="auth-logo">IQ</div>
@@ -99,7 +99,7 @@ export default function LoginPage() {
                   to={`/verify-email?email=${encodeURIComponent(unverifiedEmail)}`}
                   style={{ color: 'var(--color-primary)', fontWeight: 700, textDecoration: 'underline' }}
                 >
-                  Verify your email address now →
+                  Verify your email address now
                 </Link>
               </div>
             )}

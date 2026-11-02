@@ -26,6 +26,10 @@ describe('BillingController', () => {
     handleStripeWebhook: jest.fn(),
     calculateWholesaleUsage: jest.fn(),
     getInvoices: jest.fn(),
+    verifyRazorpayPayment: jest.fn(),
+    verifyStripeSession: jest.fn(),
+    cancelSubscription: jest.fn(),
+    getInvoiceById: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -127,6 +131,61 @@ describe('BillingController', () => {
 
       expect(service.getInvoices).toHaveBeenCalledWith('ws_123');
       expect(res.data).toEqual(mockInvoices);
+    });
+  });
+
+  describe('verifyRazorpay', () => {
+    it('should verify razorpay payment via service', async () => {
+      const mockResult = { success: true, message: 'Verified', transactionId: 'pay_123' };
+      service.verifyRazorpayPayment.mockResolvedValue(mockResult as any);
+
+      const req = { workspaceId: 'ws_123' } as any;
+      const dto = { razorpay_order_id: 'ord_1', razorpay_payment_id: 'pay_123', razorpay_signature: 'sig_1' };
+      const res = await controller.verifyRazorpay(req, dto);
+
+      expect(service.verifyRazorpayPayment).toHaveBeenCalledWith('ws_123', dto);
+      expect(res.data).toEqual(mockResult);
+    });
+  });
+
+  describe('verifyStripe', () => {
+    it('should verify stripe session via service', async () => {
+      const mockResult = { success: true, message: 'Verified', sessionId: 'cs_123' };
+      service.verifyStripeSession.mockResolvedValue(mockResult as any);
+
+      const req = { workspaceId: 'ws_123' } as any;
+      const dto = { sessionId: 'cs_123' };
+      const res = await controller.verifyStripe(req, dto);
+
+      expect(service.verifyStripeSession).toHaveBeenCalledWith('ws_123', 'cs_123');
+      expect(res.data).toEqual(mockResult);
+    });
+  });
+
+  describe('cancelSubscription', () => {
+    it('should cancel subscription via service', async () => {
+      const mockResult = { success: true, cancelAtPeriodEnd: true, message: 'Canceled' };
+      service.cancelSubscription.mockResolvedValue(mockResult as any);
+
+      const req = { workspaceId: 'ws_123' } as any;
+      const dto = { reason: 'Cost concerns' };
+      const res = await controller.cancelSubscription(req, dto);
+
+      expect(service.cancelSubscription).toHaveBeenCalledWith('ws_123', 'Cost concerns');
+      expect(res.data).toEqual(mockResult);
+    });
+  });
+
+  describe('getInvoice', () => {
+    it('should return invoice details by id', async () => {
+      const mockInvoice = { invoiceNumber: 'INV-123', totalAmount: 4719 };
+      service.getInvoiceById.mockResolvedValue(mockInvoice as any);
+
+      const req = { workspaceId: 'ws_123' } as any;
+      const res = await controller.getInvoice(req, 'INV-123');
+
+      expect(service.getInvoiceById).toHaveBeenCalledWith('ws_123', 'INV-123');
+      expect(res.data).toEqual(mockInvoice);
     });
   });
 });

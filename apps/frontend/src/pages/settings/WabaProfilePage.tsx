@@ -271,7 +271,7 @@ export default function WabaProfilePage() {
                       <span>Disconnect WABA</span>
                     </button>
 
-                    <span className="badge badge-success">✓ CONNECTED & VERIFIED</span>
+                    <span className="badge badge-success">CONNECTED & VERIFIED</span>
                   </div>
 
                 </div>
@@ -344,7 +344,7 @@ export default function WabaProfilePage() {
               <div className="modal-card" style={{ maxWidth: '480px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-4)' }}>
                   <h3 className="modal-title" style={{ marginBottom: 0 }}>Register New Phone Number on Meta API</h3>
-                  <button className="btn-close" onClick={() => setShowAddModal(false)} title="Close">✕</button>
+                  <button className="btn-close" onClick={() => setShowAddModal(false)} title="Close"><Icon name="close" size={14} /></button>
                 </div>
 
                 <form onSubmit={handleRegisterPhoneSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
@@ -404,7 +404,7 @@ export default function WabaProfilePage() {
                   <h3 className="modal-title" style={{ marginBottom: 0, color: 'var(--color-error, #ef4444)' }}>
                     Disconnect Meta WABA Account?
                   </h3>
-                  <button className="btn-close" onClick={() => setShowDisconnectModal(false)} title="Close">✕</button>
+                  <button className="btn-close" onClick={() => setShowDisconnectModal(false)} title="Close"><Icon name="close" size={14} /></button>
                 </div>
 
                 <p className="text-secondary" style={{ fontSize: 'var(--text-sm)', marginBottom: 'var(--space-5)', lineHeight: '1.5' }}>
@@ -529,7 +529,7 @@ export default function WabaProfilePage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                   <h3 className="section-title" style={{ margin: 0 }}>
-                    <Icon name="sparkles" className="section-title-icon" style={{ color: '#25D366' }} />
+                    <Icon name="shield" className="section-title-icon" style={{ color: '#25D366' }} />
                     <span>WhatsApp Mobile Card Preview</span>
                   </h3>
                   <p className="text-secondary" style={{ fontSize: 'var(--text-xs)', margin: 0 }}>
@@ -608,7 +608,7 @@ export default function WabaProfilePage() {
                       fontWeight: 800,
                       border: '2px solid #ffffff',
                     }}>
-                      ✓
+                      <Icon name="check" size={10} />
                     </div>
                   </div>
 
@@ -668,7 +668,7 @@ export default function WabaProfilePage() {
                         Address
                       </div>
                       <div style={{ fontSize: '12px', color: 'var(--color-foreground-secondary)' }}>
-                        📍 {profile.address}
+                        {profile.address}
                       </div>
                     </div>
                   )}
@@ -680,7 +680,7 @@ export default function WabaProfilePage() {
                         Email
                       </div>
                       <div style={{ fontSize: '12px', color: 'var(--color-primary)' }}>
-                        ✉️ {profile.email}
+                        {profile.email}
                       </div>
                     </div>
                   )}
@@ -692,7 +692,7 @@ export default function WabaProfilePage() {
                         Website
                       </div>
                       <div style={{ fontSize: '12px', color: 'var(--color-primary)' }}>
-                        🌐 {profile.websites[0]}
+                        {profile.websites[0]}
                       </div>
                     </div>
                   )}

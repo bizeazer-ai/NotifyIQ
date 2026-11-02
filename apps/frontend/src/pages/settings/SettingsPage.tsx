@@ -465,7 +465,7 @@ export default function SettingsPage() {
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-1)' }}>
                 <h3 className="section-title" style={{ margin: 0 }}>
-                  <Icon name="sparkles" className="section-title-icon" style={{ color: 'var(--color-primary)' }} />
+                  <Icon name="sliders" className="section-title-icon" style={{ color: 'var(--color-primary)' }} />
                   <span>Gemini RAG Sandbox Simulator</span>
                 </h3>
                 <span className="badge badge-success" style={{ fontSize: '10px' }}>LIVE PREVIEW</span>
@@ -543,7 +543,7 @@ export default function SettingsPage() {
                 {simulationResult && (
                   <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center' }}>
                     <span style={{ fontSize: '10px', color: 'var(--color-foreground-muted)' }}>
-                      ⚡ {simulationResult.latencyMs}ms
+                      Latency: {simulationResult.latencyMs}ms
                     </span>
                     <span className={`badge ${simulationResult.escalated ? 'badge-warning' : 'badge-primary'}`} style={{ fontSize: '10px' }}>
                       {(simulationResult.confidence * 100).toFixed(0)}% MATCH
@@ -583,7 +583,7 @@ export default function SettingsPage() {
                     }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
                         <span style={{ fontWeight: 700, fontSize: '10px', color: simulationResult.escalated ? '#f59e0b' : 'var(--color-primary)' }}>
-                          {simulationResult.escalated ? '⚠️ Escalated to Human Agent' : '🤖 Gemini Auto-Reply Agent'}
+                          {simulationResult.escalated ? 'Escalated to Human Agent' : 'Automated Auto-Reply Agent'}
                         </span>
                         <span style={{ fontSize: '9px', color: 'var(--color-foreground-muted)' }}>Just now</span>
                       </div>
@@ -626,7 +626,7 @@ export default function SettingsPage() {
                 <span>{(autoReply.confidenceThreshold * 100).toFixed(0)}% Match</span>
               </div>
               <span style={{ color: simulationResult && simulationResult.confidence >= autoReply.confidenceThreshold ? 'var(--color-success)' : 'var(--color-warning)' }}>
-                {simulationResult && simulationResult.confidence >= autoReply.confidenceThreshold ? '✓ Passed Threshold' : '⚠️ Below Threshold (Escalation Active)'}
+                {simulationResult && simulationResult.confidence >= autoReply.confidenceThreshold ? 'Threshold Met' : 'Below Threshold (Escalation Active)'}
               </span>
             </div>
           </div>
@@ -948,7 +948,7 @@ print(history.json())`
                       cursor: 'pointer',
                     }}
                   >
-                    {copiedKey ? '✓ Copied' : 'Copy'}
+                    {copiedKey ? 'Copied' : 'Copy'}
                   </button>
                 </div>
               </div>
@@ -1071,7 +1071,7 @@ print(history.json())`
                   </button>
                 </div>
                 <span className="form-hint" style={{ color: 'var(--color-success)' }}>
-                  ✓ CNAME verified pointing to cname.notifyiq.app
+                  CNAME verified: cname.notifyiq.app
                 </span>
               </div>
 
@@ -1102,7 +1102,7 @@ print(history.json())`
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <h3 className="section-title" style={{ margin: 0 }}>
-                  <Icon name="sparkles" className="section-title-icon" style={{ color: brandingAccent }} />
+                  <Icon name="globe" className="section-title-icon" style={{ color: brandingAccent }} />
                   <span>White-Label Client Portal Preview</span>
                 </h3>
                 <p className="text-secondary" style={{ fontSize: 'var(--text-xs)', margin: 0 }}>
@@ -1148,7 +1148,7 @@ print(history.json())`
                   fontFamily: 'monospace',
                   color: 'var(--color-foreground-secondary)',
                 }}>
-                  <span style={{ color: '#10b981' }}>🔒</span>
+                  <Icon name="shield" size={11} style={{ color: '#10b981' }} />
                   <span>https://{customCname}</span>
                 </div>
               </div>
@@ -1295,7 +1295,7 @@ print(history.json())`
                     lineHeight: '1.4',
                   }}
                 >
-                  ⚠️ <strong>Save this key now.</strong> For security reasons, you will not be able to view this full key again after closing this window.
+                  <strong>Save this key now.</strong> For security reasons, you will not be able to view this full key again after closing this window.
                 </div>
 
                 <div className="form-group" style={{ marginBottom: '20px' }}>
@@ -1314,7 +1314,7 @@ print(history.json())`
                       onClick={() => copyToClipboard(createdKeySecret)}
                       style={{ whiteSpace: 'nowrap' }}
                     >
-                      {copiedKey ? '✓ Copied!' : 'Copy Key'}
+                      {copiedKey ? 'Copied!' : 'Copy Key'}
                     </button>
                   </div>
                 </div>
@@ -1343,7 +1343,7 @@ print(history.json())`
                     className="btn-close"
                     title="Close"
                   >
-                    ✕
+                    <Icon name="close" size={14} />
                   </button>
                 </div>
 

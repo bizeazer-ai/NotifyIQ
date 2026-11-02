@@ -48,6 +48,7 @@ export interface IconProps {
     | 'webhook'
     | 'play'
     | 'pause'
+    | 'mail'
     | 'menu';
   size?: number;
   title?: string;
@@ -153,6 +154,13 @@ export function Icon({ name, size = 18, className, style }: IconProps) {
     path = <path d="M10.5 6a1.5 1.5 0 113 0 1.5 1.5 0 01-3 0zm0 0H3.75m6.75 0h9.75M16.5 12a1.5 1.5 0 113 0 1.5 1.5 0 01-3 0zm0 0H3.75m12.75 0h3.75M7.5 18a1.5 1.5 0 113 0 1.5 1.5 0 01-3 0zm0 0H3.75m3.75 0h12.75" />;
   } else if (name === 'bell') {
     path = <path d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />;
+    } else if (name === 'mail') {
+    path = (
+      <>
+        <rect x="3" y="5" width="18" height="14" rx="2" />
+        <polyline points="3 7 12 13 21 7" />
+      </>
+    );
   } else if (name === 'menu') {
     path = <path d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />;
   } else if (name === 'code') {

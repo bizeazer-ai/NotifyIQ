@@ -186,14 +186,14 @@ export default function LeadDrawer({
                 justifyContent: 'center',
               }}
             >
-              <Icon name="sparkles" size={18} />
+              <Icon name="user" size={18} />
             </div>
             <div>
               <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: 'var(--color-foreground)' }}>
                 Lead CRM & Intelligence
               </h3>
               <p style={{ margin: 0, fontSize: '11px', color: 'var(--color-foreground-secondary)' }}>
-                Auto-extracted business intent & qualifications
+                Extracted contact details & qualifications
               </p>
             </div>
           </div>
@@ -203,7 +203,7 @@ export default function LeadDrawer({
             onClick={onClose}
             title="Close"
           >
-            ✕
+            <Icon name="close" size={14} />
           </button>
         </div>
 

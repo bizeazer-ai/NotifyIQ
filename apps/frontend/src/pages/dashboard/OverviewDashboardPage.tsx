@@ -84,7 +84,7 @@ export default function OverviewDashboardPage() {
         <EmptyState
           title="No Analytics Data Available"
           description="Start sending messages or launch campaigns to view workspace analytics and delivery rates."
-          icon="sparkles"
+          icon="bot"
           actionLabel="Refresh Overview"
           onAction={() => loadMetrics(activeRange)}
         />
@@ -273,7 +273,7 @@ export default function OverviewDashboardPage() {
             {/* 2. Quick Action Shortcuts Panel */}
             <div className="section-card" style={{ display: 'flex', flexDirection: 'column' }}>
               <h3 className="section-title">
-                <Icon name="sparkles" className="section-title-icon" />
+                <Icon name="sliders" className="section-title-icon" />
                 <span>Quick Actions</span>
               </h3>
 

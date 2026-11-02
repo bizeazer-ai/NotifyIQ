@@ -23,6 +23,35 @@ export class Workspace {
   @Prop({ required: true, enum: ['INR', 'USD', 'EUR', 'GBP'], default: 'INR' })
   currency: string;
 
+  // Subscription Lifecycle & Gateway Identifiers
+  @Prop({
+    required: true,
+    enum: ['active', 'past_due', 'canceled', 'trialing', 'unpaid', 'inactive'],
+    default: 'inactive',
+  })
+  subscriptionStatus: string;
+
+  @Prop({ type: Date, default: null })
+  currentPeriodStart: Date | null;
+
+  @Prop({ type: Date, default: null })
+  currentPeriodEnd: Date | null;
+
+  @Prop({ default: false })
+  cancelAtPeriodEnd: boolean;
+
+  @Prop({ type: String, default: null })
+  stripeCustomerId: string | null;
+
+  @Prop({ type: String, default: null })
+  stripeSubscriptionId: string | null;
+
+  @Prop({ type: String, default: null })
+  razorpayCustomerId: string | null;
+
+  @Prop({ type: String, default: null })
+  razorpaySubscriptionId: string | null;
+
   // Billing Details & Tax Address
   @Prop({
     type: {

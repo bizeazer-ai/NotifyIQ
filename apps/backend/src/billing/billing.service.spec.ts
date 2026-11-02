@@ -261,5 +261,178 @@ describe('BillingService', () => {
       await service.deletePaymentMethod('ws_123456789', wsDoc.paymentMethods[0].id);
       expect(wsDoc.paymentMethods).toHaveLength(1);
     });
+
+    it('should complete payment using saved payment method', async () => {
+      const wsDoc: any = {
+        _id: 'ws_123456789',
+        plan: 'free',
+        currency: 'USD',
+        active: false,
+        paymentMethods: [
+          {
+            id: 'pm_saved_1',
+            type: 'card',
+            brand: 'Visa',
+            last4: '4242',
+            isDefault: true,
+          },
+        ],
+        save: jest.fn().mockResolvedValue(true),
+        markModified: jest.fn(),
+      };
+
+      mockWorkspaceModel.findById = jest.fn().mockResolvedValue(wsDoc);
+
+      const result = await service.payWithMethod('ws_123456789', {
+        gateway: 'razorpay',
+        plan: 'growth',
+        paymentMethodId: 'pm_saved_1',
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.amount).toBe(4719); // 3999 + 18% GST (720)
+      expect(result.currency).toBe('INR');
+      expect(wsDoc.plan).toBe('growth');
+      expect(wsDoc.active).toBe(true);
+      expect(mockAuditLogModel.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'billing.payment_succeeded',
+        }),
+      );
+    });
+
+    it('should complete payment using Stripe gateway', async () => {
+      const wsDoc: any = {
+        _id: 'ws_123456789',
+        plan: 'free',
+        currency: 'INR',
+        active: false,
+        paymentMethods: [
+          {
+            id: 'pm_saved_2',
+            type: 'card',
+            brand: 'Mastercard',
+            last4: '8888',
+            isDefault: true,
+          },
+        ],
+        save: jest.fn().mockResolvedValue(true),
+        markModified: jest.fn(),
+      };
+
+      mockWorkspaceModel.findById = jest.fn().mockResolvedValue(wsDoc);
+
+      const result = await service.payWithMethod('ws_123456789', {
+        gateway: 'stripe',
+        plan: 'growth',
+        paymentMethodId: 'pm_saved_2',
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.amount).toBe(49);
+      expect(result.currency).toBe('USD');
+      expect(wsDoc.plan).toBe('growth');
+      expect(wsDoc.currency).toBe('USD');
+    });
+  });
+
+  describe('verifyRazorpayPayment', () => {
+    it('should verify payment and activate workspace subscription', async () => {
+      process.env.MOCK_SERVICES = 'true';
+      const wsDoc: any = {
+        _id: 'ws_123456789',
+        plan: 'free',
+        save: jest.fn().mockResolvedValue(true),
+      };
+      mockWorkspaceModel.findById = jest.fn().mockResolvedValue(wsDoc);
+
+      const result = await service.verifyRazorpayPayment('ws_123456789', {
+        razorpay_order_id: 'order_test_123',
+        razorpay_payment_id: 'pay_test_456',
+        razorpay_signature: 'sig_test_789',
+        plan: 'growth',
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.transactionId).toBe('pay_test_456');
+      expect(result.currency).toBe('INR');
+      expect(wsDoc.plan).toBe('growth');
+      expect(wsDoc.subscriptionStatus).toBe('active');
+      expect(mockAuditLogModel.create).toHaveBeenCalled();
+    });
+  });
+
+  describe('verifyStripeSession', () => {
+    it('should verify session and upgrade workspace', async () => {
+      process.env.MOCK_SERVICES = 'true';
+      const wsDoc: any = {
+        _id: 'ws_123456789',
+        plan: 'free',
+        save: jest.fn().mockResolvedValue(true),
+      };
+      mockWorkspaceModel.findById = jest.fn().mockResolvedValue(wsDoc);
+
+      const result = await service.verifyStripeSession('ws_123456789', 'cs_mock_123');
+
+      expect(result.success).toBe(true);
+      expect(result.plan).toBe('growth');
+      expect(wsDoc.plan).toBe('growth');
+      expect(wsDoc.subscriptionStatus).toBe('active');
+    });
+  });
+
+  describe('cancelSubscription', () => {
+    it('should mark subscription to cancel at period end', async () => {
+      process.env.MOCK_SERVICES = 'true';
+      const wsDoc: any = {
+        _id: 'ws_123456789',
+        plan: 'growth',
+        subscriptionStatus: 'active',
+        save: jest.fn().mockResolvedValue(true),
+      };
+      mockWorkspaceModel.findById = jest.fn().mockResolvedValue(wsDoc);
+
+      const result = await service.cancelSubscription('ws_123456789', 'Testing cancellation');
+
+      expect(result.success).toBe(true);
+      expect(result.cancelAtPeriodEnd).toBe(true);
+      expect(wsDoc.cancelAtPeriodEnd).toBe(true);
+      expect(wsDoc.subscriptionStatus).toBe('canceling');
+    });
+  });
+
+  describe('getInvoiceById', () => {
+    it('should return itemized invoice details with seller information', async () => {
+      const wsDoc: any = {
+        _id: 'ws_123456789',
+        name: 'Acme Corp',
+        currency: 'INR',
+        billingDetails: {
+          companyName: 'Acme Technologies',
+          taxId: '07AAAAA1111A1Z1',
+        },
+      };
+      mockWorkspaceModel.findById = jest.fn().mockResolvedValue(wsDoc);
+      mockAuditLogModel.findOne = jest.fn().mockResolvedValue({
+        _id: '60c72b2f9b1d8b2bad000001',
+        createdAt: new Date(),
+        details: {
+          invoiceNumber: 'INV-2026-123456',
+          totalAmount: 4719,
+          baseAmount: 3999,
+          gstAmount: 720,
+          currency: 'INR',
+          plan: 'growth',
+        },
+      });
+
+      const invoice = await service.getInvoiceById('ws_123456789', 'INV-2026-123456');
+
+      expect(invoice.invoiceNumber).toBe('INV-2026-123456');
+      expect(invoice.seller.legalName).toBe('Aadi IT Services LLP');
+      expect(invoice.seller.hsnCode).toBe('998314');
+      expect(invoice.buyer.companyName).toBe('Acme Technologies');
+      expect(invoice.totalAmount).toBe(4719);
+    });
   });
 });

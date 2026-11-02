@@ -259,7 +259,7 @@ export default function CampaignsPage() {
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 700, color: 'var(--color-primary)' }}>
-                      <Icon name="sparkles" size={14} />
+                      <Icon name="sliders" size={14} />
                       <span>Template Customization & Dynamic Variables</span>
                     </div>
 

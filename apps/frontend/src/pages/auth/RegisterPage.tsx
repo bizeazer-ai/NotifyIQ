@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { apiClient, ApiError } from '../../lib/api/apiClient';
 import { AppFooter } from '../../components/layout/AppFooter';
+import { Icon } from '../../components/ui/Icon';
 
 interface RegisterResponse {
   message: string;
@@ -92,7 +93,7 @@ export default function RegisterPage() {
 
         {registeredEmail ? (
           <div className="auth-info-box">
-            <div className="auth-icon-circle">✉️</div>
+            <div className="auth-icon-circle"><Icon name="mail" size={24} /></div>
             <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: 700 }}>
               Verify your email address
             </h3>
@@ -196,7 +197,7 @@ export default function RegisterPage() {
                   marginTop: '-4px',
                 }}
               >
-                ✓ Tracking referral source: {referralSource}
+                Referral source: {referralSource}
               </div>
             )}
 

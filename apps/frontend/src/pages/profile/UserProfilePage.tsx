@@ -9,6 +9,7 @@ import { LoadingState } from '../../components/ui/LoadingState';
 import { ErrorAlert } from '../../components/ui/ErrorAlert';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { toast, swal } from '../../lib/alerts';
+import { CheckoutModal } from '../../components/billing/CheckoutModal';
 
 interface UserProfileData {
   id: string;
@@ -99,6 +100,7 @@ export default function UserProfilePage() {
 
   // Add Payment Modal State
   const [showAddMethodModal, setShowAddMethodModal] = useState(false);
+  const [showCheckoutModal, setShowCheckoutModal] = useState(false);
   const [methodType, setMethodType] = useState<'card' | 'upi'>('card');
   const [cardHolder, setCardHolder] = useState('');
   const [cardNumber, setCardNumber] = useState('');
@@ -405,28 +407,29 @@ export default function UserProfilePage() {
         className="section-card"
         style={{
           marginBottom: 'var(--space-6)',
-          background: 'linear-gradient(135deg, var(--color-surface) 0%, var(--color-surface-secondary) 100%)',
+          backgroundColor: 'var(--color-surface)',
           border: '1px solid var(--color-border)',
+          borderRadius: 'var(--radius-lg)',
           position: 'relative',
           overflow: 'hidden',
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-4)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-5)' }}>
-            {/* Avatar with Status Ring */}
+            {/* Avatar */}
             <div
               style={{
-                width: '72px',
-                height: '72px',
-                borderRadius: '50%',
-                background: 'linear-gradient(135deg, #2563eb, #7c3aed)',
-                color: '#ffffff',
+                width: '64px',
+                height: '64px',
+                borderRadius: 'var(--radius-md)',
+                backgroundColor: 'var(--color-surface-secondary)',
+                border: '1px solid var(--color-border-strong)',
+                color: 'var(--color-primary)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '26px',
-                fontWeight: 800,
-                boxShadow: '0 8px 20px rgba(37, 99, 235, 0.3)',
+                fontSize: '22px',
+                fontWeight: 700,
                 position: 'relative',
                 flexShrink: 0,
               }}
@@ -435,23 +438,16 @@ export default function UserProfilePage() {
               <div
                 style={{
                   position: 'absolute',
-                  bottom: '2px',
-                  right: '2px',
-                  width: '18px',
-                  height: '18px',
+                  bottom: '-3px',
+                  right: '-3px',
+                  width: '14px',
+                  height: '14px',
                   borderRadius: '50%',
-                  backgroundColor: profile?.isEmailVerified ? '#10b981' : '#f59e0b',
+                  backgroundColor: profile?.isEmailVerified ? 'var(--color-success)' : 'var(--color-warning)',
                   border: '2px solid var(--color-surface)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '9px',
-                  color: '#fff',
                 }}
                 title={profile?.isEmailVerified ? 'Email Verified' : 'Email Unverified'}
-              >
-                {profile?.isEmailVerified ? '✓' : '!'}
-              </div>
+              />
             </div>
 
             <div>
@@ -471,22 +467,22 @@ export default function UserProfilePage() {
                   {profile?.role === 'admin' ? 'Workspace Admin' : 'Agent User'}
                 </span>
                 {profile?.isEmailVerified ? (
-                  <span className="badge badge-success" style={{ fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                    <span>✓</span> Verified Email
+                  <span className="badge badge-success" style={{ fontSize: '11px' }}>
+                    Verified Email
                   </span>
                 ) : (
-                  <span className="badge badge-warning" style={{ fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                    <span>⚠️</span> Unverified Email
+                  <span className="badge badge-warning" style={{ fontSize: '11px' }}>
+                    Unverified Email
                   </span>
                 )}
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', marginTop: '6px', fontSize: 'var(--text-xs)', color: 'var(--color-foreground-secondary)', flexWrap: 'wrap' }}>
-                <span>✉️ {profile?.email || 'admin@bizeazer.in'}</span>
-                {profile?.phone && <span>📞 {profile.phone}</span>}
-                <span>🏢 {profile?.workspace?.name || currentWorkspace?.name || 'Workspace Portal'}</span>
+                <span>Email: <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-foreground)' }}>{profile?.email || 'admin@bizeazer.in'}</span></span>
+                {profile?.phone && <span>Phone: <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-foreground)' }}>{profile.phone}</span></span>}
+                <span>Workspace: {profile?.workspace?.name || currentWorkspace?.name || 'Workspace Portal'}</span>
                 {profile?.createdAt && (
-                  <span>📅 Member since {new Date(profile.createdAt).toLocaleDateString()}</span>
+                  <span>Member since {new Date(profile.createdAt).toLocaleDateString()}</span>
                 )}
               </div>
             </div>
@@ -592,8 +588,8 @@ export default function UserProfilePage() {
                         style={{ opacity: 0.7, cursor: 'not-allowed' }}
                       />
                       {profile?.isEmailVerified ? (
-                        <div style={{ display: 'flex', alignItems: 'center', padding: '0 12px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', borderRadius: 'var(--radius-md)', fontSize: '11px', fontWeight: 700 }}>
-                          ✓ VERIFIED
+                        <div style={{ display: 'flex', alignItems: 'center', padding: '0 12px', background: 'var(--color-success-muted)', color: 'var(--color-success)', borderRadius: 'var(--radius-md)', fontSize: '11px', fontWeight: 700 }}>
+                          VERIFIED
                         </div>
                       ) : (
                         <button
@@ -694,8 +690,8 @@ export default function UserProfilePage() {
                       { label: 'Outbound Webhooks & Developer API Keys', enabled: profile?.role === 'admin' },
                     ].map((perm, idx) => (
                       <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: 'var(--text-xs)' }}>
-                        <span style={{ color: perm.enabled ? 'var(--color-success)' : 'var(--color-foreground-muted)' }}>
-                          {perm.enabled ? '✓' : '✕'}
+                        <span className={`badge ${perm.enabled ? 'badge-success' : 'badge-neutral'}`} style={{ fontSize: '10px', padding: '1px 6px' }}>
+                          {perm.enabled ? 'ENABLED' : 'DISABLED'}
                         </span>
                         <span style={{ color: perm.enabled ? 'var(--color-foreground)' : 'var(--color-foreground-muted)' }}>
                           {perm.label}
@@ -847,7 +843,7 @@ export default function UserProfilePage() {
 
                     {confirmPassword && (
                       <div style={{ fontSize: '11px', marginTop: '4px', color: newPassword === confirmPassword ? 'var(--color-success)' : 'var(--color-warning)' }}>
-                        {newPassword === confirmPassword ? '✓ Passwords match' : '✕ Passwords do not match'}
+                        {newPassword === confirmPassword ? 'Passwords match' : 'Passwords do not match'}
                       </div>
                     )}
                   </div>
@@ -1051,10 +1047,24 @@ export default function UserProfilePage() {
                     </p>
                   </div>
 
-                  <button className="btn btn-primary btn-sm" onClick={() => setShowAddMethodModal(true)}>
-                    <Icon name="plus" size={14} />
-                    <span>Add Method</span>
-                  </button>
+                  <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+                    <button
+                      type="button"
+                      className="btn btn-primary btn-sm"
+                      onClick={() => setShowCheckoutModal(true)}
+                    >
+                      <Icon name="coins" size={14} />
+                      <span>Pay / Upgrade Plan</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-sm"
+                      onClick={() => setShowAddMethodModal(true)}
+                    >
+                      <Icon name="plus" size={14} />
+                      <span>Add Method</span>
+                    </button>
+                  </div>
                 </div>
 
                 {paymentMethods.length > 0 ? (
@@ -1280,7 +1290,7 @@ export default function UserProfilePage() {
 
           {/* TAB 5: NOTIFICATIONS & COMMUNICATION */}
           {/* {activeTab === 'notifications' && (
-            <div className="section-card" style={{ width: '100%', maxWidth: '800px' }}>
+            <div className="section-card" style={{ width: '100%', maxWidth: '100%' }}>
               <div style={{ marginBottom: 'var(--space-6)' }}>
                 <h3 className="section-title" style={{ fontSize: 'var(--text-lg)', marginBottom: 'var(--space-1)' }}>
                   <Icon name="bell" className="section-title-icon" style={{ color: 'var(--color-primary)' }} />
@@ -1347,7 +1357,7 @@ export default function UserProfilePage() {
                   Stored securely using industry-standard PCI tokenization.
                 </p>
               </div>
-              <button className="btn-close" onClick={() => setShowAddMethodModal(false)} title="Close">✕</button>
+              <button className="btn-close" onClick={() => setShowAddMethodModal(false)} title="Close"><Icon name="close" size={14} /></button>
             </div>
 
             <div style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-5)' }}>
@@ -1482,6 +1492,15 @@ export default function UserProfilePage() {
           </div>
         </div>
       )}
+      {/* Checkout with Payment Method Modal */}
+      <CheckoutModal
+        isOpen={showCheckoutModal}
+        onClose={() => setShowCheckoutModal(false)}
+        onSuccess={loadAllProfileData}
+        savedMethods={paymentMethods}
+        billingDetails={billingDetails}
+        initialGateway={currency === 'INR' ? 'razorpay' : 'stripe'}
+      />
     </div>
   );
 }

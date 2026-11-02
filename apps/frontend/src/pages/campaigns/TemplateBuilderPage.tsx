@@ -505,7 +505,7 @@ export default function TemplateBuilderPage() {
                 onClick={() => setPreviewTemplate(null)}
                 title="Close"
               >
-                ✕
+                <Icon name="close" size={14} />
               </button>
             </div>
 
@@ -571,7 +571,7 @@ export default function TemplateBuilderPage() {
                   }}
                 >
                   <span>{previewTemplate.footerText || ''}</span>
-                  <span style={{ fontSize: '10px' }}>12:45 PM ✓✓</span>
+                  <span style={{ fontSize: '10px' }}>12:45 PM</span>
                 </div>
 
                 {/* Action Buttons inside Bubble */}
@@ -604,7 +604,7 @@ export default function TemplateBuilderPage() {
                           border: '1px solid rgba(0, 168, 132, 0.25)',
                         }}
                       >
-                        {btn.type === 'URL' ? '🔗' : '💬'}
+                        {btn.type === 'URL' ? 'Link' : 'Reply'}
                         <span>{btn.text}</span>
                         {btn.url && (
                           <span style={{ fontSize: '10px', opacity: 0.7 }}>({btn.url})</span>

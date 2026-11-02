@@ -136,7 +136,7 @@ export default function ChatHistoryImportModal({
             </div>
           </div>
           <button type="button" className="btn-close" onClick={onClose} title="Close">
-            ✕
+            <Icon name="close" size={14} />
           </button>
         </div>
 
