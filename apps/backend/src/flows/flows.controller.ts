@@ -125,7 +125,7 @@ export class FlowsController {
       dummyContact,
       dto.inputMessage || 'Hello test simulation',
       dto.sentiment || 'neutral',
-      // true, // isSimulation
+      true, // isSimulation
     );
 
     return {

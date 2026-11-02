@@ -5,6 +5,7 @@ import { Icon } from '../../components/ui/Icon';
 import { LoadingState } from '../../components/ui/LoadingState';
 import { ErrorAlert } from '../../components/ui/ErrorAlert';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { toast, swal } from '../../lib/alerts';
 
 const NODE_TYPES = [
   { type: 'trigger', label: 'Trigger', color: 'var(--sentiment-positive)', description: 'Inbound Webhook / Keyword Event' },
@@ -147,7 +148,12 @@ export default function FlowBuilderPage() {
 
   const handleDeleteActiveFlow = async () => {
     if (!activeFlow || !activeFlow._id) return;
-    if (!window.confirm(`Are you sure you want to delete "${activeFlow.name}"?`)) return;
+    const confirmed = await swal.confirm(
+      'Delete Flow',
+      `Are you sure you want to delete automation flow "${activeFlow.name}"?`,
+      'Yes, Delete Flow',
+    );
+    if (!confirmed) return;
 
     try {
       setStatusMessage('Deleting flow...');
@@ -489,94 +495,115 @@ export default function FlowBuilderPage() {
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: 'var(--bg-primary)' }}>
-      {/* Top Header & Flow Management Selector */}
+      {/* Executive Studio Header & Flow Orchestration Toolbar */}
       <header
-        className="chat-header"
+        className="flow-studio-header"
         style={{
-          padding: '12px 24px',
+          padding: '12px 20px',
           flexShrink: 0,
-          borderBottom: '1px solid var(--border-color)',
-          background: 'var(--bg-secondary)',
+          borderBottom: '1px solid var(--color-border)',
+          backgroundColor: 'var(--color-surface)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           gap: '16px',
+          flexWrap: 'wrap',
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.03)',
+          minHeight: '64px',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1 }}>
+        {/* Left Side: Brand Icon, Flow Name & Meta Badges */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap', flex: '1 1 auto', minWidth: 0 }}>
+          {/* Studio Icon Badge */}
+          <div
+            style={{
+              width: '38px',
+              height: '38px',
+              borderRadius: 'var(--radius-md)',
+              backgroundColor: 'var(--color-primary-muted)',
+              color: 'var(--color-primary)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+              border: '1px solid var(--color-border)',
+            }}
+          >
+            <Icon name="fork" size={20} />
+          </div>
+
           {/* Flow Switcher Dropdown */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-secondary)' }}>Select Flow:</span>
             <select
               value={activeFlow?._id || ''}
               onChange={(e) => handleSelectFlow(e.target.value)}
+              className="form-input-styled"
               style={{
-                padding: '6px 12px',
-                borderRadius: '6px',
-                background: 'var(--bg-tertiary)',
-                border: '1px solid var(--border-color)',
-                color: 'var(--text-primary)',
-                fontWeight: 'bold',
-                fontSize: '13px',
-                outline: 'none',
+                height: '34px',
+                padding: '4px 12px',
+                fontSize: '12.5px',
+                fontWeight: 600,
+                maxWidth: '220px',
                 cursor: 'pointer',
               }}
+              title="Select workflow scenario"
             >
               {flows.map((f) => (
                 <option key={f._id} value={f._id}>
-                  {f.name} {f.active ? '🟢 (ACTIVE)' : '⚪ (Draft)'} (P:{(f as any).priority ?? 10})
+                  {f.name} {f.active ? '🟢 (Live)' : '⚪ (Draft)'}
                 </option>
               ))}
             </select>
-            <span
-              style={{
-                fontSize: '11px',
-                padding: '2px 8px',
-                borderRadius: '12px',
-                backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                color: 'var(--sentiment-positive)',
-                border: '1px solid rgba(16, 185, 129, 0.2)',
-                fontWeight: 'bold',
-              }}
-              title="Number of active workflows handling inbound traffic"
-            >
-              {flows.filter((f) => f.active).length} Active
-            </span>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <input
-              type="text"
-              value={activeFlow?.name || ''}
-              onChange={(e) => activeFlow && setActiveFlow({ ...activeFlow, name: e.target.value })}
-              style={{
-                fontSize: '16px',
-                fontWeight: 'bold',
-                color: 'var(--text-primary)',
-                background: 'transparent',
-                border: 'none',
-                outline: 'none',
-                width: '240px',
-              }}
-              placeholder="Flow Name..."
-            />
+          <div style={{ height: '24px', width: '1px', backgroundColor: 'var(--color-border)', flexShrink: 0 }} />
+
+          {/* Editable Flow Name Field */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <input
+                type="text"
+                value={activeFlow?.name || ''}
+                onChange={(e) => activeFlow && setActiveFlow({ ...activeFlow, name: e.target.value })}
+                className="form-input-styled"
+                style={{
+                  fontSize: '13.5px',
+                  fontWeight: 700,
+                  height: '34px',
+                  padding: '4px 10px',
+                  width: '210px',
+                }}
+                placeholder="Workflow name..."
+                title="Edit workflow name"
+              />
+            </div>
+
+            {/* Active / Draft Status Badge */}
             <span
-              style={{
-                fontSize: '11px',
-                background: activeFlow?.active ? 'rgba(0, 164, 189, 0.15)' : 'var(--bg-tertiary)',
-                color: activeFlow?.active ? 'var(--sentiment-positive)' : 'var(--text-muted)',
-                padding: '3px 10px',
-                borderRadius: '12px',
-                fontWeight: 'bold',
-                border: activeFlow?.active ? '1px solid var(--sentiment-positive)' : '1px solid var(--border-color)',
-              }}
+              className={`badge ${activeFlow?.active ? 'badge-success' : 'badge-neutral'}`}
+              style={{ fontSize: '10px', padding: '4px 8px' }}
             >
-              {activeFlow?.active ? 'LIVE ACTIVE' : 'INACTIVE DRAFT'}
+              <Icon name={activeFlow?.active ? 'check' : 'alert'} size={10} />
+              <span>{activeFlow?.active ? 'ACTIVE' : 'DRAFT'}</span>
             </span>
 
-            {/* Priority Selector */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginLeft: '8px' }}>
-              <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600 }}>Priority:</span>
+            {/* Priority Pill */}
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                padding: '3px 8px',
+                borderRadius: 'var(--radius-sm)',
+                backgroundColor: 'var(--color-surface-secondary)',
+                border: '1px solid var(--color-border)',
+                fontSize: '11px',
+                fontWeight: 600,
+                color: 'var(--color-foreground-secondary)',
+              }}
+              title="Execution priority (1 to 100). Higher priority flows trigger first when multiple trigger criteria match."
+            >
+              <span>Priority:</span>
               <input
                 type="number"
                 min="1"
@@ -588,126 +615,102 @@ export default function FlowBuilderPage() {
                     setActiveFlow({ ...activeFlow, priority: val } as any);
                   }
                 }}
-                title="Flow execution priority (Higher priority runs first when keywords match)"
                 style={{
-                  width: '48px',
-                  padding: '3px 6px',
-                  fontSize: '12px',
-                  fontWeight: 'bold',
-                  background: 'var(--bg-tertiary)',
-                  border: '1px solid var(--border-color)',
-                  color: 'var(--text-primary)',
-                  borderRadius: '4px',
+                  width: '32px',
+                  padding: '0 2px',
+                  fontSize: '11.5px',
+                  fontWeight: 700,
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--color-primary)',
                   textAlign: 'center',
+                  outline: 'none',
                 }}
               />
             </div>
           </div>
         </div>
 
-        {/* Action Controls */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        {/* Right Side: Studio Action Toolbar */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
           {statusMessage && (
-            <span style={{ fontSize: '13px', color: 'var(--accent-light)', fontWeight: 600 }}>{statusMessage}</span>
+            <span
+              className="badge badge-primary"
+              style={{
+                fontSize: '11px',
+                padding: '4px 10px',
+                animation: 'pulse 1.5s infinite',
+              }}
+            >
+              {statusMessage}
+            </span>
           )}
 
+          {/* Test Simulator Toggle */}
           <button
+            type="button"
+            className={`btn btn-sm ${showSimulator ? 'btn-primary' : 'btn-secondary'}`}
             onClick={() => setShowSimulator(!showSimulator)}
-            style={{
-              padding: '7px 12px',
-              borderRadius: '6px',
-              fontSize: '12px',
-              fontWeight: 'bold',
-              background: showSimulator ? 'var(--accent)' : 'var(--bg-tertiary)',
-              color: showSimulator ? '#fff' : 'var(--text-primary)',
-              border: '1px solid var(--border-color)',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-            }}
+            title="Toggle Interactive Simulation Sandbox"
           >
-            <Icon name="sparkles" />
-            <span>{showSimulator ? 'Close Simulator' : 'Test Flow Simulator'}</span>
+            <Icon name="sparkles" size={13} />
+            <span>{showSimulator ? 'Close Simulator' : 'Test Flow'}</span>
           </button>
 
+          {/* Active / Inactive Toggle */}
           <button
+            type="button"
+            className={`btn btn-sm ${activeFlow?.active ? 'btn-secondary' : 'btn-primary'}`}
             onClick={handleToggleActive}
-            style={{
-              padding: '7px 14px',
-              borderRadius: '6px',
-              fontSize: '12px',
-              fontWeight: 'bold',
-              cursor: 'pointer',
-              background: activeFlow?.active ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.15)',
-              color: activeFlow?.active ? 'var(--sentiment-urgent)' : 'var(--sentiment-positive)',
-              border: '1px solid var(--border-color)',
-            }}
+            title={activeFlow?.active ? 'Pause this workflow' : 'Activate this workflow for live messages'}
           >
-            {activeFlow?.active ? 'Deactivate Flow' : 'Set as Active Flow'}
+            <Icon name={activeFlow?.active ? 'pause' : 'play'} size={12} />
+            <span>{activeFlow?.active ? 'Pause Flow' : 'Activate'}</span>
           </button>
 
+          {/* New Flow */}
           <button
+            type="button"
+            className="btn btn-secondary btn-sm"
             onClick={handleCreateNewFlow}
-            style={{
-              padding: '7px 12px',
-              borderRadius: '6px',
-              fontSize: '12px',
-              fontWeight: 'bold',
-              background: 'var(--bg-tertiary)',
-              color: 'var(--text-primary)',
-              border: '1px solid var(--border-color)',
-              cursor: 'pointer',
-            }}
+            title="Create a new workflow canvas"
           >
-            + New
+            <Icon name="plus" size={12} />
+            <span>New</span>
           </button>
 
+          {/* Duplicate Flow */}
           <button
+            type="button"
+            className="btn btn-secondary btn-sm"
             onClick={handleDuplicateFlow}
-            style={{
-              padding: '7px 12px',
-              borderRadius: '6px',
-              fontSize: '12px',
-              fontWeight: 'bold',
-              background: 'var(--bg-tertiary)',
-              color: 'var(--text-primary)',
-              border: '1px solid var(--border-color)',
-              cursor: 'pointer',
-            }}
+            title="Duplicate current workflow canvas"
           >
-            Duplicate
+            <Icon name="copy" size={12} />
+            <span>Duplicate</span>
           </button>
 
+          {/* Delete Flow */}
           <button
+            type="button"
+            className="btn btn-danger btn-sm btn-icon"
             onClick={handleDeleteActiveFlow}
-            style={{
-              padding: '7px 12px',
-              borderRadius: '6px',
-              fontSize: '12px',
-              fontWeight: 'bold',
-              background: 'rgba(239, 68, 68, 0.1)',
-              color: 'var(--sentiment-urgent)',
-              border: '1px solid rgba(239, 68, 68, 0.2)',
-              cursor: 'pointer',
-            }}
+            title="Delete this workflow"
           >
-            Delete
+            <Icon name="trash" size={13} />
           </button>
 
+          <div style={{ height: '24px', width: '1px', backgroundColor: 'var(--color-border)', margin: '0 4px' }} />
+
+          {/* Save & Deploy Flow */}
           <button
-            className="send-btn"
-            style={{
-              width: 'auto',
-              padding: '8px 18px',
-              borderRadius: '6px',
-              fontSize: '13px',
-              fontWeight: 'bold',
-              cursor: 'pointer',
-            }}
+            type="button"
+            className="btn btn-primary btn-sm"
             onClick={handleSaveFlow}
+            title="Save workflow and commit graph changes"
           >
-            Save Flow
+            <Icon name="check" size={14} />
+            <span>Save Flow</span>
           </button>
         </div>
       </header>
@@ -1388,7 +1391,7 @@ export default function FlowBuilderPage() {
               <Icon name="sparkles" style={{ color: 'var(--accent-light)' }} />
               <span>Interactive Flow Execution Simulator</span>
             </h4>
-            <button onClick={() => setShowSimulator(false)} style={{ border: 'none', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', fontWeight: 'bold' }}>✕</button>
+            <button onClick={() => setShowSimulator(false)} className="btn-close" title="Close">✕</button>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>

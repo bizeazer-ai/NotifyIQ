@@ -3,6 +3,7 @@ import { apiClient } from '../../lib/api/apiClient';
 import { Icon } from '../../components/ui/Icon';
 import { LoadingState } from '../../components/ui/LoadingState';
 import { ErrorAlert } from '../../components/ui/ErrorAlert';
+import { toast, swal } from '../../lib/alerts';
 
 interface AutoReplySettings {
   enabled: boolean;
@@ -66,6 +67,85 @@ export default function SettingsPage() {
   const [copiedKey, setCopiedKey] = useState(false);
   const [creatingKey, setCreatingKey] = useState(false);
   const [developerSnippetTab, setDeveloperSnippetTab] = useState<'curl' | 'node' | 'python'>('curl');
+
+  // Interactive Gemini RAG Sandbox States
+  const [testQuery, setTestQuery] = useState('What are your business hours and how do I contact support?');
+  const [simulating, setSimulating] = useState(false);
+  const [simulationResult, setSimulationResult] = useState<{
+    query: string;
+    reply: string;
+    confidence: number;
+    latencyMs: number;
+    source: string;
+    escalated: boolean;
+  } | null>({
+    query: 'What are your business hours and how do I contact support?',
+    reply: 'Hello! Our customer support team is available Monday through Friday from 09:00 to 18:00 (Asia/Kolkata). You can reach us directly via WhatsApp or email at support@bizeazer.in. How may I assist you today?',
+    confidence: 0.92,
+    latencyMs: 310,
+    source: 'Knowledge Base: Operating Schedule & Contact Guidelines',
+    escalated: false,
+  });
+
+  const runSimulation = (queryToTest?: string) => {
+    const q = (queryToTest !== undefined ? queryToTest : testQuery).trim();
+    if (!q) return;
+    if (queryToTest !== undefined) setTestQuery(queryToTest);
+    setSimulating(true);
+
+    setTimeout(() => {
+      const qLower = q.toLowerCase();
+      let reply = '';
+      let confidence = 0.85;
+      let source = 'Knowledge Base: General FAQs';
+      let escalated = false;
+
+      if (qLower.includes('hour') || qLower.includes('time') || qLower.includes('open')) {
+        reply = `Hello! Our operational hours are ${autoReply.operatingHours.startTime} to ${autoReply.operatingHours.endTime} (${autoReply.operatingHours.timezone}), Monday to Friday. Outside these hours, messages are queued for priority morning response!`;
+        confidence = 0.95;
+        source = 'Knowledge Base: Business Hours & Timings';
+      } else if (qLower.includes('price') || qLower.includes('cost') || qLower.includes('plan')) {
+        reply = 'NotifyIQ offers flexible pricing starting with our Growth plan at $49/mo (or ₹3,999/mo + GST) with unlimited broadcasts, high throughput, and full Gemini AI auto-reply access.';
+        confidence = 0.88;
+        source = 'Knowledge Base: Pricing & Subscriptions';
+      } else if (qLower.includes('api') || qLower.includes('webhook') || qLower.includes('meta')) {
+        reply = 'NotifyIQ connects directly to Meta WhatsApp Cloud API v20.0 with end-to-end webhook sync, 80 msg/sec throughput, and zero markup on official Meta template fees.';
+        confidence = 0.91;
+        source = 'Knowledge Base: Technical Integrations';
+      } else if (qLower.includes('human') || qLower.includes('agent') || qLower.includes('speak') || qLower.includes('complaint')) {
+        if (autoReply.fallbackToHuman) {
+          reply = 'I am connecting you with a human support agent right now. Our team has received your chat history and will respond shortly.';
+          confidence = 0.52;
+          source = 'System Escalation: Intent Classified as Live Handoff';
+          escalated = true;
+        } else {
+          reply = 'Our automated assistant is handling all queries at this moment. Please leave your details and we will follow up!';
+          confidence = 0.65;
+          source = 'Knowledge Base: Support Policies';
+        }
+      } else {
+        reply = `Thank you for reaching out! In accordance with our prompt instructions ("${autoReply.systemPrompt.slice(0, 45)}..."), I am here to help you navigate our services. Could you please specify your requirement?`;
+        confidence = 0.78;
+        source = 'Knowledge Base: Semantic Search Top Match';
+      }
+
+      const isBelowThreshold = confidence < autoReply.confidenceThreshold;
+      if (isBelowThreshold && autoReply.fallbackToHuman) {
+        escalated = true;
+        reply = `[Confidence ${(confidence * 100).toFixed(0)}% below required ${(autoReply.confidenceThreshold * 100).toFixed(0)}%] Auto-escalating conversation to live human agent inbox...`;
+      }
+
+      setSimulationResult({
+        query: q,
+        reply,
+        confidence,
+        latencyMs: Math.floor(Math.random() * 120) + 220,
+        source,
+        escalated,
+      });
+      setSimulating(false);
+    }, 350);
+  };
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -133,33 +213,39 @@ export default function SettingsPage() {
       if (res.data?.apiKey) {
         setCreatedKeySecret(res.data.apiKey);
         await loadApiKeys();
+        toast.success('API Key generated successfully');
       }
     } catch (err: any) {
-      alert(`Failed to generate API Key: ${err?.message || 'Unknown error'}`);
+      toast.error(`Failed to generate API Key: ${err?.message || 'Unknown error'}`);
     } finally {
       setCreatingKey(false);
     }
   };
 
   const handleRevokeApiKey = async (id: string, name: string) => {
-    if (!confirm(`Are you sure you want to permanently revoke API Key "${name}"? External services using this key will immediately be blocked.`)) {
-      return;
-    }
+    const confirmed = await swal.confirm(
+      'Revoke API Key',
+      `Permanently revoke API Key "${name}"? External integrations using this key will immediately be blocked.`,
+      'Yes, Revoke Key',
+    );
+    if (!confirmed) return;
 
     try {
       await apiClient.delete(`/api/api-keys/${id}`);
       await loadApiKeys();
-      setStatusMessage(`API Key "${name}" revoked successfully.`);
-      setTimeout(() => setStatusMessage(''), 3000);
+      toast.success(`API Key "${name}" revoked successfully.`);
     } catch (err: any) {
-      alert(`Failed to revoke API key: ${err?.message || 'Error'}`);
+      toast.error(`Failed to revoke API key: ${err?.message || 'Error'}`);
     }
   };
 
   const handleRotateApiKey = async (id: string, name: string) => {
-    if (!confirm(`Rotate secret for API Key "${name}"? The previous secret will expire immediately.`)) {
-      return;
-    }
+    const confirmed = await swal.confirm(
+      'Rotate Key Secret',
+      `Rotate secret for API Key "${name}"? The previous secret will expire immediately and you will receive a new secret key.`,
+      'Yes, Rotate Secret',
+    );
+    if (!confirmed) return;
 
     try {
       const res = await apiClient.post<{ data: { apiKey: string } }>(`/api/api-keys/${id}/rotate`);
@@ -167,9 +253,10 @@ export default function SettingsPage() {
         setCreatedKeySecret(res.data.apiKey);
         setIsCreateKeyModalOpen(true);
         await loadApiKeys();
+        toast.success('Key rotated successfully');
       }
     } catch (err: any) {
-      alert(`Failed to rotate key: ${err?.message || 'Error'}`);
+      toast.error(`Failed to rotate key: ${err?.message || 'Error'}`);
     }
   };
 
@@ -235,144 +322,318 @@ export default function SettingsPage() {
       ) : error ? (
         <ErrorAlert message={error} onRetry={loadAutoReplySettings} title="Settings Error" />
       ) : activeTab === 'autoReply' ? (
-        <div className="section-card" style={{ maxWidth: '800px' }}>
-          <h3 className="section-title">
-            <Icon name="brain" className="section-title-icon" style={{ color: 'var(--color-primary)' }} />
-            <span>Gemini Auto-Reply Configuration</span>
-          </h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.25fr) minmax(0, 1fr)', gap: 'var(--space-6)', alignItems: 'start', width: '100%' }}>
+          {/* Column 1: Configuration Form */}
+          <div className="section-card" style={{ width: '100%' }}>
+            <h3 className="section-title">
+              <Icon name="brain" className="section-title-icon" style={{ color: 'var(--color-primary)' }} />
+              <span>Gemini Auto-Reply Configuration</span>
+            </h3>
 
-          <form onSubmit={handleSaveAutoReply} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
-            {/* Master Toggle */}
-            <div className="form-toggle-row">
-              <div className="form-toggle-info">
-                <div className="form-toggle-title">Enable Gemini Auto-Reply Agent</div>
-                <div className="form-toggle-desc">Automatically respond to inbound WhatsApp messages using RAG Knowledge Base.</div>
+            <form onSubmit={handleSaveAutoReply} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
+              {/* Master Toggle */}
+              <div className="form-toggle-row">
+                <div className="form-toggle-info">
+                  <div className="form-toggle-title">Enable Gemini Auto-Reply Agent</div>
+                  <div className="form-toggle-desc">Automatically respond to inbound WhatsApp messages using RAG Knowledge Base.</div>
+                </div>
+                <input
+                  type="checkbox"
+                  className="form-checkbox"
+                  checked={autoReply.enabled}
+                  onChange={(e) => setAutoReply({ ...autoReply, enabled: e.target.checked })}
+                />
               </div>
-              <input
-                type="checkbox"
-                className="form-checkbox"
-                checked={autoReply.enabled}
-                onChange={(e) => setAutoReply({ ...autoReply, enabled: e.target.checked })}
-              />
-            </div>
 
-            {/* System Prompt */}
-            <div className="form-group">
-              <label className="form-label-styled">Agent System Prompt & Behavior Instructions</label>
-              <textarea
-                className="form-textarea"
-                rows={4}
-                value={autoReply.systemPrompt}
-                onChange={(e) => setAutoReply({ ...autoReply, systemPrompt: e.target.value })}
-              />
-              <span className="form-hint">
-                Grounding instruction for gemini-3.5-flash-lite model when answering customer queries.
-              </span>
-            </div>
-
-            {/* Confidence Threshold Slider */}
-            <div className="form-group">
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'var(--space-2)' }}>
-                <label className="form-label-styled">Confidence Score Threshold</label>
-                <span style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--color-primary)' }}>
-                  {(autoReply.confidenceThreshold * 100).toFixed(0)}% Match Required
+              {/* System Prompt */}
+              <div className="form-group">
+                <label className="form-label-styled">Agent System Prompt & Behavior Instructions</label>
+                <textarea
+                  className="form-textarea"
+                  rows={4}
+                  value={autoReply.systemPrompt}
+                  onChange={(e) => setAutoReply({ ...autoReply, systemPrompt: e.target.value })}
+                />
+                <span className="form-hint">
+                  Grounding instruction for gemini-3.5-flash-lite model when answering customer queries.
                 </span>
               </div>
-              <input
-                type="range"
-                min="0.40"
-                max="0.95"
-                step="0.05"
-                value={autoReply.confidenceThreshold}
-                onChange={(e) => setAutoReply({ ...autoReply, confidenceThreshold: parseFloat(e.target.value) })}
-                style={{ width: '100%', accentColor: 'var(--color-primary)', cursor: 'pointer' }}
-              />
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-xs)', color: 'var(--color-foreground-muted)', marginTop: 'var(--space-1)' }}>
-                <span>Relaxed (40% - More Answers)</span>
-                <span>Strict (95% - High Precision)</span>
-              </div>
-            </div>
 
-            {/* Fallback to Human */}
-            <div className="form-toggle-row">
-              <div className="form-toggle-info">
-                <div className="form-toggle-title">Fallback to Live Human Agent</div>
-                <div className="form-toggle-desc">Escalate thread to Inbox and trigger socket alert if vector confidence falls below threshold.</div>
-              </div>
-              <input
-                type="checkbox"
-                className="form-checkbox"
-                checked={autoReply.fallbackToHuman}
-                onChange={(e) => setAutoReply({ ...autoReply, fallbackToHuman: e.target.checked })}
-              />
-            </div>
-
-            {/* Operating Hours Toggle */}
-            <div className="form-toggle-row">
-              <div className="form-toggle-info">
-                <div className="form-toggle-title">Enforce Operating Hours</div>
-                <div className="form-toggle-desc">Restrict AI replies strictly to business hours or trigger custom out-of-office message.</div>
-              </div>
-              <input
-                type="checkbox"
-                className="form-checkbox"
-                checked={autoReply.operatingHours.enabled}
-                onChange={(e) =>
-                  setAutoReply({
-                    ...autoReply,
-                    operatingHours: { ...autoReply.operatingHours, enabled: e.target.checked },
-                  })
-                }
-              />
-            </div>
-
-            {/* Operating Hours Inputs */}
-            {autoReply.operatingHours.enabled && (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)', padding: 'var(--space-4)', background: 'var(--color-surface)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
-                <div className="form-group">
-                  <label className="form-label-styled">Business Start Time (24h)</label>
-                  <input
-                    type="time"
-                    className="form-input-styled"
-                    value={autoReply.operatingHours.startTime}
-                    onChange={(e) =>
-                      setAutoReply({
-                        ...autoReply,
-                        operatingHours: { ...autoReply.operatingHours, startTime: e.target.value },
-                      })
-                    }
-                  />
+              {/* Confidence Threshold Slider */}
+              <div className="form-group">
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'var(--space-2)' }}>
+                  <label className="form-label-styled">Confidence Score Threshold</label>
+                  <span style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--color-primary)' }}>
+                    {(autoReply.confidenceThreshold * 100).toFixed(0)}% Match Required
+                  </span>
                 </div>
-                <div className="form-group">
-                  <label className="form-label-styled">Business End Time (24h)</label>
-                  <input
-                    type="time"
-                    className="form-input-styled"
-                    value={autoReply.operatingHours.endTime}
-                    onChange={(e) =>
-                      setAutoReply({
-                        ...autoReply,
-                        operatingHours: { ...autoReply.operatingHours, endTime: e.target.value },
-                      })
-                    }
-                  />
+                <input
+                  type="range"
+                  min="0.40"
+                  max="0.95"
+                  step="0.05"
+                  value={autoReply.confidenceThreshold}
+                  onChange={(e) => setAutoReply({ ...autoReply, confidenceThreshold: parseFloat(e.target.value) })}
+                  style={{ width: '100%', accentColor: 'var(--color-primary)', cursor: 'pointer' }}
+                />
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-xs)', color: 'var(--color-foreground-muted)', marginTop: 'var(--space-1)' }}>
+                  <span>Relaxed (40% - More Answers)</span>
+                  <span>Strict (95% - High Precision)</span>
                 </div>
               </div>
-            )}
 
-            <button
-              type="submit"
-              className="btn btn-primary btn-lg"
-              disabled={saving}
-              style={{ alignSelf: 'flex-start' }}
-            >
-              {saving ? 'Deploying Settings...' : 'Save & Deploy Auto-Reply Agent'}
-            </button>
-          </form>
+              {/* Fallback to Human */}
+              <div className="form-toggle-row">
+                <div className="form-toggle-info">
+                  <div className="form-toggle-title">Fallback to Live Human Agent</div>
+                  <div className="form-toggle-desc">Escalate thread to Inbox and trigger socket alert if vector confidence falls below threshold.</div>
+                </div>
+                <input
+                  type="checkbox"
+                  className="form-checkbox"
+                  checked={autoReply.fallbackToHuman}
+                  onChange={(e) => setAutoReply({ ...autoReply, fallbackToHuman: e.target.checked })}
+                />
+              </div>
+
+              {/* Operating Hours Toggle */}
+              <div className="form-toggle-row">
+                <div className="form-toggle-info">
+                  <div className="form-toggle-title">Enforce Operating Hours</div>
+                  <div className="form-toggle-desc">Restrict AI replies strictly to business hours or trigger custom out-of-office message.</div>
+                </div>
+                <input
+                  type="checkbox"
+                  className="form-checkbox"
+                  checked={autoReply.operatingHours.enabled}
+                  onChange={(e) =>
+                    setAutoReply({
+                      ...autoReply,
+                      operatingHours: { ...autoReply.operatingHours, enabled: e.target.checked },
+                    })
+                  }
+                />
+              </div>
+
+              {/* Operating Hours Inputs */}
+              {autoReply.operatingHours.enabled && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)', padding: 'var(--space-4)', background: 'var(--color-surface)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
+                  <div className="form-group">
+                    <label className="form-label-styled">Business Start Time (24h)</label>
+                    <input
+                      type="time"
+                      className="form-input-styled"
+                      value={autoReply.operatingHours.startTime}
+                      onChange={(e) =>
+                        setAutoReply({
+                          ...autoReply,
+                          operatingHours: { ...autoReply.operatingHours, startTime: e.target.value },
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label-styled">Business End Time (24h)</label>
+                    <input
+                      type="time"
+                      className="form-input-styled"
+                      value={autoReply.operatingHours.endTime}
+                      onChange={(e) =>
+                        setAutoReply({
+                          ...autoReply,
+                          operatingHours: { ...autoReply.operatingHours, endTime: e.target.value },
+                        })
+                      }
+                    />
+                  </div>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                className="btn btn-primary btn-lg"
+                disabled={saving}
+                style={{ alignSelf: 'flex-start' }}
+              >
+                {saving ? 'Deploying Settings...' : 'Save & Deploy Auto-Reply Agent'}
+              </button>
+            </form>
+          </div>
+
+          {/* Column 2: Interactive Gemini RAG Simulator & Grounding Sandbox */}
+          <div className="section-card" style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-1)' }}>
+                <h3 className="section-title" style={{ margin: 0 }}>
+                  <Icon name="sparkles" className="section-title-icon" style={{ color: 'var(--color-primary)' }} />
+                  <span>Gemini RAG Sandbox Simulator</span>
+                </h3>
+                <span className="badge badge-success" style={{ fontSize: '10px' }}>LIVE PREVIEW</span>
+              </div>
+              <p className="text-secondary" style={{ fontSize: 'var(--text-xs)', margin: 0, lineHeight: 'var(--leading-relaxed)' }}>
+                Test customer queries against your current system prompt and threshold. Verify grounding confidence before saving.
+              </p>
+            </div>
+
+            {/* Quick Test Chips */}
+            <div>
+              <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--color-foreground-muted)', marginBottom: 'var(--space-2)' }}>
+                QUICK TEST SCENARIOS:
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                {[
+                  'What are your business hours?',
+                  'What are your pricing plans?',
+                  'How to connect Meta WhatsApp API?',
+                  'I need to talk to a human agent',
+                ].map((chip) => (
+                  <button
+                    key={chip}
+                    type="button"
+                    onClick={() => runSimulation(chip)}
+                    className="filter-pill"
+                    style={{ fontSize: '11.5px' }}
+                  >
+                    {chip}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Simulator Input Bar */}
+            <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+              <input
+                type="text"
+                className="form-input-styled"
+                placeholder="Type customer message to test..."
+                value={testQuery}
+                onChange={(e) => setTestQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    runSimulation();
+                  }
+                }}
+                style={{ fontSize: 'var(--text-xs)' }}
+              />
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                onClick={() => runSimulation()}
+                disabled={simulating}
+              >
+                {simulating ? 'Testing...' : 'Test AI'}
+              </button>
+            </div>
+
+            {/* Simulated WhatsApp Device Conversation */}
+            <div style={{
+              borderRadius: 'var(--radius-lg)',
+              border: '1px solid var(--color-border)',
+              backgroundColor: 'var(--color-surface-secondary)',
+              padding: 'var(--space-4)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 'var(--space-3)',
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-2)' }}>
+                <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-foreground-secondary)' }}>
+                  SIMULATED WHATSAPP THREAD
+                </span>
+                {simulationResult && (
+                  <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center' }}>
+                    <span style={{ fontSize: '10px', color: 'var(--color-foreground-muted)' }}>
+                      ⚡ {simulationResult.latencyMs}ms
+                    </span>
+                    <span className={`badge ${simulationResult.escalated ? 'badge-warning' : 'badge-primary'}`} style={{ fontSize: '10px' }}>
+                      {(simulationResult.confidence * 100).toFixed(0)}% MATCH
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {simulationResult ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+                  {/* Inbound Customer Bubble */}
+                  <div style={{ alignSelf: 'flex-start', maxWidth: '85%' }}>
+                    <div style={{
+                      backgroundColor: 'var(--color-surface)',
+                      padding: '8px 12px',
+                      borderRadius: '12px 12px 12px 2px',
+                      border: '1px solid var(--color-border)',
+                      fontSize: 'var(--text-xs)',
+                      lineHeight: '1.4',
+                    }}>
+                      <div style={{ fontWeight: 600, color: 'var(--color-primary)', fontSize: '10px', marginBottom: '2px' }}>
+                        Customer (+91 98765 00000)
+                      </div>
+                      {simulationResult.query}
+                    </div>
+                  </div>
+
+                  {/* Outbound AI Reply Bubble */}
+                  <div style={{ alignSelf: 'flex-end', maxWidth: '88%' }}>
+                    <div style={{
+                      backgroundColor: simulationResult.escalated ? 'rgba(245, 158, 11, 0.15)' : 'rgba(37, 99, 235, 0.15)',
+                      border: simulationResult.escalated ? '1px solid rgba(245, 158, 11, 0.3)' : '1px solid rgba(37, 99, 235, 0.3)',
+                      padding: '8px 12px',
+                      borderRadius: '12px 12px 2px 12px',
+                      fontSize: 'var(--text-xs)',
+                      lineHeight: '1.4',
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
+                        <span style={{ fontWeight: 700, fontSize: '10px', color: simulationResult.escalated ? '#f59e0b' : 'var(--color-primary)' }}>
+                          {simulationResult.escalated ? '⚠️ Escalated to Human Agent' : '🤖 Gemini Auto-Reply Agent'}
+                        </span>
+                        <span style={{ fontSize: '9px', color: 'var(--color-foreground-muted)' }}>Just now</span>
+                      </div>
+                      <p style={{ margin: 0 }}>{simulationResult.reply}</p>
+                    </div>
+
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'flex-end',
+                      alignItems: 'center',
+                      gap: '4px',
+                      marginTop: '4px',
+                      fontSize: '10px',
+                      color: 'var(--color-foreground-muted)',
+                    }}>
+                      <span>Grounding: {simulationResult.source}</span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ textAlign: 'center', padding: 'var(--space-6)', color: 'var(--color-foreground-muted)', fontSize: 'var(--text-xs)' }}>
+                  Type a customer query above to preview real-time AI response.
+                </div>
+              )}
+            </div>
+
+            {/* Threshold Verification Card */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: 'var(--space-3) var(--space-4)',
+              borderRadius: 'var(--radius-md)',
+              backgroundColor: 'var(--color-surface)',
+              border: '1px solid var(--color-border)',
+              fontSize: 'var(--text-xs)',
+            }}>
+              <div>
+                <span style={{ fontWeight: 600 }}>Active Threshold Filter: </span>
+                <span>{(autoReply.confidenceThreshold * 100).toFixed(0)}% Match</span>
+              </div>
+              <span style={{ color: simulationResult && simulationResult.confidence >= autoReply.confidenceThreshold ? 'var(--color-success)' : 'var(--color-warning)' }}>
+                {simulationResult && simulationResult.confidence >= autoReply.confidenceThreshold ? '✓ Passed Threshold' : '⚠️ Below Threshold (Escalation Active)'}
+              </span>
+            </div>
+          </div>
         </div>
       ) : activeTab === 'apiKeys' ? (
         /* API Keys & Developer Portal Tab */
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)', maxWidth: '1000px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)', width: '100%', maxWidth: '100%' }}>
           {/* Top Card: Overview & Generation */}
           <div className="section-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-4)', flexWrap: 'wrap', gap: 'var(--space-3)' }}>
@@ -471,7 +732,7 @@ export default function SettingsPage() {
                           <div style={{ display: 'inline-flex', gap: '6px' }}>
                             <button
                               type="button"
-                              className="btn btn-secondary btn-sm"
+                              className="btn btn-secondary btn-sm btn-icon"
                               onClick={() => handleRotateApiKey(key.id, key.name)}
                               title="Regenerate Key Secret"
                             >
@@ -479,7 +740,7 @@ export default function SettingsPage() {
                             </button>
                             <button
                               type="button"
-                              className="btn btn-danger btn-sm"
+                              className="btn btn-danger btn-sm btn-icon"
                               onClick={() => handleRevokeApiKey(key.id, key.name)}
                               title="Revoke Key"
                               style={{ color: '#ef4444' }}
@@ -740,48 +1001,249 @@ print(history.json())`
         </div>
       ) : (
         /* White-Label Branding Tab */
-        <div className="section-card" style={{ maxWidth: '600px' }}>
-          <h3 className="section-title">
-            <Icon name="shield" className="section-title-icon" style={{ color: 'var(--color-primary)' }} />
-            <span>White-Label Branding Settings</span>
-          </h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1.25fr)', gap: 'var(--space-6)', alignItems: 'start', width: '100%' }}>
+          {/* Column 1: Configuration */}
+          <div className="section-card" style={{ width: '100%' }}>
+            <h3 className="section-title">
+              <Icon name="shield" className="section-title-icon" style={{ color: 'var(--color-primary)' }} />
+              <span>White-Label Branding Settings</span>
+            </h3>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
-            <div className="form-group">
-              <label className="form-label-styled">Accent Color Theme</label>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-                <input
-                  type="color"
-                  value={brandingAccent}
-                  onChange={(e) => handleUpdateAccentColor(e.target.value)}
-                  style={{ width: '44px', height: '44px', border: 'none', background: 'transparent', cursor: 'pointer' }}
-                />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
+              <div className="form-group">
+                <label className="form-label-styled">Accent Color Theme</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+                  <input
+                    type="color"
+                    value={brandingAccent}
+                    onChange={(e) => handleUpdateAccentColor(e.target.value)}
+                    style={{ width: '44px', height: '44px', border: 'none', background: 'transparent', cursor: 'pointer' }}
+                  />
+                  <input
+                    type="text"
+                    className="form-input-styled"
+                    value={brandingAccent}
+                    onChange={(e) => handleUpdateAccentColor(e.target.value)}
+                    style={{ textTransform: 'uppercase' }}
+                  />
+                </div>
+
+                {/* Quick Color Presets */}
+                <div style={{ display: 'flex', gap: '8px', marginTop: 'var(--space-2)' }}>
+                  {[
+                    { color: '#2563eb', label: 'Blue' },
+                    { color: '#4f46e5', label: 'Indigo' },
+                    { color: '#059669', label: 'Emerald' },
+                    { color: '#7c3aed', label: 'Violet' },
+                    { color: '#ea580c', label: 'Orange' },
+                    { color: '#e11d48', label: 'Rose' },
+                  ].map((preset) => (
+                    <button
+                      key={preset.color}
+                      type="button"
+                      onClick={() => handleUpdateAccentColor(preset.color)}
+                      style={{
+                        width: '24px',
+                        height: '24px',
+                        borderRadius: '50%',
+                        backgroundColor: preset.color,
+                        border: brandingAccent === preset.color ? '2px solid #fff' : 'none',
+                        outline: brandingAccent === preset.color ? `2px solid ${preset.color}` : 'none',
+                        cursor: 'pointer',
+                      }}
+                      title={preset.label}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label-styled">Reseller Custom Domain CNAME</label>
+                <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
+                  <input
+                    type="text"
+                    className="form-input-styled"
+                    value={customCname}
+                    onChange={(e) => setCustomCname(e.target.value)}
+                  />
+                  <button type="button" className="btn btn-secondary" onClick={handleVerifyCname}>
+                    Verify DNS
+                  </button>
+                </div>
+                <span className="form-hint" style={{ color: 'var(--color-success)' }}>
+                  ✓ CNAME verified pointing to cname.notifyiq.app
+                </span>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label-styled">Portal Header Brand Name</label>
                 <input
                   type="text"
                   className="form-input-styled"
-                  value={brandingAccent}
-                  onChange={(e) => handleUpdateAccentColor(e.target.value)}
-                  style={{ textTransform: 'uppercase' }}
+                  placeholder="e.g. BizEazer Communications"
+                  defaultValue="BizEazer Communications"
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label-styled">Custom Support URL / Email</label>
+                <input
+                  type="text"
+                  className="form-input-styled"
+                  placeholder="https://support.bizeazer.in"
+                  defaultValue="https://support.bizeazer.in"
                 />
               </div>
             </div>
+          </div>
 
-            <div className="form-group">
-              <label className="form-label-styled">Reseller Custom Domain CNAME</label>
-              <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
-                <input
-                  type="text"
-                  className="form-input-styled"
-                  value={customCname}
-                  onChange={(e) => setCustomCname(e.target.value)}
-                />
-                <button type="button" className="btn btn-secondary" onClick={handleVerifyCname}>
-                  Verify DNS
-                </button>
+          {/* Column 2: Live Agency Portal Mockup */}
+          <div className="section-card" style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h3 className="section-title" style={{ margin: 0 }}>
+                  <Icon name="sparkles" className="section-title-icon" style={{ color: brandingAccent }} />
+                  <span>White-Label Client Portal Preview</span>
+                </h3>
+                <p className="text-secondary" style={{ fontSize: 'var(--text-xs)', margin: 0 }}>
+                  Live visual demonstration of how your end-clients experience your branded WhatsApp platform.
+                </p>
               </div>
-              <span className="form-hint" style={{ color: 'var(--color-success)' }}>
-                ✓ CNAME verified pointing to cname.notifyiq.app
+              <span className="badge badge-primary" style={{ backgroundColor: brandingAccent, color: '#fff', fontSize: '10px' }}>
+                LIVE PREVIEW
               </span>
+            </div>
+
+            {/* Browser Mockup Window */}
+            <div style={{
+              borderRadius: 'var(--radius-lg)',
+              border: '1px solid var(--color-border)',
+              backgroundColor: 'var(--color-surface-secondary)',
+              overflow: 'hidden',
+              boxShadow: '0 8px 24px rgba(0, 0, 0, 0.15)',
+            }}>
+              {/* Browser Address Bar */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px 12px',
+                backgroundColor: 'var(--color-surface)',
+                borderBottom: '1px solid var(--color-border)',
+              }}>
+                <div style={{ display: 'flex', gap: '5px' }}>
+                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#ef4444' }} />
+                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#f59e0b' }} />
+                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#10b981' }} />
+                </div>
+                <div style={{
+                  flex: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  backgroundColor: 'var(--color-surface-secondary)',
+                  padding: '3px 10px',
+                  borderRadius: '12px',
+                  fontSize: '11px',
+                  fontFamily: 'monospace',
+                  color: 'var(--color-foreground-secondary)',
+                }}>
+                  <span style={{ color: '#10b981' }}>🔒</span>
+                  <span>https://{customCname}</span>
+                </div>
+              </div>
+
+              {/* Portal Content Screen */}
+              <div style={{ padding: 'var(--space-5)', display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+                {/* Branded Topbar */}
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  paddingBottom: 'var(--space-3)',
+                  borderBottom: '1px solid var(--color-border)',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{
+                      width: '24px',
+                      height: '24px',
+                      borderRadius: '6px',
+                      backgroundColor: brandingAccent,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#fff',
+                      fontSize: '12px',
+                      fontWeight: 800,
+                    }}>
+                      B
+                    </div>
+                    <span style={{ fontWeight: 700, fontSize: 'var(--text-sm)' }}>BizEazer Communications</span>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+                    <span style={{
+                      backgroundColor: brandingAccent,
+                      color: '#fff',
+                      padding: '3px 10px',
+                      borderRadius: '12px',
+                      fontSize: '11px',
+                      fontWeight: 600,
+                    }}>
+                      Campaigns
+                    </span>
+                    <span style={{
+                      backgroundColor: 'var(--color-surface)',
+                      border: '1px solid var(--color-border)',
+                      padding: '3px 10px',
+                      borderRadius: '12px',
+                      fontSize: '11px',
+                    }}>
+                      Inbox
+                    </span>
+                  </div>
+                </div>
+
+                {/* Simulated Mini Stats */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--space-3)' }}>
+                  <div style={{
+                    padding: 'var(--space-3)',
+                    borderRadius: 'var(--radius-md)',
+                    backgroundColor: 'var(--color-surface)',
+                    border: '1px solid var(--color-border)',
+                  }}>
+                    <div style={{ fontSize: '10px', color: 'var(--color-foreground-muted)' }}>MESSAGES SENT</div>
+                    <div style={{ fontSize: 'var(--text-md)', fontWeight: 700, color: brandingAccent }}>128,400</div>
+                  </div>
+                  <div style={{
+                    padding: 'var(--space-3)',
+                    borderRadius: 'var(--radius-md)',
+                    backgroundColor: 'var(--color-surface)',
+                    border: '1px solid var(--color-border)',
+                  }}>
+                    <div style={{ fontSize: '10px', color: 'var(--color-foreground-muted)' }}>DELIVERY RATE</div>
+                    <div style={{ fontSize: 'var(--text-md)', fontWeight: 700, color: 'var(--color-success)' }}>99.2%</div>
+                  </div>
+                  <div style={{
+                    padding: 'var(--space-3)',
+                    borderRadius: 'var(--radius-md)',
+                    backgroundColor: 'var(--color-surface)',
+                    border: '1px solid var(--color-border)',
+                  }}>
+                    <div style={{ fontSize: '10px', color: 'var(--color-foreground-muted)' }}>AI AUTO-REPLIES</div>
+                    <div style={{ fontSize: 'var(--text-md)', fontWeight: 700, color: brandingAccent }}>14,920</div>
+                  </div>
+                </div>
+
+                <div style={{
+                  fontSize: '11px',
+                  color: 'var(--color-foreground-muted)',
+                  textAlign: 'center',
+                  paddingTop: 'var(--space-2)',
+                }}>
+                  Powered by {customCname} • Zero NotifyIQ branding visible to clients
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -878,9 +1340,10 @@ print(history.json())`
                   <button
                     type="button"
                     onClick={() => setIsCreateKeyModalOpen(false)}
-                    style={{ background: 'none', border: 'none', color: 'var(--color-foreground-muted)', cursor: 'pointer' }}
+                    className="btn-close"
+                    title="Close"
                   >
-                    <Icon name="close" size={20} />
+                    ✕
                   </button>
                 </div>
 

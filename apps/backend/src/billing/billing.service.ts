@@ -309,4 +309,155 @@ export class BillingService {
       .sort({ createdAt: -1 })
       .exec();
   }
+
+  /**
+   * Retrieve workspace currency, billing details, and payment methods
+   */
+  async getBillingSettings(workspaceId: string): Promise<{
+    currency: string;
+    plan: string;
+    billingDetails: any;
+    paymentMethods: any[];
+  }> {
+    const workspace = await this.workspaceModel.findById(workspaceId);
+    if (!workspace) throw new NotFoundException('Workspace not found');
+
+    return {
+      currency: workspace.currency || 'INR',
+      plan: workspace.plan || 'free',
+      billingDetails: workspace.billingDetails || {
+        companyName: '',
+        taxId: '',
+        billingEmail: '',
+        phone: '',
+        addressLine1: '',
+        addressLine2: '',
+        city: '',
+        state: '',
+        postalCode: '',
+        country: 'India',
+      },
+      paymentMethods: workspace.paymentMethods || [],
+    };
+  }
+
+  /**
+   * Update currency & billing details / address
+   */
+  async updateBillingSettings(
+    workspaceId: string,
+    dto: { currency?: string; billingDetails?: any },
+  ): Promise<{
+    currency: string;
+    billingDetails: any;
+    paymentMethods: any[];
+  }> {
+    const workspace = await this.workspaceModel.findById(workspaceId);
+    if (!workspace) throw new NotFoundException('Workspace not found');
+
+    if (dto.currency && ['INR', 'USD', 'EUR', 'GBP'].includes(dto.currency)) {
+      workspace.currency = dto.currency;
+    }
+
+    if (dto.billingDetails) {
+      workspace.billingDetails = {
+        ...(workspace.billingDetails || {}),
+        ...dto.billingDetails,
+      };
+    }
+
+    await workspace.save();
+
+    return {
+      currency: workspace.currency,
+      billingDetails: workspace.billingDetails,
+      paymentMethods: workspace.paymentMethods || [],
+    };
+  }
+
+  /**
+   * Add a payment method (Card or UPI)
+   */
+  async addPaymentMethod(
+    workspaceId: string,
+    methodDto: {
+      type: 'card' | 'upi' | 'bank_transfer';
+      brand?: string;
+      last4?: string;
+      expiryMonth?: string;
+      expiryYear?: string;
+      upiId?: string;
+      holderName?: string;
+      isDefault?: boolean;
+    },
+  ): Promise<any[]> {
+    const workspace = await this.workspaceModel.findById(workspaceId);
+    if (!workspace) throw new NotFoundException('Workspace not found');
+
+    const paymentMethods = workspace.paymentMethods || [];
+    const isFirstMethod = paymentMethods.length === 0;
+    const isDefault = methodDto.isDefault || isFirstMethod;
+
+    if (isDefault) {
+      paymentMethods.forEach((m) => {
+        m.isDefault = false;
+      });
+    }
+
+    const newMethod = {
+      id: `pm_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      type: methodDto.type || 'card',
+      brand: methodDto.brand || 'Visa',
+      last4: methodDto.last4 || '4242',
+      expiryMonth: methodDto.expiryMonth || '12',
+      expiryYear: methodDto.expiryYear || '28',
+      upiId: methodDto.upiId || '',
+      holderName: methodDto.holderName || '',
+      isDefault,
+      createdAt: new Date(),
+    };
+
+    paymentMethods.push(newMethod);
+    workspace.paymentMethods = paymentMethods;
+    workspace.markModified('paymentMethods');
+    await workspace.save();
+
+    return workspace.paymentMethods;
+  }
+
+  /**
+   * Delete a saved payment method
+   */
+  async deletePaymentMethod(workspaceId: string, methodId: string): Promise<any[]> {
+    const workspace = await this.workspaceModel.findById(workspaceId);
+    if (!workspace) throw new NotFoundException('Workspace not found');
+
+    let methods = (workspace.paymentMethods || []).filter((m) => m.id !== methodId);
+    if (methods.length > 0 && !methods.some((m) => m.isDefault)) {
+      methods[0].isDefault = true;
+    }
+    workspace.paymentMethods = methods;
+    workspace.markModified('paymentMethods');
+    await workspace.save();
+
+    return workspace.paymentMethods;
+  }
+
+  /**
+   * Set default payment method
+   */
+  async setDefaultPaymentMethod(workspaceId: string, methodId: string): Promise<any[]> {
+    const workspace = await this.workspaceModel.findById(workspaceId);
+    if (!workspace) throw new NotFoundException('Workspace not found');
+
+    const methods = workspace.paymentMethods || [];
+    methods.forEach((m) => {
+      m.isDefault = m.id === methodId;
+    });
+    workspace.paymentMethods = methods;
+    workspace.markModified('paymentMethods');
+    await workspace.save();
+
+    return workspace.paymentMethods;
+  }
 }

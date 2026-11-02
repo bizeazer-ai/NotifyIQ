@@ -6,6 +6,9 @@ import ProtectedRoute from '../components/common/ProtectedRoute';
 // Lazy load pages
 const LoginPage = lazy(() => import('../pages/auth/LoginPage'));
 const RegisterPage = lazy(() => import('../pages/auth/RegisterPage'));
+const ForgotPasswordPage = lazy(() => import('../pages/auth/ForgotPasswordPage'));
+const ResetPasswordPage = lazy(() => import('../pages/auth/ResetPasswordPage'));
+const VerifyEmailPage = lazy(() => import('../pages/auth/VerifyEmailPage'));
 const InboxPage = lazy(() => import('../pages/dashboard/InboxPage'));
 const OverviewDashboardPage = lazy(() => import('../pages/dashboard/OverviewDashboardPage'));
 const ContactsPage = lazy(() => import('../pages/dashboard/ContactsPage'));
@@ -17,6 +20,7 @@ const KnowledgeBasePage = lazy(() => import('../pages/ai/KnowledgeBasePage'));
 const WabaProfilePage = lazy(() => import('../pages/settings/WabaProfilePage'));
 const WebhooksPage = lazy(() => import('../pages/settings/WebhooksPage'));
 const TemplateBuilderPage = lazy(() => import('../pages/campaigns/TemplateBuilderPage'));
+const UserProfilePage = lazy(() => import('../pages/profile/UserProfilePage'));
 const NotFoundPage = lazy(() => import('../pages/errors/NotFoundPage'));
 
 const AdminImpersonationPage = lazy(() => import('../pages/auth/AdminImpersonationPage'));
@@ -42,6 +46,30 @@ export const router = createBrowserRouter([
     element: (
       <Suspense fallback={<PageLoader />}>
         <RegisterPage />
+      </Suspense>
+    ),
+  },
+  {
+    path: '/forgot-password',
+    element: (
+      <Suspense fallback={<PageLoader />}>
+        <ForgotPasswordPage />
+      </Suspense>
+    ),
+  },
+  {
+    path: '/reset-password',
+    element: (
+      <Suspense fallback={<PageLoader />}>
+        <ResetPasswordPage />
+      </Suspense>
+    ),
+  },
+  {
+    path: '/verify-email',
+    element: (
+      <Suspense fallback={<PageLoader />}>
+        <VerifyEmailPage />
       </Suspense>
     ),
   },
@@ -122,6 +150,14 @@ export const router = createBrowserRouter([
             element: (
               <Suspense fallback={<PageLoader />}>
                 <KnowledgeBasePage />
+              </Suspense>
+            ),
+          },
+          {
+            path: '/profile',
+            element: (
+              <Suspense fallback={<PageLoader />}>
+                <UserProfilePage />
               </Suspense>
             ),
           },

@@ -1,6 +1,8 @@
 import { useEffect, useState, type FormEvent, type ChangeEvent } from 'react';
 import type { ContactContract as Contact } from '@notifyiq/schemas';
 import { apiClient } from '../../lib/api/apiClient';
+import { config } from '../../app/config';
+import { toast, swal } from '../../lib/alerts';
 import { Icon } from '../../components/ui/Icon';
 import { LoadingState } from '../../components/ui/LoadingState';
 import { ErrorAlert } from '../../components/ui/ErrorAlert';
@@ -69,7 +71,7 @@ export default function ContactsPage() {
       loadContacts();
       setTimeout(() => setStatusMessage(''), 3000);
     } catch (err: any) {
-      alert(`Error creating contact: ${err.message}`);
+      toast.error(err.message, 'Create Contact Failed');
     }
   };
 
@@ -95,7 +97,7 @@ export default function ContactsPage() {
         loadContacts();
         setTimeout(() => setStatusMessage(''), 3500);
       } catch (err: any) {
-        alert(`Import failed: ${err.message}`);
+        toast.error(err.message, 'CSV Import Failed');
       } finally {
         setImporting(false);
       }
@@ -103,9 +105,22 @@ export default function ContactsPage() {
     reader.readAsText(csvFile);
   };
 
+  const handleDownloadDemoCsv = () => {
+    const demoContent = `Name,Phone,Tag\nRahul Sharma,+919876543210,Lead\nPriya Patel,+919123456789,Wholesale\nJohn Smith,+14155552671,Enterprise\nAakash Verma,+919811223344,Customer\n`;
+    const blob = new Blob([demoContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'demo_contacts.csv';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    toast.success('Sample demo CSV downloaded! Fill it with your contacts.');
+  };
+
   const handleExportCsv = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/contacts/export`, {
+      const response = await fetch(`${config.apiUrl}/api/contacts/export`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('notifyiq_token')}`,
           'x-workspace-id': JSON.parse(localStorage.getItem('notifyiq_workspace') || '{}').id || '',
@@ -121,18 +136,23 @@ export default function ContactsPage() {
       a.click();
       a.remove();
     } catch (err: any) {
-      alert(`Export failed: ${err.message}`);
+      toast.error(err.message, 'Export Failed');
     }
   };
 
   const handleDelete = async (contactId: string, name: string) => {
-    if (!confirm(`Permanently delete "${name}" from contact directory?`)) return;
+    const confirmed = await swal.confirm(
+      'Delete Contact?',
+      `Are you sure you want to permanently delete "${name}" from contact directory?`,
+      'Yes, Delete',
+    );
+    if (!confirmed) return;
 
     try {
       await apiClient.delete(`/api/contacts/${contactId}`);
       loadContacts();
     } catch (err: any) {
-      alert(`Deletion failed: ${err.message}`);
+      toast.error(err.message, 'Deletion Failed');
     }
   };
 
@@ -354,8 +374,8 @@ export default function ContactsPage() {
           <div className="modal-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-5)' }}>
               <h3 className="modal-title" style={{ margin: 0 }}>Add Single Contact</h3>
-              <button className="btn btn-ghost btn-sm" onClick={() => setShowAddModal(false)}>
-                <Icon name="close" size={16} />
+              <button className="btn-close" onClick={() => setShowAddModal(false)} title="Close">
+                ✕
               </button>
             </div>
             <form onSubmit={handleCreateContact} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
@@ -425,8 +445,38 @@ export default function ContactsPage() {
           <div className="modal-card" style={{ maxWidth: '480px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-5)' }}>
               <h3 className="modal-title" style={{ margin: 0 }}>Bulk CSV Contact Import</h3>
-              <button className="btn btn-ghost btn-sm" onClick={() => setShowImportModal(false)}>
-                <Icon name="close" size={16} />
+              <button className="btn-close" onClick={() => setShowImportModal(false)} title="Close">
+                ✕
+              </button>
+            </div>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: 'var(--space-3) var(--space-4)',
+                backgroundColor: 'rgba(5, 150, 105, 0.08)',
+                border: '1px solid rgba(5, 150, 105, 0.2)',
+                borderRadius: 'var(--radius-md)',
+                marginBottom: 'var(--space-4)',
+              }}
+            >
+              <div>
+                <div style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--color-primary)' }}>
+                  Need formatting guidance?
+                </div>
+                <div style={{ fontSize: '11px', color: 'var(--color-foreground-muted)' }}>
+                  Download ready-to-use CSV template
+                </div>
+              </div>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={handleDownloadDemoCsv}
+                style={{ fontSize: '11px', whiteSpace: 'nowrap' }}
+              >
+                <Icon name="attachment" size={12} />
+                <span>Demo CSV</span>
               </button>
             </div>
             <p className="text-secondary" style={{ fontSize: 'var(--text-xs)', marginBottom: 'var(--space-4)', lineHeight: 'var(--leading-relaxed)' }}>

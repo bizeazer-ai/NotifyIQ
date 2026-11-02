@@ -135,8 +135,8 @@ export default function ChatHistoryImportModal({
               </p>
             </div>
           </div>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={onClose} style={{ padding: '4px' }}>
-            <Icon name="close" size={16} />
+          <button type="button" className="btn-close" onClick={onClose} title="Close">
+            ✕
           </button>
         </div>
 

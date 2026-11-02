@@ -13,6 +13,7 @@ import { useTranslation } from '../../../i18n';
 import { Icon } from '../../../components/ui/Icon';
 import { apiClient } from '../../../lib/api/apiClient';
 import { config } from '../../../app/config';
+import { toast, swal } from '../../../lib/alerts';
 import LeadDrawer from './LeadDrawer';
 
 function resolveMediaUrl(url?: string | null): string {
@@ -412,7 +413,7 @@ export default function ChatWindow({ onBackToList }: ChatWindowProps = {}) {
       setSelectedTemplate('');
       setTemplateModalData(null);
     } catch (err: any) {
-      alert(`Failed to send template message: ${err || 'Error'}`);
+      toast.error(`Failed to send template message: ${err || 'Error'}`);
     } finally {
       setSendingTemplate(false);
     }
@@ -490,7 +491,7 @@ export default function ChatWindow({ onBackToList }: ChatWindowProps = {}) {
 
     // Check Meta 24-hr customer care window
     if (!isWindowActive) {
-      alert(
+      toast.warning(
         'The 24-hour WhatsApp customer care window has expired for this contact. Meta prohibits sending free-form media outside this window. Please select an approved WhatsApp Template with a media header to re-engage.'
       );
       e.target.value = '';
@@ -523,7 +524,7 @@ export default function ChatWindow({ onBackToList }: ChatWindowProps = {}) {
     if (file.size > limit) {
       const limitMB = Math.round(limit / (1024 * 1024));
       const fileMB = (file.size / (1024 * 1024)).toFixed(1);
-      alert(
+      toast.warning(
         `File is too large (${fileMB} MB). WhatsApp Cloud API enforces a maximum limit of ${limitMB} MB for ${type} files. Please choose a smaller file.`
       );
       e.target.value = '';
@@ -558,7 +559,7 @@ export default function ChatWindow({ onBackToList }: ChatWindowProps = {}) {
     }
 
     if (file.size > 25 * 1024 * 1024) {
-      alert('File exceeds maximum 25MB limit. Please choose a smaller file.');
+      toast.warning('File exceeds maximum 25MB limit. Please choose a smaller file.');
       e.target.value = '';
       return;
     }
@@ -576,7 +577,7 @@ export default function ChatWindow({ onBackToList }: ChatWindowProps = {}) {
       const msg = is413
         ? 'File exceeds the maximum allowed upload size. WhatsApp limits: 5MB for images, 16MB for audio/video, 25MB for documents.'
         : (err?.response?.data?.message || err?.message || 'Upload error');
-      alert(`Failed to upload header media: ${msg}`);
+      toast.error(`Failed to upload header media: ${msg}`);
     }
 
     e.target.value = '';
@@ -630,19 +631,24 @@ export default function ChatWindow({ onBackToList }: ChatWindowProps = {}) {
       const errorMsg = is413
         ? 'File exceeds the maximum allowed upload size. WhatsApp allows up to 5MB for images, 16MB for audio/video, and 25MB for documents.'
         : (err?.response?.data?.message || err?.message || err || 'Failed to send media');
-      alert(`Failed to send media message: ${errorMsg}`);
+      toast.error(`Failed to send media message: ${errorMsg}`);
     } finally {
       setUploadingMedia(false);
     }
   };
 
   const handleExportData = () => {
-    alert('Processing GDPR Article 20 request: Compiling chat logs. Download link will be ready shortly.');
+    toast.info('Processing GDPR Article 20 request: Compiling chat logs. Download link will be ready shortly.');
   };
 
-  const handleEraseContact = () => {
-    if (confirm('Proceed with DPDP Act Section 11 Right to Erasure? This permanently purges all conversations.')) {
-      alert('Contact purged. Associated records cascade-deleted.');
+  const handleEraseContact = async () => {
+    const confirmed = await swal.confirm(
+      'DPDP Act Section 11 Right to Erasure',
+      'Proceed with Right to Erasure? This permanently purges all conversations and audit metadata.',
+      'Yes, Purge Contact',
+    );
+    if (confirmed) {
+      toast.success('Contact purged. Associated records cascade-deleted.');
     }
   };
 
@@ -783,7 +789,7 @@ export default function ChatWindow({ onBackToList }: ChatWindowProps = {}) {
             <span style={{ fontSize: '11.5px' }}>GDPR</span>
           </button>
           <button
-            className="btn btn-danger btn-sm"
+            className="btn btn-danger btn-sm btn-icon"
             onClick={handleEraseContact}
             title={t('eraseContact')}
           >
@@ -1128,7 +1134,7 @@ export default function ChatWindow({ onBackToList }: ChatWindowProps = {}) {
 
           <button
             type="button"
-            className="btn btn-ghost btn-sm"
+            className="btn btn-secondary btn-icon"
             title="Attach Media or Document"
             onClick={() => fileInputRef.current?.click()}
           >

@@ -156,7 +156,6 @@ export default function OverviewDashboardPage() {
                     type="button"
                     className={`filter-pill ${activeRange === 7 ? 'active' : ''}`}
                     onClick={() => handleRangeChange(7)}
-                    style={{ cursor: 'pointer', border: 'none', font: 'inherit' }}
                   >
                     Last 7 Days
                   </button>
@@ -164,7 +163,6 @@ export default function OverviewDashboardPage() {
                     type="button"
                     className={`filter-pill ${activeRange === 30 ? 'active' : ''}`}
                     onClick={() => handleRangeChange(30)}
-                    style={{ cursor: 'pointer', border: 'none', font: 'inherit' }}
                   >
                     30 Days
                   </button>
@@ -283,7 +281,7 @@ export default function OverviewDashboardPage() {
                 <button 
                   className="btn btn-secondary" 
                   onClick={() => navigate('/inbox')}
-                  style={{ justifyContent: 'flex-start', padding: '14px', borderRadius: 'var(--radius-md)', textAlign: 'left' }}
+                  style={{ justifyContent: 'flex-start', padding: '12px 16px', borderRadius: 'var(--radius-md)', textAlign: 'left' }}
                 >
                   <Icon name="inbox" style={{ color: 'var(--color-primary)' }} />
                   <div>
@@ -295,7 +293,7 @@ export default function OverviewDashboardPage() {
                 <button 
                   className="btn btn-secondary" 
                   onClick={() => navigate('/campaigns/templates')}
-                  style={{ justifyContent: 'flex-start', padding: '14px', borderRadius: 'var(--radius-md)', textAlign: 'left' }}
+                  style={{ justifyContent: 'flex-start', padding: '12px 16px', borderRadius: 'var(--radius-md)', textAlign: 'left' }}
                 >
                   <Icon name="document" style={{ color: 'var(--color-success)' }} />
                   <div>
@@ -307,7 +305,7 @@ export default function OverviewDashboardPage() {
                 <button 
                   className="btn btn-secondary" 
                   onClick={() => navigate('/flows')}
-                  style={{ justifyContent: 'flex-start', padding: '14px', borderRadius: 'var(--radius-md)', textAlign: 'left' }}
+                  style={{ justifyContent: 'flex-start', padding: '12px 16px', borderRadius: 'var(--radius-md)', textAlign: 'left' }}
                 >
                   <Icon name="fork" style={{ color: '#8B5CF6' }} />
                   <div>
@@ -319,7 +317,7 @@ export default function OverviewDashboardPage() {
                 <button 
                   className="btn btn-secondary" 
                   onClick={() => navigate('/contacts')}
-                  style={{ justifyContent: 'flex-start', padding: '14px', borderRadius: 'var(--radius-md)', textAlign: 'left' }}
+                  style={{ justifyContent: 'flex-start', padding: '12px 16px', borderRadius: 'var(--radius-md)', textAlign: 'left' }}
                 >
                   <Icon name="users" style={{ color: 'var(--color-accent)' }} />
                   <div>

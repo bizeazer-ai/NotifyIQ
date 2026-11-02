@@ -4,6 +4,7 @@ import { useAppDispatch } from '../../store/hooks';
 import { loginStart, loginSuccess, loginFailure } from '../../store/slices/authSlice';
 import { setCurrentWorkspace } from '../../store/slices/workspaceSlice';
 import { apiClient, ApiError } from '../../lib/api/apiClient';
+import { AppFooter } from '../../components/layout/AppFooter';
 
 interface LoginResponse {
   data: {
@@ -11,7 +12,9 @@ interface LoginResponse {
     user: {
       id: string;
       email: string;
+      name?: string;
       role: string;
+      isEmailVerified?: boolean;
     };
     workspace: {
       id: string;
@@ -29,6 +32,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: FormEvent) => {
@@ -39,12 +43,13 @@ export default function LoginPage() {
     }
 
     setErrorMsg(null);
+    setUnverifiedEmail(null);
     setLoading(true);
     dispatch(loginStart());
 
     try {
       const response = await apiClient.post<LoginResponse>('/api/auth/login', {
-        email,
+        email: email.trim(),
         password,
         passwordLegacy: password,
       });
@@ -58,16 +63,26 @@ export default function LoginPage() {
       // Redirect to home dashboard
       navigate('/');
     } catch (err) {
-      const msg = err instanceof ApiError ? err.message : 'Invalid credentials. Please try again.';
-      setErrorMsg(msg);
-      dispatch(loginFailure(msg));
+      if (err instanceof ApiError) {
+        setErrorMsg(err.message);
+        if (
+          err.status === 403 ||
+          err.data?.requiresVerification ||
+          err.message?.toLowerCase().includes('verify')
+        ) {
+          setUnverifiedEmail(err.data?.email || email.trim());
+        }
+      } else {
+        setErrorMsg('Invalid credentials. Please try again.');
+      }
+      dispatch(loginFailure(err instanceof Error ? err.message : 'Login failed'));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="auth-container">
+    <div className="auth-container" style={{ flexDirection: 'column', padding: 'var(--space-6) var(--space-4)' }}>
       <div className="auth-card">
         <div className="auth-header">
           <div className="auth-logo">IQ</div>
@@ -75,11 +90,27 @@ export default function LoginPage() {
           <p className="auth-subtitle">Sign in to manage your WABA automations</p>
         </div>
 
-        {errorMsg && <div className="auth-error">{errorMsg}</div>}
+        {errorMsg && (
+          <div className="auth-error">
+            <div>{errorMsg}</div>
+            {unverifiedEmail && (
+              <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid rgba(220,38,38,0.2)' }}>
+                <Link
+                  to={`/verify-email?email=${encodeURIComponent(unverifiedEmail)}`}
+                  style={{ color: 'var(--color-primary)', fontWeight: 700, textDecoration: 'underline' }}
+                >
+                  Verify your email address now →
+                </Link>
+              </div>
+            )}
+          </div>
+        )}
 
         <form className="auth-form" onSubmit={handleSubmit}>
           <div className="form-group">
-            <label className="form-label" htmlFor="email-input">Email Address</label>
+            <label className="form-label" htmlFor="email-input">
+              Email Address
+            </label>
             <input
               id="email-input"
               type="email"
@@ -93,7 +124,18 @@ export default function LoginPage() {
           </div>
 
           <div className="form-group">
-            <label className="form-label" htmlFor="password-input">Password</label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <label className="form-label" htmlFor="password-input">
+                Password
+              </label>
+              <Link
+                to="/forgot-password"
+                className="auth-link"
+                style={{ fontSize: '12px', fontWeight: 500 }}
+              >
+                Forgot password?
+              </Link>
+            </div>
             <input
               id="password-input"
               type="password"
@@ -118,6 +160,7 @@ export default function LoginPage() {
           </Link>
         </div>
       </div>
+      <AppFooter style={{ background: 'transparent', borderTop: 'none', maxWidth: '440px', marginTop: 'var(--space-2)' }} />
     </div>
   );
 }

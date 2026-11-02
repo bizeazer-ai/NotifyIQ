@@ -39,6 +39,11 @@ export const envSchema = z.object({
   UTHO_SECRET_KEY: z.string().optional(),
   UTHO_ENDPOINT: z.string().optional(),
   UTHO_BUCKET: z.string().optional(),
+  
+  // Resend Email Service & Client URL
+  RESEND_API_KEY: z.string().optional(),
+  RESEND_FROM_EMAIL: z.string().default("NotifyIQ <onboarding@resend.dev>"),
+  CLIENT_URL: z.string().default("http://localhost:5173"),
 });
 
 export type Env = z.infer<typeof envSchema>;

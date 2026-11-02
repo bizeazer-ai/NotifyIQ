@@ -4,6 +4,7 @@ import { Icon } from '../../components/ui/Icon';
 import { LoadingState } from '../../components/ui/LoadingState';
 import { ErrorAlert } from '../../components/ui/ErrorAlert';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { toast, swal } from '../../lib/alerts';
 
 interface MessageTemplate {
   id?: string;
@@ -19,6 +20,7 @@ interface MessageTemplate {
 
 export default function TemplateBuilderPage() {
   const [templates, setTemplates] = useState<MessageTemplate[]>([]);
+  const [previewTemplate, setPreviewTemplate] = useState<MessageTemplate | null>(null);
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -84,7 +86,19 @@ export default function TemplateBuilderPage() {
         buttons: buttons.length > 0 ? buttons : undefined,
       });
 
-      setStatusMessage('Template submitted successfully! Meta Status: APPROVED.');
+      const submittedTpl: MessageTemplate = {
+        name,
+        category,
+        language,
+        status: 'APPROVED',
+        headerText,
+        bodyText,
+        footerText,
+        buttons: buttons.length > 0 ? buttons : undefined,
+      };
+
+      toast.success(`Template "${name}" created and approved! Opening preview...`);
+      setPreviewTemplate(submittedTpl);
       setName('');
       setHeaderText('');
       setBodyText('');
@@ -102,12 +116,17 @@ export default function TemplateBuilderPage() {
   };
 
   const handleDeleteTemplate = async (tplName: string) => {
-    if (!confirm(`Are you sure you want to delete template "${tplName}"?`)) return;
+    const confirmed = await swal.confirm(
+      'Delete Template?',
+      `Are you sure you want to delete template "${tplName}" from Meta WhatsApp?`,
+      'Yes, Delete',
+    );
+    if (!confirmed) return;
     try {
       await apiClient.delete(`/api/waba/templates/${tplName}`);
       loadTemplates();
     } catch (err: any) {
-      alert(`Deletion failed: ${err.message}`);
+      toast.error(err.message, 'Deletion Failed');
     }
   };
 
@@ -421,7 +440,15 @@ export default function TemplateBuilderPage() {
                     <td style={{ maxWidth: '300px' }} className="truncate text-secondary">
                       "{tpl.bodyText}"
                     </td>
-                    <td style={{ textAlign: 'right' }}>
+                    <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => setPreviewTemplate(tpl)}
+                        style={{ marginRight: '6px' }}
+                      >
+                        <Icon name="eye" size={12} />
+                        <span>Preview</span>
+                      </button>
                       <button
                         className="btn btn-danger btn-sm"
                         onClick={() => handleDeleteTemplate(tpl.name)}
@@ -437,6 +464,190 @@ export default function TemplateBuilderPage() {
           </div>
         )}
       </div>
+
+      {/* Meta WhatsApp Template Preview Modal */}
+      {previewTemplate && (
+        <div className="modal-overlay" onClick={() => setPreviewTemplate(null)}>
+          <div
+            className="modal-card"
+            style={{ maxWidth: '520px', width: '100%', padding: '0', overflow: 'hidden' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div
+              style={{
+                padding: 'var(--space-4) var(--space-5)',
+                borderBottom: '1px solid var(--color-border)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                backgroundColor: 'var(--color-surface)',
+              }}
+            >
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <h3 className="modal-title" style={{ margin: 0, fontSize: '16px' }}>
+                    {previewTemplate.name}
+                  </h3>
+                  <span
+                    className={`badge ${previewTemplate.status === 'APPROVED' ? 'badge-success' : 'badge-warning'}`}
+                    style={{ fontSize: '10px' }}
+                  >
+                    {previewTemplate.status}
+                  </span>
+                </div>
+                <div style={{ fontSize: '11px', color: 'var(--color-foreground-muted)', marginTop: '2px' }}>
+                  Category: <strong>{previewTemplate.category}</strong> • Language: <code>{previewTemplate.language}</code>
+                </div>
+              </div>
+              <button
+                className="btn-close"
+                onClick={() => setPreviewTemplate(null)}
+                title="Close"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* WhatsApp Device Mockup Body */}
+            <div
+              style={{
+                padding: 'var(--space-6)',
+                backgroundColor: '#0b141a',
+                backgroundImage: 'radial-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 0)',
+                backgroundSize: '16px 16px',
+                minHeight: '260px',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+              }}
+            >
+              {/* WhatsApp Message Bubble */}
+              <div
+                style={{
+                  backgroundColor: '#202c33',
+                  borderRadius: '12px',
+                  borderTopLeftRadius: '2px',
+                  padding: '12px 14px',
+                  maxWidth: '380px',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                  color: '#e9edef',
+                  fontSize: '14px',
+                  lineHeight: '1.5',
+                  alignSelf: 'flex-start',
+                }}
+              >
+                {/* Header text if present */}
+                {previewTemplate.headerText && (
+                  <div
+                    style={{
+                      fontWeight: 700,
+                      fontSize: '15px',
+                      color: '#ffffff',
+                      marginBottom: '6px',
+                      borderBottom: '1px solid rgba(255,255,255,0.08)',
+                      paddingBottom: '4px',
+                    }}
+                  >
+                    {previewTemplate.headerText}
+                  </div>
+                )}
+
+                {/* Body Text */}
+                <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', marginBottom: '8px' }}>
+                  {previewTemplate.bodyText}
+                </div>
+
+                {/* Footer text & timestamp */}
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'flex-end',
+                    gap: '8px',
+                    fontSize: '11px',
+                    color: '#8696a0',
+                    marginTop: '4px',
+                  }}
+                >
+                  <span>{previewTemplate.footerText || ''}</span>
+                  <span style={{ fontSize: '10px' }}>12:45 PM ✓✓</span>
+                </div>
+
+                {/* Action Buttons inside Bubble */}
+                {previewTemplate.buttons && previewTemplate.buttons.length > 0 && (
+                  <div
+                    style={{
+                      borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+                      marginTop: '8px',
+                      paddingTop: '6px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '4px',
+                    }}
+                  >
+                    {previewTemplate.buttons.map((btn, idx) => (
+                      <div
+                        key={idx}
+                        style={{
+                          padding: '7px 12px',
+                          backgroundColor: 'rgba(0, 168, 132, 0.12)',
+                          color: '#00a884',
+                          borderRadius: '6px',
+                          textAlign: 'center',
+                          fontSize: '13px',
+                          fontWeight: 600,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '6px',
+                          border: '1px solid rgba(0, 168, 132, 0.25)',
+                        }}
+                      >
+                        {btn.type === 'URL' ? '🔗' : '💬'}
+                        <span>{btn.text}</span>
+                        {btn.url && (
+                          <span style={{ fontSize: '10px', opacity: 0.7 }}>({btn.url})</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div
+              style={{
+                padding: 'var(--space-3) var(--space-5)',
+                borderTop: '1px solid var(--color-border)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                backgroundColor: 'var(--color-surface)',
+              }}
+            >
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => {
+                  navigator.clipboard.writeText(previewTemplate.bodyText);
+                  toast.success('Template body copied to clipboard!');
+                }}
+              >
+                Copy Content
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                onClick={() => setPreviewTemplate(null)}
+              >
+                Close Preview
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

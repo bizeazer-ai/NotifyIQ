@@ -3,6 +3,7 @@ import { apiClient } from '../../lib/api/apiClient';
 import { Icon } from '../../components/ui/Icon';
 import { LoadingState } from '../../components/ui/LoadingState';
 import { ErrorAlert } from '../../components/ui/ErrorAlert';
+import { toast, swal } from '../../lib/alerts';
 
 export interface OutboundWebhookItem {
   _id?: string;
@@ -290,7 +291,7 @@ export default function WebhooksPage() {
       });
       setWebhooks((prev) => prev.map((item) => ((item._id || item.id) === id ? res.data : item)));
     } catch (err: any) {
-      alert(`Failed to update status: ${err?.message || 'Unknown error'}`);
+      toast.error(err?.message || 'Unknown error', 'Failed to update status');
     } finally {
       setActionLoading((prev) => ({ ...prev, [`toggle-${id}`]: false }));
     }
@@ -336,9 +337,10 @@ export default function WebhooksPage() {
     const id = wh._id || wh.id;
     if (!id) return;
 
-    const ok = window.confirm(
-      `Are you sure you want to rotate the HMAC secret for "${wh.description}"?\n\n` +
-      `Your receiving server must be updated with the new secret immediately, or signature verification will fail.`
+    const ok = await swal.confirm(
+      'Rotate HMAC Secret',
+      `Rotate the HMAC secret for "${wh.description}"? Your receiving server must be updated with the new secret immediately, or signature verification will fail.`,
+      'Yes, Rotate Secret',
     );
     if (!ok) return;
 
@@ -353,7 +355,7 @@ export default function WebhooksPage() {
         });
       }
     } catch (err: any) {
-      alert(`Secret rotation failed: ${err?.message || 'Unknown error'}`);
+      toast.error(err?.message || 'Unknown error', 'Secret rotation failed');
     } finally {
       setActionLoading((prev) => ({ ...prev, [`rotate-${id}`]: false }));
     }
@@ -366,7 +368,7 @@ export default function WebhooksPage() {
       setWebhooks((prev) => prev.filter((item) => (item._id || item.id) !== id));
       setDeleteConfirmId(null);
     } catch (err: any) {
-      alert(`Deletion failed: ${err?.message || 'Unknown error'}`);
+      toast.error(err?.message || 'Unknown error', 'Deletion failed');
     } finally {
       setActionLoading((prev) => ({ ...prev, [`delete-${id}`]: false }));
     }
@@ -388,7 +390,7 @@ export default function WebhooksPage() {
   const failingCount = webhooks.filter((w) => w.failureCount > 0).length;
 
   return (
-    <div className="page-container" style={{ maxWidth: '1200px', margin: '0 auto', paddingBottom: '60px' }}>
+    <div className="page-container" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box', paddingBottom: '60px' }}>
       {/* Header */}
       <header className="page-header" style={{ marginBottom: '24px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
@@ -666,10 +668,9 @@ export default function WebhooksPage() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     {/* Toggle Switch */}
                     <button
-                      className="btn btn-secondary"
+                      className="btn btn-secondary btn-sm"
                       onClick={() => handleToggleActive(wh)}
                       disabled={isToggling}
-                      style={{ padding: '6px 12px', fontSize: '12px' }}
                       title={wh.isActive ? 'Pause Webhook' : 'Activate Webhook'}
                     >
                       {isToggling ? 'Updating...' : wh.isActive ? 'Pause' : 'Activate'}
@@ -677,20 +678,18 @@ export default function WebhooksPage() {
 
                     {/* Test Ping Button */}
                     <button
-                      className="btn btn-secondary"
+                      className="btn btn-secondary btn-sm"
                       onClick={() => handleTestPing(wh)}
                       disabled={isTesting || !wh.isActive}
-                      style={{ padding: '6px 12px', fontSize: '12px' }}
                     >
-                      <Icon name="zap" size={14} />
+                      <Icon name="zap" size={13} />
                       <span>{isTesting ? 'Pinging...' : 'Test Delivery'}</span>
                     </button>
 
                     {/* Edit */}
                     <button
-                      className="btn btn-secondary"
+                      className="btn btn-secondary btn-sm btn-icon"
                       onClick={() => openEditModal(wh)}
-                      style={{ padding: '6px 10px' }}
                       title="Edit Endpoint Settings"
                     >
                       <Icon name="sliders" size={14} />
@@ -698,10 +697,9 @@ export default function WebhooksPage() {
 
                     {/* Rotate Secret */}
                     <button
-                      className="btn btn-secondary"
+                      className="btn btn-secondary btn-sm btn-icon"
                       onClick={() => handleRotateSecret(wh)}
                       disabled={isRotating}
-                      style={{ padding: '6px 10px' }}
                       title="Rotate HMAC Secret"
                     >
                       <Icon name="key" size={14} />
@@ -711,26 +709,24 @@ export default function WebhooksPage() {
                     {deleteConfirmId === id ? (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                         <button
-                          className="btn btn-danger"
+                          className="btn btn-danger btn-sm"
                           onClick={() => handleDeleteWebhook(id)}
                           disabled={isDeleting}
-                          style={{ padding: '6px 10px', fontSize: '11px' }}
                         >
                           {isDeleting ? 'Deleting...' : 'Confirm'}
                         </button>
                         <button
-                          className="btn btn-secondary"
+                          className="btn btn-secondary btn-sm"
                           onClick={() => setDeleteConfirmId(null)}
-                          style={{ padding: '6px 8px', fontSize: '11px' }}
                         >
                           Cancel
                         </button>
                       </div>
                     ) : (
                       <button
-                        className="btn btn-secondary"
+                        className="btn btn-secondary btn-sm btn-icon"
                         onClick={() => setDeleteConfirmId(id)}
-                        style={{ padding: '6px 10px', color: 'var(--color-error)' }}
+                        style={{ color: 'var(--color-error)' }}
                         title="Delete Webhook"
                       >
                         <Icon name="trash" size={14} />
@@ -759,20 +755,11 @@ export default function WebhooksPage() {
                   </span>
                   <button
                     onClick={() => copyToClipboard(wh.url, false, id)}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      color: copiedUrlId === id ? '#10B981' : 'var(--color-foreground-muted)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                      marginLeft: '12px',
-                      flexShrink: 0,
-                    }}
+                    className="btn btn-secondary btn-sm"
+                    style={{ marginLeft: '12px', flexShrink: 0 }}
                   >
-                    <Icon name={copiedUrlId === id ? 'check' : 'copy'} size={14} />
-                    <span style={{ fontSize: '11px' }}>{copiedUrlId === id ? 'Copied' : 'Copy'}</span>
+                    <Icon name={copiedUrlId === id ? 'check' : 'copy'} size={13} />
+                    <span>{copiedUrlId === id ? 'Copied' : 'Copy'}</span>
                   </button>
                 </div>
 
@@ -886,36 +873,16 @@ export default function WebhooksPage() {
             </p>
           </div>
 
-          <div style={{ display: 'flex', backgroundColor: 'var(--color-surface-secondary)', padding: '3px', borderRadius: '8px' }}>
+          <div className="tab-group">
             <button
               onClick={() => setActiveCodeTab('node')}
-              style={{
-                padding: '4px 12px',
-                borderRadius: '6px',
-                fontSize: '12px',
-                fontWeight: 600,
-                border: 'none',
-                cursor: 'pointer',
-                backgroundColor: activeCodeTab === 'node' ? 'var(--color-surface)' : 'transparent',
-                color: activeCodeTab === 'node' ? 'var(--color-primary)' : 'var(--color-foreground-secondary)',
-                boxShadow: activeCodeTab === 'node' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
-              }}
+              className={`tab-item ${activeCodeTab === 'node' ? 'active' : ''}`}
             >
               Node.js Express
             </button>
             <button
               onClick={() => setActiveCodeTab('python')}
-              style={{
-                padding: '4px 12px',
-                borderRadius: '6px',
-                fontSize: '12px',
-                fontWeight: 600,
-                border: 'none',
-                cursor: 'pointer',
-                backgroundColor: activeCodeTab === 'python' ? 'var(--color-surface)' : 'transparent',
-                color: activeCodeTab === 'python' ? 'var(--color-primary)' : 'var(--color-foreground-secondary)',
-                boxShadow: activeCodeTab === 'python' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
-              }}
+              className={`tab-item ${activeCodeTab === 'python' ? 'active' : ''}`}
             >
               Python FastAPI
             </button>
@@ -1043,9 +1010,10 @@ async def receive_webhook(
               </div>
               <button
                 onClick={closeModal}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-foreground-muted)' }}
+                className="btn-close"
+                title="Close"
               >
-                <Icon name="close" size={20} />
+                ✕
               </button>
             </div>
 

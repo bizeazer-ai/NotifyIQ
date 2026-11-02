@@ -192,4 +192,74 @@ describe('BillingService', () => {
       expect(invoices).toHaveLength(1);
     });
   });
+
+  describe('getBillingSettings & updateBillingSettings', () => {
+    it('should get billing settings', async () => {
+      mockWorkspaceModel.findById.mockResolvedValue({
+        currency: 'INR',
+        plan: 'growth',
+        billingDetails: { companyName: 'Aadi IT Services' },
+        paymentMethods: [],
+      });
+      const res = await service.getBillingSettings('ws_123456789');
+      expect(res.currency).toBe('INR');
+      expect(res.billingDetails.companyName).toBe('Aadi IT Services');
+    });
+
+    it('should update currency and billing address', async () => {
+      const wsDoc: any = {
+        currency: 'INR',
+        billingDetails: {},
+        paymentMethods: [],
+        save: jest.fn().mockResolvedValue(true),
+        markModified: jest.fn(),
+      };
+      mockWorkspaceModel.findById.mockResolvedValue(wsDoc);
+
+      const res = await service.updateBillingSettings('ws_123456789', {
+        currency: 'USD',
+        billingDetails: { companyName: 'Acme Corp', city: 'San Francisco' },
+      });
+
+      expect(res.currency).toBe('USD');
+      expect(res.billingDetails.companyName).toBe('Acme Corp');
+      expect(wsDoc.save).toHaveBeenCalled();
+    });
+
+    it('should manage payment methods', async () => {
+      const wsDoc: any = {
+        paymentMethods: [],
+        save: jest.fn().mockResolvedValue(true),
+        markModified: jest.fn(),
+      };
+      mockWorkspaceModel.findById.mockResolvedValue(wsDoc);
+
+      const methods = await service.addPaymentMethod('ws_123456789', {
+        type: 'card',
+        brand: 'Visa',
+        last4: '4242',
+        holderName: 'John Doe',
+      });
+
+      expect(methods).toHaveLength(1);
+      expect(methods[0].isDefault).toBe(true);
+
+      // Add second method
+      await service.addPaymentMethod('ws_123456789', {
+        type: 'upi',
+        upiId: 'john@okhdfcbank',
+        isDefault: false,
+      });
+      expect(wsDoc.paymentMethods).toHaveLength(2);
+
+      // Set second as default
+      await service.setDefaultPaymentMethod('ws_123456789', wsDoc.paymentMethods[1].id);
+      expect(wsDoc.paymentMethods[1].isDefault).toBe(true);
+      expect(wsDoc.paymentMethods[0].isDefault).toBe(false);
+
+      // Delete method
+      await service.deletePaymentMethod('ws_123456789', wsDoc.paymentMethods[0].id);
+      expect(wsDoc.paymentMethods).toHaveLength(1);
+    });
+  });
 });

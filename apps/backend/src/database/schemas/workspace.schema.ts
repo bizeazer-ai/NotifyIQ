@@ -20,8 +20,79 @@ export class Workspace {
   @Prop({ default: true })
   active: boolean;
 
-  @Prop({ required: true, enum: ['INR', 'USD', 'EUR'], default: 'INR' })
+  @Prop({ required: true, enum: ['INR', 'USD', 'EUR', 'GBP'], default: 'INR' })
   currency: string;
+
+  // Billing Details & Tax Address
+  @Prop({
+    type: {
+      companyName: { type: String, default: '' },
+      taxId: { type: String, default: '' }, // GSTIN / VAT / Tax ID
+      billingEmail: { type: String, default: '' },
+      phone: { type: String, default: '' },
+      addressLine1: { type: String, default: '' },
+      addressLine2: { type: String, default: '' },
+      city: { type: String, default: '' },
+      state: { type: String, default: '' },
+      postalCode: { type: String, default: '' },
+      country: { type: String, default: 'India' },
+    },
+    default: {
+      companyName: '',
+      taxId: '',
+      billingEmail: '',
+      phone: '',
+      addressLine1: '',
+      addressLine2: '',
+      city: '',
+      state: '',
+      postalCode: '',
+      country: 'India',
+    },
+  })
+  billingDetails: {
+    companyName: string;
+    taxId: string;
+    billingEmail: string;
+    phone: string;
+    addressLine1: string;
+    addressLine2: string;
+    city: string;
+    state: string;
+    postalCode: string;
+    country: string;
+  };
+
+  // Saved Payment Methods
+  @Prop({
+    type: [
+      {
+        id: { type: String, required: true },
+        type: { type: String, enum: ['card', 'upi', 'bank_transfer'], default: 'card' },
+        brand: { type: String, default: 'Visa' },
+        last4: { type: String, default: '' },
+        expiryMonth: { type: String, default: '' },
+        expiryYear: { type: String, default: '' },
+        upiId: { type: String, default: '' },
+        holderName: { type: String, default: '' },
+        isDefault: { type: Boolean, default: false },
+        createdAt: { type: Date, default: Date.now },
+      },
+    ],
+    default: [],
+  })
+  paymentMethods: Array<{
+    id: string;
+    type: 'card' | 'upi' | 'bank_transfer';
+    brand?: string;
+    last4?: string;
+    expiryMonth?: string;
+    expiryYear?: string;
+    upiId?: string;
+    holderName?: string;
+    isDefault: boolean;
+    createdAt?: Date;
+  }>;
 
   // WABA configuration (Encrypted access tokens & webhook secrets)
   @Prop({
