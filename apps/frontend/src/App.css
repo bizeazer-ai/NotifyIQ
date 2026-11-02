@@ -1463,7 +1463,7 @@
   background-color: var(--color-surface);
   text-align: center;
   font-size: var(--text-xs);
-  color: var(--color-foreground-muted);
+  color: var(--color-foreground);
   line-height: 1.6;
   width: 100%;
   box-sizing: border-box;

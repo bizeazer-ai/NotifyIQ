@@ -9,7 +9,7 @@ export function AppFooter({ className = '', style }: AppFooterProps) {
   return (
     <footer className={`app-footer ${className}`} style={style}>
       <div>
-        All Rights Reserved. Copyrights 2026. <strong>NotifyIQ</strong>. A solution offered by{' '}
+        &copy; 2026 <strong> NotifyIQ. </strong> All rights reserved. NotifyIQ is a product of {' '}
         <a
           href="https://www.aadiitservices.com"
           target="_blank"
@@ -19,9 +19,9 @@ export function AppFooter({ className = '', style }: AppFooterProps) {
           Aadi IT Services LLP
         </a>
       </div>
-      <div className="footer-subtext">
+      {/* <div className="footer-subtext">
         NotifyIQ is a product of Aadi IT Services LLP. Trademark Registration is under process.
-      </div>
+      </div> */}
     </footer>
   );
 }
