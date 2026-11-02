@@ -236,16 +236,55 @@
   transform: none;
 }
 
-.icon-badge-blue { background-color: rgba(37, 99, 235, 0.18); color: #60A5FA; }
-.icon-badge-emerald { background-color: rgba(16, 185, 129, 0.18); color: #34D399; }
-.icon-badge-indigo { background-color: rgba(99, 102, 241, 0.18); color: #818CF8; }
-.icon-badge-violet { background-color: rgba(139, 92, 246, 0.18); color: #A78BFA; }
-.icon-badge-amber { background-color: rgba(217, 119, 6, 0.18); color: #FBBF24; }
-.icon-badge-teal { background-color: rgba(13, 148, 136, 0.18); color: #2DD4BF; }
-.icon-badge-rose { background-color: rgba(225, 29, 72, 0.18); color: #FB7185; }
-.icon-badge-sky { background-color: rgba(2, 132, 199, 0.18); color: #38BDF8; }
-.icon-badge-slate { background-color: rgba(100, 116, 139, 0.22); color: #94A3B8; }
-.icon-badge-green { background-color: rgba(16, 185, 129, 0.18); color: #34D399; }
+.icon-badge-blue {
+  background-color: rgba(37, 99, 235, 0.18);
+  color: #60A5FA;
+}
+
+.icon-badge-emerald {
+  background-color: rgba(16, 185, 129, 0.18);
+  color: #34D399;
+}
+
+.icon-badge-indigo {
+  background-color: rgba(99, 102, 241, 0.18);
+  color: #818CF8;
+}
+
+.icon-badge-violet {
+  background-color: rgba(139, 92, 246, 0.18);
+  color: #A78BFA;
+}
+
+.icon-badge-amber {
+  background-color: rgba(217, 119, 6, 0.18);
+  color: #FBBF24;
+}
+
+.icon-badge-teal {
+  background-color: rgba(13, 148, 136, 0.18);
+  color: #2DD4BF;
+}
+
+.icon-badge-rose {
+  background-color: rgba(225, 29, 72, 0.18);
+  color: #FB7185;
+}
+
+.icon-badge-sky {
+  background-color: rgba(2, 132, 199, 0.18);
+  color: #38BDF8;
+}
+
+.icon-badge-slate {
+  background-color: rgba(100, 116, 139, 0.22);
+  color: #94A3B8;
+}
+
+.icon-badge-green {
+  background-color: rgba(16, 185, 129, 0.18);
+  color: #34D399;
+}
 
 /* Navigation Badges */
 .nav-badge {
@@ -990,6 +1029,16 @@
 }
 
 .auth-error {
+  background-color: var(--color-error-muted);
+  border: 1px solid rgba(220, 38, 38, 0.2);
+  color: var(--color-error);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  margin-bottom: var(--space-6);
+  text-align: left;
+}
 
 
 .auth-success {
