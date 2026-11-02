@@ -4,6 +4,7 @@ import { Icon } from '../../components/ui/Icon';
 import { LoadingState } from '../../components/ui/LoadingState';
 import { ErrorAlert } from '../../components/ui/ErrorAlert';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { toast } from '../../lib/alerts';
 
 interface KnowledgeDoc {
   _id: string;
@@ -138,7 +139,7 @@ export default function KnowledgeBasePage() {
         setQueryResult(res.data);
       }
     } catch (err: any) {
-      alert(`RAG Search query error: ${err.message}`);
+      toast.error(err.message, 'RAG Search Error');
     } finally {
       setQuerying(false);
     }
@@ -154,34 +155,16 @@ export default function KnowledgeBasePage() {
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div className="tab-group">
           <button
             onClick={() => setActiveTab('upload')}
-            style={{
-              padding: '10px 18px',
-              borderRadius: '8px',
-              border: '1px solid var(--border-color)',
-              background: activeTab === 'upload' ? 'var(--accent)' : 'var(--bg-secondary)',
-              color: activeTab === 'upload' ? 'var(--btn-text)' : 'var(--text-primary)',
-              fontWeight: 'bold',
-              fontSize: '13px',
-              cursor: 'pointer',
-            }}
+            className={`tab-item ${activeTab === 'upload' ? 'active' : ''}`}
           >
             Upload Documents
           </button>
           <button
             onClick={() => setActiveTab('playground')}
-            style={{
-              padding: '10px 18px',
-              borderRadius: '8px',
-              border: '1px solid var(--border-color)',
-              background: activeTab === 'playground' ? 'var(--accent)' : 'var(--bg-secondary)',
-              color: activeTab === 'playground' ? 'var(--btn-text)' : 'var(--text-primary)',
-              fontWeight: 'bold',
-              fontSize: '13px',
-              cursor: 'pointer',
-            }}
+            className={`tab-item ${activeTab === 'playground' ? 'active' : ''}`}
           >
             RAG Query Playground
           </button>
@@ -226,9 +209,9 @@ export default function KnowledgeBasePage() {
 
               <button
                 type="submit"
-                className="send-btn"
+                className="btn btn-primary"
                 disabled={!selectedFile || uploadingFile}
-                style={{ padding: '12px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold' }}
+                style={{ width: '100%' }}
               >
                 {uploadingFile ? 'Parsing & Chunking File...' : 'Parse & Embed File Document'}
               </button>
@@ -257,7 +240,8 @@ export default function KnowledgeBasePage() {
               <button
                 type="submit"
                 disabled={uploadingText}
-                style={{ padding: '10px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}
+                className="btn btn-secondary"
+                style={{ width: '100%' }}
               >
                 {uploadingText ? 'Embedding Raw Text...' : 'Index Text String'}
               </button>
@@ -334,8 +318,7 @@ export default function KnowledgeBasePage() {
             <button
               type="submit"
               disabled={querying}
-              className="send-btn"
-              style={{ padding: '12px 24px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold' }}
+              className="btn btn-primary"
             >
               {querying ? 'Searching Vector Space...' : 'Run RAG Query'}
             </button>

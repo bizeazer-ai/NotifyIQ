@@ -4,6 +4,8 @@ import type { PayloadAction } from '@reduxjs/toolkit';
 interface Workspace {
   id: string;
   name: string;
+  slug?: string;
+  plan?: string;
   wabaId?: string;
   role?: string;
 }

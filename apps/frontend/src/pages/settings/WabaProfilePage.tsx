@@ -4,6 +4,7 @@ import { EmbeddedSignupButton } from '../../components/waba/EmbeddedSignupButton
 import { Icon } from '../../components/ui/Icon';
 import { LoadingState } from '../../components/ui/LoadingState';
 import { ErrorAlert } from '../../components/ui/ErrorAlert';
+import { toast } from '../../lib/alerts';
 
 interface WabaProfile {
   about: string;
@@ -195,10 +196,12 @@ export default function WabaProfilePage() {
     setStatusMessage('Syncing updated WABA profile details to Meta Graph API v20.0...');
     try {
       await apiClient.post('/api/waba/profile', profile);
+      toast.success('WABA profile updated successfully on Meta Cloud API!');
       setStatusMessage('WABA profile updated successfully on Meta Cloud API!');
       loadApiLogs();
       setTimeout(() => setStatusMessage(''), 3500);
     } catch (err: any) {
+      toast.error(`Profile save failed: ${err.message || 'Error updating Meta API'}`);
       setStatusMessage(`Profile save failed: ${err.message || 'Error updating Meta API'}`);
     } finally {
       setSavingProfile(false);
@@ -341,7 +344,7 @@ export default function WabaProfilePage() {
               <div className="modal-card" style={{ maxWidth: '480px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-4)' }}>
                   <h3 className="modal-title" style={{ marginBottom: 0 }}>Register New Phone Number on Meta API</h3>
-                  <button className="btn btn-ghost btn-sm" onClick={() => setShowAddModal(false)}>✕</button>
+                  <button className="btn-close" onClick={() => setShowAddModal(false)} title="Close">✕</button>
                 </div>
 
                 <form onSubmit={handleRegisterPhoneSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
@@ -401,7 +404,7 @@ export default function WabaProfilePage() {
                   <h3 className="modal-title" style={{ marginBottom: 0, color: 'var(--color-error, #ef4444)' }}>
                     Disconnect Meta WABA Account?
                   </h3>
-                  <button className="btn btn-ghost btn-sm" onClick={() => setShowDisconnectModal(false)}>✕</button>
+                  <button className="btn-close" onClick={() => setShowDisconnectModal(false)} title="Close">✕</button>
                 </div>
 
                 <p className="text-secondary" style={{ fontSize: 'var(--text-sm)', marginBottom: 'var(--space-5)', lineHeight: '1.5' }}>
@@ -427,96 +430,287 @@ export default function WabaProfilePage() {
           )}
 
 
-          {/* WABA Business Profile Editor */}
-          <div className="section-card" style={{ maxWidth: '800px', marginBottom: 'var(--space-8)' }}>
-            <h3 className="section-title">
-              <Icon name="gear" className="section-title-icon" style={{ color: 'var(--color-primary)' }} />
-              <span>WhatsApp Business Profile Editor</span>
-            </h3>
+          {/* WABA Business Profile Editor - 2 Column Layout with Live WhatsApp Mobile Preview */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 1fr)', gap: 'var(--space-6)', alignItems: 'start', marginBottom: 'var(--space-8)', width: '100%' }}>
+            {/* Column 1: Profile Editor Form */}
+            <div className="section-card" style={{ width: '100%' }}>
+              <h3 className="section-title">
+                <Icon name="gear" className="section-title-icon" style={{ color: 'var(--color-primary)' }} />
+                <span>WhatsApp Business Profile Editor</span>
+              </h3>
 
-            <form onSubmit={handleSaveProfile} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
-              <div className="form-group">
-                <label className="form-label-styled">About / Tagline</label>
-                <input
-                  type="text"
-                  className="form-input-styled"
-                  value={profile.about}
-                  onChange={(e) => setProfile({ ...profile, about: e.target.value })}
-                  placeholder="Short tagline shown under your business name"
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label-styled">Business Description</label>
-                <textarea
-                  className="form-textarea"
-                  rows={3}
-                  value={profile.description}
-                  onChange={(e) => setProfile({ ...profile, description: e.target.value })}
-                  placeholder="Detailed business description"
-                />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-5)' }}>
+              <form onSubmit={handleSaveProfile} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
                 <div className="form-group">
-                  <label className="form-label-styled">Support Email</label>
+                  <label className="form-label-styled">About / Tagline</label>
                   <input
-                    type="email"
+                    type="text"
                     className="form-input-styled"
-                    value={profile.email}
-                    onChange={(e) => setProfile({ ...profile, email: e.target.value })}
-                    placeholder="support@company.com"
+                    value={profile.about}
+                    onChange={(e) => setProfile({ ...profile, about: e.target.value })}
+                    placeholder="Short tagline shown under your business name"
                   />
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label-styled">Industry Category / Vertical</label>
-                  <select
-                    className="form-select"
-                    value={profile.vertical}
-                    onChange={(e) => setProfile({ ...profile, vertical: e.target.value })}
-                  >
-                    <option value="PROF_SERVICES">Professional Services</option>
-                    <option value="RETAIL">Retail & E-commerce</option>
-                    <option value="FINANCE">Financial Services</option>
-                    <option value="EDUCATION">Education</option>
-                    <option value="ENTERTAIN">Entertainment</option>
-                    <option value="OTHER">Other Industry</option>
-                  </select>
+                  <label className="form-label-styled">Business Description</label>
+                  <textarea
+                    className="form-textarea"
+                    rows={3}
+                    value={profile.description}
+                    onChange={(e) => setProfile({ ...profile, description: e.target.value })}
+                    placeholder="Detailed business description"
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-5)' }}>
+                  <div className="form-group">
+                    <label className="form-label-styled">Support Email</label>
+                    <input
+                      type="email"
+                      className="form-input-styled"
+                      value={profile.email}
+                      onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+                      placeholder="support@company.com"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label-styled">Industry Category / Vertical</label>
+                    <select
+                      className="form-select"
+                      value={profile.vertical}
+                      onChange={(e) => setProfile({ ...profile, vertical: e.target.value })}
+                    >
+                      <option value="PROF_SERVICES">Professional Services</option>
+                      <option value="RETAIL">Retail & E-commerce</option>
+                      <option value="FINANCE">Financial Services</option>
+                      <option value="EDUCATION">Education</option>
+                      <option value="ENTERTAIN">Entertainment</option>
+                      <option value="OTHER">Other Industry</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label-styled">Business Address</label>
+                  <input
+                    type="text"
+                    className="form-input-styled"
+                    value={profile.address}
+                    onChange={(e) => setProfile({ ...profile, address: e.target.value })}
+                    placeholder="Physical business office location"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label-styled">Website URL</label>
+                  <input
+                    type="url"
+                    className="form-input-styled"
+                    value={profile.websites?.[0] || ''}
+                    onChange={(e) => setProfile({ ...profile, websites: [e.target.value] })}
+                    placeholder="https://company.com"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  className="btn btn-primary btn-lg"
+                  disabled={savingProfile}
+                  style={{ alignSelf: 'flex-start' }}
+                >
+                  {savingProfile ? 'Syncing to Meta...' : 'Save & Publish Profile to WhatsApp'}
+                </button>
+              </form>
+            </div>
+
+            {/* Column 2: Live WhatsApp Business Profile Mobile Card Mockup */}
+            <div className="section-card" style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <h3 className="section-title" style={{ margin: 0 }}>
+                    <Icon name="sparkles" className="section-title-icon" style={{ color: '#25D366' }} />
+                    <span>WhatsApp Mobile Card Preview</span>
+                  </h3>
+                  <p className="text-secondary" style={{ fontSize: 'var(--text-xs)', margin: 0 }}>
+                    Live view of your official business account card as shown to WhatsApp contacts.
+                  </p>
+                </div>
+                <span className="badge badge-success" style={{ fontSize: '10px' }}>LIVE SYNC</span>
+              </div>
+
+              {/* Phone Mockup Wrapper */}
+              <div style={{
+                borderRadius: '24px',
+                border: '8px solid #1f2937',
+                backgroundColor: 'var(--color-surface-secondary)',
+                overflow: 'hidden',
+                boxShadow: '0 12px 32px rgba(0, 0, 0, 0.25)',
+                maxWidth: '380px',
+                margin: '0 auto',
+                width: '100%',
+              }}>
+                {/* WhatsApp Green Top Header */}
+                <div style={{
+                  backgroundColor: '#075E54',
+                  color: '#ffffff',
+                  padding: '12px 16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{ fontSize: '16px', cursor: 'pointer' }}>←</span>
+                    <span style={{ fontWeight: 600, fontSize: '14px' }}>Business Details</span>
+                  </div>
+                  <span style={{ fontSize: '16px' }}>⋮</span>
+                </div>
+
+                {/* Profile Hero Avatar & Name */}
+                <div style={{
+                  padding: '20px 16px',
+                  backgroundColor: 'var(--color-surface)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  textAlign: 'center',
+                  borderBottom: '1px solid var(--color-border)',
+                }}>
+                  <div style={{
+                    width: '76px',
+                    height: '76px',
+                    borderRadius: '50%',
+                    backgroundColor: '#128C7E',
+                    color: '#ffffff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '28px',
+                    fontWeight: 700,
+                    marginBottom: '10px',
+                    position: 'relative',
+                    boxShadow: '0 4px 12px rgba(18, 140, 126, 0.3)',
+                  }}>
+                    {(phoneNumbers.find((p) => p.id === selectedPhoneId)?.verified_name?.[0] || 'N').toUpperCase()}
+                    <div style={{
+                      position: 'absolute',
+                      bottom: '0',
+                      right: '0',
+                      width: '22px',
+                      height: '22px',
+                      borderRadius: '50%',
+                      backgroundColor: '#25D366',
+                      color: '#ffffff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '11px',
+                      fontWeight: 800,
+                      border: '2px solid #ffffff',
+                    }}>
+                      ✓
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'center' }}>
+                    <h4 style={{ margin: 0, fontSize: '16px', fontWeight: 700 }}>
+                      {phoneNumbers.find((p) => p.id === selectedPhoneId)?.verified_name || 'NotifyIQ Business'}
+                    </h4>
+                  </div>
+
+                  <div style={{ fontSize: '12px', color: '#25D366', fontWeight: 600, marginTop: '2px' }}>
+                    Official Business Account
+                  </div>
+
+                  <div style={{ fontSize: '12px', color: 'var(--color-foreground-muted)', marginTop: '2px', fontFamily: 'monospace' }}>
+                    {phoneNumbers.find((p) => p.id === selectedPhoneId)?.display_phone_number || '+91 98765 43210'}
+                  </div>
+                </div>
+
+                {/* Profile Details List */}
+                <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px', backgroundColor: 'var(--color-surface)' }}>
+                  {/* About */}
+                  <div>
+                    <div style={{ fontSize: '11px', color: 'var(--color-foreground-muted)', textTransform: 'uppercase', fontWeight: 600, marginBottom: '2px' }}>
+                      About
+                    </div>
+                    <div style={{ fontSize: '13px', lineHeight: '1.4' }}>
+                      {profile.about || 'Hey there! We are using WhatsApp for business support.'}
+                    </div>
+                  </div>
+
+                  {/* Description */}
+                  {profile.description && (
+                    <div>
+                      <div style={{ fontSize: '11px', color: 'var(--color-foreground-muted)', textTransform: 'uppercase', fontWeight: 600, marginBottom: '2px' }}>
+                        Description
+                      </div>
+                      <div style={{ fontSize: '12px', color: 'var(--color-foreground-secondary)', lineHeight: '1.4' }}>
+                        {profile.description}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Category */}
+                  <div>
+                    <div style={{ fontSize: '11px', color: 'var(--color-foreground-muted)', textTransform: 'uppercase', fontWeight: 600, marginBottom: '2px' }}>
+                      Category
+                    </div>
+                    <div style={{ display: 'inline-block', backgroundColor: 'rgba(37, 211, 102, 0.1)', color: '#128C7E', padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 600 }}>
+                      {profile.vertical || 'PROF_SERVICES'}
+                    </div>
+                  </div>
+
+                  {/* Address */}
+                  {profile.address && (
+                    <div>
+                      <div style={{ fontSize: '11px', color: 'var(--color-foreground-muted)', textTransform: 'uppercase', fontWeight: 600, marginBottom: '2px' }}>
+                        Address
+                      </div>
+                      <div style={{ fontSize: '12px', color: 'var(--color-foreground-secondary)' }}>
+                        📍 {profile.address}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Email */}
+                  {profile.email && (
+                    <div>
+                      <div style={{ fontSize: '11px', color: 'var(--color-foreground-muted)', textTransform: 'uppercase', fontWeight: 600, marginBottom: '2px' }}>
+                        Email
+                      </div>
+                      <div style={{ fontSize: '12px', color: 'var(--color-primary)' }}>
+                        ✉️ {profile.email}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Website */}
+                  {profile.websites?.[0] && (
+                    <div>
+                      <div style={{ fontSize: '11px', color: 'var(--color-foreground-muted)', textTransform: 'uppercase', fontWeight: 600, marginBottom: '2px' }}>
+                        Website
+                      </div>
+                      <div style={{ fontSize: '12px', color: 'var(--color-primary)' }}>
+                        🌐 {profile.websites[0]}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Bottom Meta Status */}
+                <div style={{
+                  padding: '8px 12px',
+                  backgroundColor: 'var(--color-surface-secondary)',
+                  borderTop: '1px solid var(--color-border)',
+                  fontSize: '10px',
+                  color: 'var(--color-foreground-muted)',
+                  textAlign: 'center',
+                }}>
+                  Meta Cloud API v20.0 Verified
                 </div>
               </div>
-
-              <div className="form-group">
-                <label className="form-label-styled">Business Address</label>
-                <input
-                  type="text"
-                  className="form-input-styled"
-                  value={profile.address}
-                  onChange={(e) => setProfile({ ...profile, address: e.target.value })}
-                  placeholder="Physical business office location"
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label-styled">Website URL</label>
-                <input
-                  type="url"
-                  className="form-input-styled"
-                  value={profile.websites?.[0] || ''}
-                  onChange={(e) => setProfile({ ...profile, websites: [e.target.value] })}
-                  placeholder="https://company.com"
-                />
-              </div>
-
-              <button
-                type="submit"
-                className="btn btn-primary btn-lg"
-                disabled={savingProfile}
-                style={{ alignSelf: 'flex-start' }}
-              >
-                {savingProfile ? 'Syncing to Meta...' : 'Save & Publish Profile to WhatsApp'}
-              </button>
-            </form>
+            </div>
           </div>
 
           {/* Meta Graph API Response Audit Logs Section */}

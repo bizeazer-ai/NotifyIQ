@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Headers, Req, HttpCode, HttpStatus, UnauthorizedException, BadRequestException, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Body, Headers, Req, HttpCode, HttpStatus, UnauthorizedException, BadRequestException, UseGuards } from '@nestjs/common';
 import crypto from 'crypto';
 import { env } from '@notifyiq/config';
 import { BillingService } from './billing.service.js';
@@ -154,6 +154,73 @@ export class BillingController {
     return {
       message: 'Invoices retrieved successfully',
       data: invoices,
+    };
+  }
+
+  @Get('settings')
+  @UseGuards(AuthGuard, WorkspaceGuard)
+  async getBillingSettings(@Req() req: AuthenticatedRequest) {
+    const workspaceId = req.workspaceId as string;
+    const settings = await this.billingService.getBillingSettings(workspaceId);
+    return {
+      message: 'Billing settings retrieved successfully',
+      data: settings,
+    };
+  }
+
+  @Patch('settings')
+  @UseGuards(AuthGuard, WorkspaceGuard)
+  async updateBillingSettings(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: { currency?: string; billingDetails?: any },
+  ) {
+    const workspaceId = req.workspaceId as string;
+    const updated = await this.billingService.updateBillingSettings(workspaceId, dto);
+    return {
+      message: 'Billing settings updated successfully',
+      data: updated,
+    };
+  }
+
+  @Post('payment-methods')
+  @UseGuards(AuthGuard, WorkspaceGuard)
+  async addPaymentMethod(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: any,
+  ) {
+    const workspaceId = req.workspaceId as string;
+    const methods = await this.billingService.addPaymentMethod(workspaceId, dto);
+    return {
+      message: 'Payment method added successfully',
+      data: methods,
+    };
+  }
+
+  @Delete('payment-methods/:id')
+  @UseGuards(AuthGuard, WorkspaceGuard)
+  async deletePaymentMethod(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') methodId: string,
+  ) {
+    const workspaceId = req.workspaceId as string;
+    const methods = await this.billingService.deletePaymentMethod(workspaceId, methodId);
+    return {
+      message: 'Payment method removed successfully',
+      data: methods,
+    };
+  }
+
+  @Patch('payment-methods/:id/default')
+  @UseGuards(AuthGuard, WorkspaceGuard)
+  async setDefaultPaymentMethod(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') methodId: string,
+  ) {
+    const workspaceId = req.workspaceId as string;
+    const methods = await this.billingService.setDefaultPaymentMethod(workspaceId, methodId);
+    return {
+      message: 'Default payment method updated',
+      data: methods,
     };
   }
 }

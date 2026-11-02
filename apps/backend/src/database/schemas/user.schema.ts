@@ -12,7 +12,10 @@ export class User {
   @Prop({ required: true, trim: true })
   name: string;
 
-  @Prop({ required: true, lowercase: true, trim: true })
+  @Prop({ type: String, default: null, trim: true })
+  phone?: string | null;
+
+  @Prop({ required: true, lowercase: true, trim: true, index: true })
   email: string;
 
   @Prop({ required: true })
@@ -20,6 +23,21 @@ export class User {
 
   @Prop({ required: true, enum: ['admin', 'agent'], default: 'agent' })
   role: string;
+
+  @Prop({ type: Boolean, default: false })
+  isEmailVerified: boolean;
+
+  @Prop({ type: String, default: null, index: true })
+  emailVerificationToken?: string | null;
+
+  @Prop({ type: Date, default: null })
+  emailVerificationExpires?: Date | null;
+
+  @Prop({ type: String, default: null, index: true })
+  passwordResetToken?: string | null;
+
+  @Prop({ type: Date, default: null })
+  passwordResetExpires?: Date | null;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

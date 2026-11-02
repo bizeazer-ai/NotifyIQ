@@ -4,6 +4,7 @@ import { env } from '@notifyiq/config';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { DatabaseModule } from './database/database.module.js';
+import { EmailModule } from './email/email.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { QueuesModule } from './queues/queues.module.js';
 import { WebhookModule } from './webhook/webhook.module.js';
@@ -37,6 +38,7 @@ const getFrontendDistPath = (): string => {
   imports: [
     MongooseModule.forRoot(env.DB_URI),
     DatabaseModule,
+    EmailModule,
     QueuesModule,
     SocketModule,
     AuthModule,

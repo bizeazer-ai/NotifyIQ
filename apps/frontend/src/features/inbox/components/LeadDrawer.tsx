@@ -199,11 +199,11 @@ export default function LeadDrawer({
           </div>
           <button
             type="button"
-            className="btn btn-ghost btn-sm"
+            className="btn-close"
             onClick={onClose}
-            style={{ padding: '6px', borderRadius: '50%' }}
+            title="Close"
           >
-            <Icon name="close" size={16} />
+            ✕
           </button>
         </div>
 
@@ -400,16 +400,16 @@ export default function LeadDrawer({
               <div style={{ marginTop: 'auto', paddingTop: '16px', display: 'flex', gap: '10px' }}>
                 <button
                   type="button"
-                  className="btn btn-secondary btn-sm"
-                  style={{ flex: 1, padding: '10px' }}
+                  className="btn btn-secondary"
+                  style={{ flex: 1 }}
                   onClick={onClose}
                 >
                   Close
                 </button>
                 <button
                   type="button"
-                  className="btn btn-primary btn-sm"
-                  style={{ flex: 1, padding: '10px' }}
+                  className="btn btn-primary"
+                  style={{ flex: 1 }}
                   onClick={handleSave}
                   disabled={saving || !lead?._id}
                 >

@@ -42,6 +42,7 @@ export default function DashboardLayout() {
     if (p === '/campaigns/templates') return 'WhatsApp Message Templates';
     if (p === '/flows') return 'Visual Automation Flows';
     if (p === '/knowledge-base') return 'RAG Grounded Knowledge Base';
+    if (p === '/profile') return 'User Profile & Account Security';
     if (p === '/billing') return 'Billing & Usage Analytics';
     if (p === '/settings') return 'AI Agent & System Settings';
     if (p === '/settings/waba') return 'Meta WABA API Profile';
@@ -87,10 +88,10 @@ export default function DashboardLayout() {
               onChange={(e) => changeLanguage(e.target.value as LanguageCode)}
             >
               <option value="en">English</option>
-              <option value="hi">हिन्दी (Hindi)</option>
+              {/* <option value="hi">हिन्दी (Hindi)</option>
               <option value="es">Español (Spanish)</option>
               <option value="fr">Français (French)</option>
-              <option value="ar">العربية (Arabic)</option>
+              <option value="ar">العربية (Arabic)</option> */}
             </select>
           </div>
         </div>
@@ -159,14 +160,6 @@ export default function DashboardLayout() {
               <span className="nav-badge nav-badge-ai">AI</span>
             </div>
           </Link>
-          <Link to="/billing" onClick={() => setMobileMenuOpen(false)} style={{ textDecoration: 'none' }}>
-            <div className={`menu-item ${isActive('/billing') ? 'active' : ''}`}>
-              <div className="icon-badge icon-badge-sky">
-                <Icon name="coins" size={16} />
-              </div>
-              <span className="menu-title">Billing & Usage</span>
-            </div>
-          </Link>
           <Link to="/settings" onClick={() => setMobileMenuOpen(false)} style={{ textDecoration: 'none' }}>
             <div className={`menu-item ${isActive('/settings') ? 'active' : ''}`}>
               <div className="icon-badge icon-badge-slate">
@@ -192,21 +185,47 @@ export default function DashboardLayout() {
               <span className="nav-badge nav-badge-live">LIVE</span>
             </div>
           </Link>
+
+          <div className="menu-group-label">Account & Billing</div>
+          <Link to="/profile" onClick={() => setMobileMenuOpen(false)} style={{ textDecoration: 'none' }}>
+            <div className={`menu-item ${isActive('/profile') && !location.search ? 'active' : ''}`}>
+              <div className="icon-badge icon-badge-blue">
+                <Icon name="user" size={16} />
+              </div>
+              <span className="menu-title">My Profile & Security</span>
+            </div>
+          </Link>
+          <Link to="/billing" onClick={() => setMobileMenuOpen(false)} style={{ textDecoration: 'none' }}>
+            <div className={`menu-item ${isActive('/billing') ? 'active' : ''}`}>
+              <div className="icon-badge icon-badge-sky">
+                <Icon name="coins" size={16} />
+              </div>
+              <span className="menu-title">Billing & Subscriptions</span>
+            </div>
+          </Link>
+          
         </div>
 
         {/* User profile & Logout */}
         <div className="user-profile">
-          <div className="user-profile-row">
-            <div className="avatar">{getInitials(user?.email)}</div>
-            <div className="user-info" style={{ flex: 1 }}>
-              <div className="name">
-                {user?.email ? user.email.split('@')[0] : 'User'}
-              </div>
-              <div className="role">
-                {user?.role === 'admin' ? 'Workspace Admin' : 'Agent User'}
+          <Link
+            to="/profile"
+            onClick={() => setMobileMenuOpen(false)}
+            style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}
+            title="Manage Profile, Password & Settings"
+          >
+            <div className="user-profile-row" style={{ cursor: 'pointer' }}>
+              <div className="avatar">{getInitials(user?.email)}</div>
+              <div className="user-info" style={{ flex: 1 }}>
+                <div className="name">
+                  {user?.name || (user?.email ? user.email.split('@')[0] : 'User')}
+                </div>
+                <div className="role">
+                  {user?.role === 'admin' ? 'Workspace Admin' : 'Agent User'}
+                </div>
               </div>
             </div>
-          </div>
+          </Link>
           <button className="logout-btn" onClick={handleLogout}>
             <Icon name="logout" size={14} />
             <span>Sign Out</span>
@@ -311,24 +330,32 @@ export default function DashboardLayout() {
               </kbd>
             </div>
 
-            {/* User Quick Avatar */}
-            <div
-              style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: 'var(--radius-full)',
-                backgroundColor: 'var(--color-primary-muted)',
-                color: 'var(--color-primary)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontWeight: 700,
-                fontSize: '12px',
-                border: '1px solid var(--color-border)',
-              }}
+            {/* User Quick Avatar Link to Profile */}
+            <Link
+              to="/profile"
+              style={{ textDecoration: 'none' }}
+              title="View Profile & Security"
             >
-              {getInitials(user?.email)}
-            </div>
+              <div
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: 'var(--radius-full)',
+                  backgroundColor: 'var(--color-primary-muted)',
+                  color: 'var(--color-primary)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontWeight: 700,
+                  fontSize: '12px',
+                  border: '1px solid var(--color-border)',
+                  cursor: 'pointer',
+                  transition: 'transform 0.2s ease',
+                }}
+              >
+                {getInitials(user?.email)}
+              </div>
+            </Link>
           </div>
         </header>
 

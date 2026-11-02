@@ -24,6 +24,7 @@ export interface UserResponse {
   id: string;
   email: string;
   role: string;
+  isEmailVerified?: boolean;
 }
 
 export interface WorkspaceResponse {
@@ -38,3 +39,28 @@ export interface AuthResponseData {
   user: UserResponse;
   workspace: WorkspaceResponse;
 }
+
+export const VerifyEmailSchema = z.object({
+  token: z.string().min(1),
+});
+
+export type VerifyEmailPayload = z.infer<typeof VerifyEmailSchema>;
+
+export const ResendVerificationSchema = z.object({
+  email: z.string().email(),
+});
+
+export type ResendVerificationPayload = z.infer<typeof ResendVerificationSchema>;
+
+export const ForgotPasswordSchema = z.object({
+  email: z.string().email(),
+});
+
+export type ForgotPasswordPayload = z.infer<typeof ForgotPasswordSchema>;
+
+export const ResetPasswordSchema = z.object({
+  token: z.string().min(1),
+  newPassword: z.string().min(6),
+});
+
+export type ResetPasswordPayload = z.infer<typeof ResetPasswordSchema>;

@@ -80,14 +80,6 @@ export default function ConversationList({ onSelectConversation }: ConversationL
               key={sentimentKey}
               className={`filter-pill ${filterSentiment === sentimentKey ? 'active' : ''}`}
               onClick={() => setFilterSentiment(sentimentKey)}
-              style={{
-                padding: '3px 10px',
-                fontSize: '11px',
-                fontWeight: 700,
-                borderRadius: 'var(--radius-full)',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-              }}
             >
               {sentimentKey === 'ALL' ? 'All Chats' : sentimentKey.charAt(0) + sentimentKey.slice(1).toLowerCase()}
             </button>

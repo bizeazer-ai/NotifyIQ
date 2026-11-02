@@ -4,6 +4,7 @@ import { Icon } from '../../components/ui/Icon';
 import { LoadingState } from '../../components/ui/LoadingState';
 import { ErrorAlert } from '../../components/ui/ErrorAlert';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { toast, swal } from '../../lib/alerts';
 
 interface Contact {
   _id: string;
@@ -111,17 +112,17 @@ export default function CampaignsPage() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (selectedContactIds.length === 0) {
-      alert('Please select at least one contact to target.');
+      toast.warning('Please select at least one contact to target.');
       return;
     }
 
     if (dispatchType === 'scheduled' && !scheduledAt) {
-      alert('Please select a valid scheduled date & time.');
+      toast.warning('Please select a valid scheduled date & time.');
       return;
     }
 
     if (['IMAGE', 'DOCUMENT', 'VIDEO'].includes(headerFormat) && !headerUrl.trim()) {
-      alert(`Please enter a valid header ${headerFormat} URL for this template.`);
+      toast.warning(`Please enter a valid header ${headerFormat} URL for this template.`);
       return;
     }
 
